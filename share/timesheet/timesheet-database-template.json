@@ -1,0 +1,196 @@
+{
+  "revision": 0,
+  "activities": [
+    {
+      "id": "TT",
+      "label": "Temps de travail",
+      "consumes": null,
+      "feeds": "TT",
+      "color": "#33d17a",
+      "archived": false
+    },
+    {
+      "id": "WE",
+      "label": "Week-end",
+      "consumes": null,
+      "feeds": "WE",
+      "color": "#9a9996",
+      "archived": false
+    },
+    {
+      "id": "JF",
+      "label": "Jour férié",
+      "consumes": null,
+      "feeds": "JF",
+      "color": "#9a9996",
+      "archived": false
+    },
+    {
+      "id": "CP",
+      "label": "Congés payés",
+      "consumes": "CP",
+      "feeds": null,
+      "color": "#e01b24",
+      "archived": false
+    },
+    {
+      "id": "CSS",
+      "label": "Congé sans solde",
+      "consumes": null,
+      "feeds": "CSS",
+      "color": "#e01b24",
+      "archived": false
+    },
+    {
+      "id": "RTT",
+      "label": "Récupération temps de travail",
+      "consumes": "RTT",
+      "feeds": null,
+      "color": "#e01b24",
+      "archived": false
+    },
+    {
+      "id": "TP",
+      "label": "Temps partiel",
+      "consumes": null,
+      "feeds": "TP",
+      "color": "#3584e4",
+      "archived": false
+    },
+    {
+      "id": "TPC",
+      "label": "Temps partiel complémentaire",
+      "consumes": "TPC",
+      "feeds": null,
+      "color": "#9141ac",
+      "archived": false
+    },
+    {
+      "id": "ABS",
+      "label": "Absence",
+      "consumes": null,
+      "feeds": "ABS",
+      "color": "#e01b24",
+      "archived": false
+    }
+  ],
+  "counters": [
+    {
+      "id": "TT",
+      "label": "Temps de travail",
+      "short_label": "TT",
+      "enabled_by_default": true,
+      "accrual": {
+        "every": "year",
+        "amount": "0"
+      },
+      "period_start": "01-01",
+      "carry_over": false,
+      "archived": false
+    },
+    {
+      "id": "WE",
+      "label": "Week-end",
+      "short_label": "WE",
+      "enabled_by_default": true,
+      "accrual": {
+        "every": "year",
+        "amount": "0"
+      },
+      "period_start": "01-01",
+      "carry_over": false,
+      "archived": false
+    },
+    {
+      "id": "JF",
+      "label": "Jour férié",
+      "short_label": "JF",
+      "enabled_by_default": true,
+      "accrual": {
+        "every": "year",
+        "amount": "0"
+      },
+      "period_start": "01-01",
+      "carry_over": false,
+      "archived": false
+    },
+    {
+      "id": "CP",
+      "label": "Congés payés",
+      "short_label": "CP",
+      "enabled_by_default": true,
+      "accrual": {
+        "every": "month",
+        "amount": "2.08"
+      },
+      "period_start": "06-01",
+      "carry_over": true,
+      "archived": false
+    },
+    {
+      "id": "CSS",
+      "label": "Congé sans solde",
+      "short_label": "CSS",
+      "enabled_by_default": true,
+      "accrual": {
+        "every": "year",
+        "amount": "0"
+      },
+      "period_start": "01-01",
+      "carry_over": false,
+      "archived": false
+    },
+    {
+      "id": "RTT",
+      "label": "Récupération temps de travail",
+      "short_label": "RTT",
+      "enabled_by_default": true,
+      "accrual": {
+        "every": "year",
+        "amount": "10"
+      },
+      "period_start": "01-01",
+      "carry_over": false,
+      "archived": false
+    },
+    {
+      "id": "TP",
+      "label": "Temps partiel",
+      "short_label": "TP",
+      "enabled_by_default": true,
+      "accrual": {
+        "every": "year",
+        "amount": "0"
+      },
+      "period_start": "01-01",
+      "carry_over": false,
+      "archived": false
+    },
+    {
+      "id": "TPC",
+      "label": "Temps partiel complémentaire",
+      "short_label": "TPC",
+      "enabled_by_default": false,
+      "accrual": {
+        "every": "month",
+        "amount": "0"
+      },
+      "period_start": "01-01",
+      "carry_over": false,
+      "archived": false
+    },
+    {
+      "id": "ABS",
+      "label": "Absence",
+      "short_label": "ABS",
+      "enabled_by_default": true,
+      "accrual": {
+        "every": "year",
+        "amount": "0"
+      },
+      "period_start": "01-01",
+      "carry_over": false,
+      "archived": false
+    }
+  ]
+}
