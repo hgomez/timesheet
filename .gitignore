@@ -1,0 +1,17 @@
+bin/timesheet
+.cache/
+var/lib/timesheet/*
+!var/lib/timesheet/.gitkeep
+*.test
+*.out
+*.prof
+_dist/
+debian/.debhelper/
+debian/timesheet/
+debian/timesheet.substvars
+debian/debhelper-build-stamp
+debian/files
+debian/*.debhelper.log
+debian/*.postinst.debhelper
+debian/*.postrm.debhelper
+debian/*.prerm.debhelper
