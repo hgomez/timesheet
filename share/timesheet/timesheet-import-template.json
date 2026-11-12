@@ -1,0 +1,48 @@
+{
+  "format": "timesheet-import",
+  "version": 1,
+  "settings": {
+    "start": "2026-01-01",
+    "counters": {
+      "CP": { "enabled": true, "initial": "12.5" },
+      "RTT": { "enabled": true, "amount": "10", "initial": "0" },
+      "TPC": { "enabled": false }
+    }
+  },
+  "days": {
+    "2026-01-01": { "am": "JF", "pm": "JF" },
+    "2026-01-02": { "am": "CP", "pm": "CP", "comment": "Vacances" },
+    "2026-01-03": { "am": "WE", "pm": "WE" },
+    "2026-01-04": { "am": "WE", "pm": "WE" },
+    "2026-01-05": { "am": "TT", "pm": "TT" },
+    "2026-01-06": { "am": "TT", "pm": "TT" },
+    "2026-01-07": { "am": "TT", "pm": "TT" },
+    "2026-01-08": { "am": "TT", "pm": "TT" },
+    "2026-01-09": { "am": "TT", "pm": "RTT" },
+    "2026-01-10": { "am": "WE", "pm": "WE" },
+    "2026-01-11": { "am": "WE", "pm": "WE" },
+    "2026-01-12": { "am": "TT", "pm": "TT" },
+    "2026-01-13": { "am": "TT", "pm": "TT" },
+    "2026-01-14": { "am": "TT", "pm": "TT", "comment": "Formation" },
+    "2026-01-15": { "am": "TT", "pm": "TT" },
+    "2026-01-16": { "am": "TT", "pm": "TT" },
+    "2026-01-17": { "am": "WE", "pm": "WE" },
+    "2026-01-18": { "am": "WE", "pm": "WE" },
+    "2026-01-19": { "am": "TT", "pm": "TT" },
+    "2026-01-20": { "am": "TT", "pm": "TT" },
+    "2026-01-21": { "am": "TT", "pm": "TT" },
+    "2026-01-22": { "am": "ABS", "pm": "ABS", "comment": "Absence" },
+    "2026-01-23": { "am": "TT", "pm": "TT" },
+    "2026-01-24": { "am": "WE", "pm": "WE" },
+    "2026-01-25": { "am": "WE", "pm": "WE" },
+    "2026-01-26": { "am": "TT", "pm": "TT" },
+    "2026-01-27": { "am": "TT", "pm": "TT" },
+    "2026-01-28": { "am": "TT", "pm": "TT" },
+    "2026-01-29": { "am": "TT", "pm": "TT" },
+    "2026-01-30": { "am": "RTT", "pm": "RTT" },
+    "2026-01-31": { "am": "WE", "pm": "WE" }
+  },
+  "adjustments": [
+    { "date": "2026-01-31", "counter": "CP", "amount": "0.5", "reason": "Alignement sur le bulletin de paie" }
+  ]
+}
