@@ -1,0 +1,35 @@
+{{- /*
+ * dashboard.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "header"}}        <header>
+{{template "brand" .}}            <nav aria-label="Navigation principale">
+                <ul>
+{{template "main-links" .}}                </ul>
+            </nav>
+{{template "user-menu" .}}{{template "theme-toggle" .}}            <details class="nav-menu">
+                <summary><img src="/static/img/icons/menu.svg" alt="Menu" width="20" height="20"></summary>
+                <nav aria-label="Navigation principale">
+                    <ul>
+{{template "main-links" .}}                    </ul>
+                </nav>
+            </details>
+        </header>
+{{end}}
+{{define "main-links"}}                    <li><a href="/dashboard/"{{if eq .Section "dashboard"}} aria-current="page"{{end}}>Tableau de bord</a></li>
+                    <li><a href="/dashboard/activity"{{if eq .Section "activity"}} aria-current="page"{{end}}>Activité</a></li>
+                    <li><a href="/dashboard/month"{{if eq .Section "month"}} aria-current="page"{{end}}>Mois</a></li>
+                    <li><a href="/dashboard/year/{{.Chrome.Year}}"{{if eq .Section "year"}} aria-current="page"{{end}}>Année</a></li>
+{{end}}

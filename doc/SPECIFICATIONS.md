@@ -1,0 +1,2649 @@
+# SPECIFICATIONS
+
+This document is the single functional reference of Timesheet: what the application does, what each page shows and accepts, what each route and command answers, and what the database holds.
+
+It is written for the maintainer, for an AI agent changing the code and for a new developer. The sections on routes, the command line, the server configuration, the database, the logs and the limits also serve the operator who runs the service and the administrator who manages the accounts.
+
+Every change of behaviour, screen, label, route, form field, computation rule, database schema or command updates this document in the same change. The rules for writing the documentation are in [CODING.md](CODING.md#documentation).
+
+| Document | Content |
+| --- | --- |
+| [README.md](../README.md) | Entry point, first start from the sources |
+| [BUILD.md](BUILD.md) | Requirements, `make` targets, Debian package |
+| [OPERATIONS.md](OPERATIONS.md) | Commands, server configuration, network, logs, import, package, backup, recovery and upgrade procedures, troubleshooting |
+| [USER-GUIDE.md](USER-GUIDE.md) | Concepts, daily tasks of the employee and of the administrator, labels shown on screen |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Packages and import direction, entities, HTTP chain, flows, concurrency, persistence, lifecycle |
+| [CODING.md](CODING.md) | How the code, the templates, the styles and the tests are written |
+| [SECURITY.md](SECURITY.md) | Threat model, accepted risks, sessions, passwords, login throttling, transport, data protection |
+
+## CONTENTS
+
+- [CONVENTIONS](#conventions)
+- [PURPOSE](#purpose)
+- [GLOSSARY](#glossary)
+- [PROFILES AND ACCOUNTS](#profiles-and-accounts)
+- [CALENDAR AND DAYS](#calendar-and-days)
+- [ACTIVITY CODES](#activity-codes)
+- [COUNTERS](#counters)
+- [USER SETTINGS](#user-settings)
+- [ADJUSTMENTS](#adjustments)
+- [COUNTER BOOKKEEPING](#counter-bookkeeping)
+- [MONTHLY INDICATORS](#monthly-indicators)
+- [PAGE STRUCTURE](#page-structure)
+- [PUBLIC PAGES](#public-pages)
+- [DASHBOARD](#dashboard)
+- [ACTIVITY PAGE](#activity-page)
+- [MONTH PAGE](#month-page)
+- [YEAR PAGE](#year-page)
+- [PROFILE PAGE](#profile-page)
+- [SETTINGS PAGE](#settings-page)
+- [ADMINISTRATION](#administration)
+- [COLOURS](#colours)
+- [ROUTES](#routes)
+- [NOTICES](#notices)
+- [FORM FIELDS](#form-fields)
+- [COMMAND LINE](#command-line)
+- [IMPORT](#import)
+- [DATABASE](#database)
+- [SESSION FILE](#session-file)
+- [SERVER CONFIGURATION](#server-configuration)
+- [CONFIGURATION TEMPLATE](#configuration-template)
+- [MIGRATION NOTES](#migration-notes)
+- [LOGS](#logs)
+- [SECURITY REQUIREMENTS](#security-requirements)
+- [LIMITS](#limits)
+- [NON-FUNCTIONAL REQUIREMENTS](#non-functional-requirements)
+- [OUT OF SCOPE](#out-of-scope)
+- [SIMPLIFICATIONS](#simplifications)
+- [PERSONAL DATA](#personal-data)
+- [OPEN POINTS](#open-points)
+
+## CONVENTIONS
+
+- The user interface is in French. Identifiers, code and documentation are in English.
+- Interface texts are quoted between « » and are the exact French texts shown on screen.
+- A part of an interface text that varies is written `<name>` inside the quotes, for instance « Soldes au \<date du jour> ».
+- Identifiers, values, paths, fields, routes and commands are written in backticks.
+- An HTTP status is written as its number after the case it answers, for instance "refused (409)".
+- In a command synopsis, a placeholder is written in upper case (`LOGIN`, `FILE.json`) or as `...` after an option.
+- Dates shown by the interface follow [Dates](#dates). "Today" is defined in [Today and time zone](#today-and-time-zone).
+- The words of this document are defined in the [Glossary](#glossary); each section uses only these words.
+
+## PURPOSE
+
+### Scope
+
+- Timesheet is designed for employees working in France.
+- It follows the eleven national legal holidays of metropolitan France ([Legal holidays](#legal-holidays)).
+- It keeps paid leave (congés payés) with a June-to-May acquisition period and a rounding at the end of the period.
+- It keeps RTT days, part-time days and the extra days some employers grant to part-time employees.
+- The interface is in French.
+- Activity codes and counters are configurable ([Activity codes](#activity-codes), [Counters](#counters)).
+- The holiday calendar and the rules are French: another country is out of scope ([Out of scope](#out-of-scope)).
+- The rules are the choices of the application; their differences with common French practice are listed in [Simplifications](#simplifications).
+
+### What the application does
+
+- It tracks a professional activity half-day by half-day, for every day of the year.
+- It keeps leave counters up to date like bank accounts.
+- A counter receives monthly or yearly accruals.
+- A counter is debited by the leave taken, day after day.
+- At the end of each period, a counter carries its balance over or is zeroed.
+- An employee corrects a balance with an adjustment.
+- The monthly validation freezes the entries of a month.
+- A yearly summary gives, month by month, the movements and balance of each counter.
+
+### Worked example
+
+This is a fictitious example of an employee, used throughout the document.
+
+| Parameter | Value |
+| --- | --- |
+| Working time | part time at 80 % |
+| Weekly day off | every Wednesday, entered by hand with the code `TP` |
+| Extra days off granted by the employer to this part-time employee | 7 days a year, set by the employee as the own amount `7/12` of the counter `TPC` |
+| `TPC` accrual | `7/12` day credited on the last day of each month, over the calendar year |
+| `TPC` consumption | debited as the days are taken |
+| `TPC` at the end of the year | not carried over: the balance is zeroed on 1 January |
+| Paid leave (`CP`) accrual | 2.08 days credited on the last day of each month |
+| `CP` balance | one single balance |
+| `CP` period | 1 June to 31 May; the balance is carried over to the next period |
+| `CP` rounding | on 31 May, a positive fractional balance is rounded up to the next whole day |
+
+The number of extra days comes from the employment contract: the application does not compute it ([Out of scope](#out-of-scope)).
+
+## GLOSSARY
+
+| Term | Meaning |
+| --- | --- |
+| `TT` | Code and counter « Temps de travail »: a worked half-day. |
+| `WE` | Code and counter « Week-end »: a weekend half-day. |
+| `JF` | Code and counter « Jour férié »: a half-day entered as a holiday. A "day entered `JF`" is not always a [legal holiday](#legal-holidays). |
+| `CP` | Code and counter « Congés payés »: paid leave. |
+| `CSS` | Code and counter « Congé sans solde »: unpaid leave. |
+| `RTT` | Code and counter « Récupération temps de travail »: days off granted for working beyond 35 hours a week. |
+| `TP` | Code and counter « Temps partiel »: the weekly day off of a part-time employee, entered by hand. |
+| `TPC` | Code and counter « Temps partiel complémentaire »: extra days off some employers grant to part-time employees, managed like `RTT`. The name is the template's, not a legal notion. |
+| `ABS` | Code and counter « Absence »: an absence, its reason going into the comment. |
+| AA | The WCAG 2 contrast level of 4.5:1 for normal text. |
+| account | The record of one person: login, name, profile, state, password hash and data. |
+| accrual | A credit given by the rule of a counter, every month or every year. |
+| adjustment | A signed quantity entered by an employee on a counter at a date, with a reason ([Adjustments](#adjustments)). Also the kind `adjustment` of ledger entries made by the rules. |
+| administrator | A person whose account has the profile `ADMIN`. |
+| alert | A paragraph `<p role="alert">` telling why a request was refused. |
+| anomaly | A problem of a stored day entry, listed above the grid ([Validation](#validation)). |
+| balance | The value of a counter: the sum of its entries. |
+| cancelled entry | A ledger entry that a reversal cancels. |
+| carry over | Keeping the balance of a counter into the next period. |
+| configuration | The section of the database holding the activity codes and the counters. |
+| configuration page | The page `/admin/settings` that edits the configuration. |
+| configuration template | The JSON file read by `init` to create the configuration ([Configuration template](#configuration-template)). |
+| connected | The access level of the routes reserved to a valid session of a `USER` or an `ADMIN`. |
+| consuming code | An activity code that debits its counter. |
+| counter | An account of days, kept like a bank account ([Counters](#counters)). |
+| day entry | What is entered for one day: a code for the morning, a code for the afternoon, a comment. |
+| default amount | The accrual amount of a counter in the configuration. |
+| effective amount | The own amount of an employee when set, otherwise the default amount. |
+| feeding code | An activity code that credits its counter. |
+| forecast | The future entries computed up to the end of the period of each counter: accruals, planned leave, roundings and zeroings. |
+| frozen entry | A ledger entry written at the validation of a month. |
+| guest | A request without a valid session (profile `GUEST`). |
+| HTML template | A page template under `src/internal/web/templates/`. |
+| import template | The fictitious import file `share/timesheet/timesheet-import-template.json`. |
+| indicators | The day counts of a month ([Monthly indicators](#monthly-indicators)). |
+| journal | The sequence of the entries of a counter: the frozen ones plus the provisional ones computed for the open months. |
+| ledger | The stored list of frozen entries and reversals, `ledger` in the database. |
+| legal holiday | One of the eleven national holidays of [Legal holidays](#legal-holidays). |
+| login | The identifier of an account; also the act of logging in. |
+| missing half-day | An empty half-day of a tracked day before today, shown « Non renseigné ». |
+| notice | A paragraph `<p role="status">` confirming a successful action. |
+| notice code | The code given in `?notice=` after a successful action ([Notices](#notices)). |
+| open month | A month that is not validated. |
+| operator | A person with shell access to the host that runs the service. |
+| options | The `--name=value` arguments of the command line. |
+| over | A month is over when today is after its last day. |
+| own amount | The accrual amount an employee sets for a counter in the settings page. |
+| period | The year of a counter, from its period start to the day before the next one. |
+| period start | The first day of the period of a counter, `MM-DD`. |
+| planning horizon | The last month that can be entered: 24 months after the current one. |
+| position | The three balances of a counter on the dashboard: today, validated, forecast. |
+| problem | A reason why a submitted value is refused. |
+| provisional entry | An entry computed for an open month on each display, never stored. |
+| recap | The monthly table of one counter on the year page. |
+| reversal | An entry of opposite amount that cancels an earlier entry, labelled « Contre-passation : \<motif> ». |
+| revision | A number raised by each write, used to refuse a form shown before another write. |
+| rounding | The adjustment that rounds a carried balance up to the next whole day. |
+| server configuration | The file `etc/timesheet/timesheet.json` holding the settings of the server ([Server configuration](#server-configuration)). |
+| statement | The table of the entries of one counter for one month, with opening and closing balances. |
+| summary | The yearly table of the movements of every counter ([Yearly summary](#yearly-summary)). |
+| tile | One counter on the dashboard, an `<article>`. |
+| totals | The days of each activity code over a year or a month. |
+| tracking start | The first tracked day of an account, « Date de début » in the settings page. |
+| unsafe request | A request whose method is not `GET`, `HEAD`, `OPTIONS` or `TRACE`. |
+| untracked half-day | A half-day before the tracking start, shown « Hors suivi ». |
+| upcoming half-day | An empty half-day from today on, shown « À venir ». |
+| user | The person using the application; `USER` is the profile of a person who is not an administrator. |
+| user settings | The settings of an account: tracking start, counters, colours ([User settings](#user-settings)). |
+| validated month | A month whose entries are frozen ([Validation](#validation)). |
+| worked day | A day entered `TT`. |
+| working day | A day from Monday to Friday that is not a legal holiday, whatever is entered. |
+| zeroing | The adjustment that brings the balance of a counter to zero at its period start. |
+
+Technical words:
+
+- CSRF: cross-site request forgery.
+- CSP: Content Security Policy.
+- HSTS: HTTP Strict Transport Security.
+- TLS: Transport Layer Security.
+- PBKDF2: a password-based key derivation function.
+- IANA time zone: a name of the IANA time zone database, such as `Europe/Paris`.
+- RFC 1918: the private IPv4 ranges `10.0.0.0/8`, `172.16.0.0/12` and `192.168.0.0/16`.
+- WCAG: Web Content Accessibility Guidelines.
+
+## PROFILES AND ACCOUNTS
+
+### Profiles
+
+| Profile | Stored | Rights |
+| --- | --- | --- |
+| `GUEST` | never: implicit for any request without a valid session | `/`, `/login`, `/static/...`; every `/dashboard/...` and `/admin/...` route and `/logout` redirect (303) to `/login` |
+| `USER` | yes | own activity, counters, user settings, profile and password; `/logout` |
+| `ADMIN` | yes | everything a `USER` does with their own data, plus the rights listed after this table |
+
+Rights of an `ADMIN` over the other accounts and the configuration:
+
+- list the accounts;
+- create an account;
+- disable and enable an account;
+- delete an account;
+- close the sessions of an account;
+- change the name and the profile of an account;
+- reset the password of an account;
+- read, never write, the balances, months and years of any account ([Read-only views of another account](#read-only-views-of-another-account));
+- edit the configuration ([Configuration page](#configuration-page)).
+
+Rules:
+
+- Profiles are ordered `GUEST < USER < ADMIN`.
+- A route requires a minimal profile ([Routes](#routes)). The access level `connected` means `USER` or `ADMIN`.
+- A `USER` on a route `/admin/...` gets the page « Accès refusé » (403) with the alert « Cette page est réservée aux administrateurs. ».
+- The profile is read from the database on every request, not from the session: a change applies at the next request.
+
+### Logins
+
+- A login matches `[a-z0-9][a-z0-9._-]{1,31}`: 2 to 32 characters among lower-case letters, digits, dot, hyphen and underscore, starting with a letter or a digit.
+- A login never changes.
+
+### Account states
+
+| State | Meaning |
+| --- | --- |
+| `enabled` | The account can log in. Every account is created `enabled`. |
+| `disabled` | The account keeps its data but cannot log in. |
+
+- A login to a disabled account gets the same answer as a wrong password: « Identifiant ou mot de passe incorrect. » (401). The attempt is counted by the login throttle.
+- Disabling an account closes its sessions.
+- A session of a disabled account is refused like one of a deleted account.
+- The state is changed from the web only ([Administration](#administration)); `user list` shows it.
+
+### Protection of the last administrator and of one's own account
+
+| Action | On the last enabled `ADMIN` | On one's own account, from the web |
+| --- | --- | --- |
+| Delete | refused, from the web (409) and the command line (exit 1) | refused (422) |
+| Change the profile | refused when it demotes, from the web (409) and the command line (exit 1) | refused (422) |
+| Disable | refused (409) | refused (422) |
+| Enable | not applicable | refused (422) |
+| Reset the password | allowed on another account | refused (422): one's own password changes in the [profile page](#profile-page) |
+| Close the sessions | allowed | allowed, from the profile page or the table of `/admin/`; the current session closes too |
+| Change the name | allowed | allowed, from the profile page or the account page |
+
+The messages are in [Account page](#account-page).
+
+### Provisional password
+
+1. An account created by an `ADMIN`, or whose password an `ADMIN` resets, gets a provisional password and the flag `must_change_password`.
+2. Until the password is changed, every connected route allowed to the profile redirects (303) to `/dashboard/profile?notice=change-password`, for `GET` too. The settings page is redirected too.
+3. On that page, the password form is marked « (obligatoire) ».
+
+Routes that are not redirected: `/dashboard/profile`, `/dashboard/colors.css` and `/logout`.
+
+Accounts created on the command line do not have the flag, and `user passwd` clears it.
+
+### Closing of sessions
+
+| Event | From | Sessions closed | New session |
+| --- | --- | --- | --- |
+| Change of profile | account page, `user profile` | every session of the account | none |
+| Password reset | account page | every session of the account | none |
+| Password change | `user passwd` | every session of the account | none |
+| Account deleted | accounts page, account page, `user del` | every session of the account | none |
+| Account disabled | accounts page, account page | every session of the account | none |
+| Own password changed | profile page | every session of the account | one, for the current browser |
+| « Déconnecter toutes mes sessions » | profile page | every session of the account, the current one included; the page « Vous êtes déconnecté » follows | none |
+| « Fermer les sessions » | accounts page, account page | every session of the account; on one's own account the current one too, and the page « Vous êtes déconnecté » follows | none; a new login stays possible |
+| « Se déconnecter » | user menu, `/logout` | the current session | none |
+| `session clear` | command line | every session of every account | none |
+
+- `user profile`, `user passwd` and `user del` first remove the sessions of the account from the [session file](#session-file).
+- An unreadable session file is then replaced by an empty one, with a warning.
+- `user profile` removes the sessions before changing the profile: a refused change (last administrator) has already closed them.
+- A session created before its account is refused: a session of a deleted account never comes back with an account recreated under the same login.
+
+### Concurrent password changes
+
+- Login: when the password was changed, or the account deleted or disabled, while the password was being checked, the login gets « Identifiant ou mot de passe incorrect. » (401) and no session.
+- Profile page: when the current password was replaced while it was being checked (a reset by an `ADMIN`, another change), the change is refused (409) with « Le mot de passe a changé entre-temps : il n'a pas été modifié. ». Nothing changes and no session opens.
+
+### Start condition of the server
+
+`run` refuses to start (exit 1) while no enabled `ADMIN` account exists, and prints the command that creates one ([Bootstrap](#bootstrap)).
+
+## CALENDAR AND DAYS
+
+### Half-days
+
+- Each day has a morning (`am`) and an afternoon (`pm`).
+- Each half-day holds an activity code or nothing.
+- Every day is entered, weekends and holidays included: the template has the codes `WE` « Week-end » and `JF` « Jour férié » for them.
+- Nothing is prefilled.
+- The calendar only names the rows: the weekday for a weekend (« Samedi », « Dimanche »), « Jour férié : \<nom> » for a legal holiday.
+- The calendar refuses a consuming code on a weekend or a legal holiday ([Day kinds](#day-kinds)).
+
+### Comments
+
+- A day has an optional free comment, for instance a conference, the reason of an absence or « Vacances ».
+- A comment is plain text on one line, 500 characters at most, and follows the [free-text rule](#free-text-rule).
+- Surrounding spaces are removed.
+- A comment can exist alone, without any code, on any tracked day, weekends and holidays included.
+- A comment never changes an indicator or an amount.
+- A comment is copied into the label of the debits and credits of its day ([Ledger entries](#ledger-entries)), where it stays once the month is validated.
+
+### Free-text rule
+
+Comments, reasons, labels and names are valid UTF-8 text on one line. They refuse:
+
+- control characters;
+- format characters (Unicode category Cf, bidirectional controls included), except the zero-width non-joiner U+200C and the zero-width joiner U+200D, which are accepted;
+- line and paragraph separators (Unicode categories Zl and Zp).
+
+| Text | Length | Surrounding spaces | Empty |
+| --- | --- | --- | --- |
+| Comment of a day | 500 characters at most | removed | allowed |
+| Reason of an adjustment | 200 characters at most | removed | refused |
+| Reason of a reopening | 200 characters at most | removed | refused |
+| Label of an activity code | 1 to 60 characters | removed by the form, refused in a file | refused |
+| Label of a counter | 1 to 60 characters | removed by the form, refused in a file | refused |
+| Short label of a counter | 1 to 6 characters | removed by the form, refused in a file | refused |
+| Name of an account | 60 characters at most | every run of white space, tabs and line breaks included, becomes one space; surrounding spaces removed | allowed |
+| Label of a ledger entry (database) | 1000 characters at most | kept | allowed |
+
+Lengths count characters (Unicode code points), not bytes.
+
+### Day kinds
+
+| Kind | Definition | Row label | Consuming code |
+| --- | --- | --- | --- |
+| Weekend day | Saturday or Sunday | the weekday | refused |
+| Legal holiday | one of the [legal holidays](#legal-holidays), on any weekday | « Jour férié : \<nom> » | refused |
+| Working day | Monday to Friday, not a legal holiday | none | allowed |
+
+- A code that is not consuming can be entered on any day, and credits its counter wherever it is entered.
+- The indicators Jours fériés and Ouvrés follow the calendar of legal holidays, whatever is entered.
+- A bridge day (a working day the employer gives off between a holiday and a weekend) entered `JF` stays a working day; it shows in the « Crédit » of `JF`.
+- A worked Whit Monday still counts as a holiday.
+
+### Legal holidays
+
+| Holiday | Date or rule |
+| --- | --- |
+| « Jour de l'an » | 1 January |
+| « Lundi de Pâques » | Easter + 1 |
+| « Fête du travail » | 1 May |
+| « Victoire 1945 » | 8 May |
+| « Ascension » | Easter + 39 |
+| « Lundi de Pentecôte » | Easter + 50 |
+| « Fête nationale » | 14 July |
+| « Assomption » | 15 August |
+| « Toussaint » | 1 November |
+| « Armistice 1918 » | 11 November |
+| « Noël » | 25 December |
+
+- Easter Sunday follows the Meeus/Butcher algorithm.
+- A holiday falling on a weekend keeps its name on the row.
+
+### Today and time zone
+
+- Today is the date in the time zone `server.timezone` of the [server configuration](#server-configuration).
+- Today decides which half-days are past (missing) or future (upcoming).
+- Today decides which months are over.
+- Today decides the planning horizon.
+- Today decides the default tracking start of a new account.
+- Times of the database are stored in UTC.
+- The pages show the dates taken from these times in `server.timezone`: validation, reopening, creation of an account, last login.
+- `user list` prints these times as UTC timestamps (RFC 3339).
+- The time zone database of the system must hold the zone.
+
+### Tracking start
+
+The tracking start is a date, « Date de début » in the [settings page](#settings-page). By default it is the first day of the month in which the account was created; it can be any day, for instance the day of hiring.
+
+| Period | Display | Save | Counters, indicators, anomalies |
+| --- | --- | --- | --- |
+| Month before the month of the tracking start | read-only, status « avant le début du suivi » | refused (409) | not counted |
+| Days of that month before the tracking start | shown without field, half-days « Hors suivi », comment visible | kept untouched by a save of the month | stored entries ignored; never « Non renseigné » |
+| From the tracking start | editable while the month is open and within the planning horizon | accepted | counted |
+
+- Nothing is credited before the tracking start: the initial balances stand for it ([Initial balance](#initial-balance)).
+- A tracking start after the first day of its month (a hiring in the course of the month) gives that month no monthly credit: the share acquired is entered as an adjustment.
+- The tracking start accepts any date from 2000-01-01 to 2099-12-31, a future one included. When the tracking start falls in a later month, the current month is « avant le début du suivi ».
+- The tracking start cannot move after the date of an existing adjustment; it can move to that very date.
+
+### Supported years and planning horizon
+
+- Years 2000 to 2099 only.
+- Any other year, or an invalid month, in a URL gives 404.
+- `{month}` is written 1 to 12, without a leading zero (`01` gives 404).
+- Forecasts and the planning horizon stop at December 2099.
+- A month can be entered up to 24 months after the current one: this is the planning horizon.
+- Beyond it, the grid is read-only with the status « au-delà de l'horizon de planification », and saving is refused (409).
+
+### States of a half-day
+
+| State | Label | Condition | Blocks the validation |
+| --- | --- | --- | --- |
+| entered | the label of its code | a code is entered | no, unless it is an anomaly |
+| missing | « Non renseigné » | no code, tracked day, date before today, whatever the day | yes |
+| upcoming | « À venir » | no code, tracked day, date from today on | no, but a month is validated only once over |
+| untracked | « Hors suivi » | date before the tracking start | no |
+
+The colour of each state is in [Colours](#colours).
+
+### Size of an account
+
+| Limit | Value | Refusal |
+| --- | --- | --- |
+| Account record, encoded as compact JSON | 1 MiB | 413 « Les données de ce compte atteignent la taille maximale autorisée. » |
+| Adjustments of one account | 1000 | 413, same message |
+
+- The account record is the whole account: login, name, password hash, dates, settings, colours, days, adjustments, months and ledger. An empty account weighs about 400 bytes.
+- On disk, where the file is indented, an account takes more room: about 1.8 times for ordinary data, close to 1 time for long comments.
+- A save that would grow an account beyond a limit is refused, from the grid, the adjustments, the settings, a validation or a reopening.
+- A save that shrinks an account, or keeps its size, is accepted.
+
+How long the limit lasts:
+
+- Validated entries are never removed.
+- With every day entered and every month validated, the limit is reached after about ten years of tracking.
+- It is reached sooner with long comments or many reopenings: each reopening adds a reversal per entry of the month.
+- Nothing in the application then frees space.
+
+## ACTIVITY CODES
+
+### Fields of a code
+
+| Field | Format | Meaning |
+| --- | --- | --- |
+| `id` | `[A-Z][A-Z0-9_]{0,15}`: one capital letter, then up to 15 capital letters, digits or `_` | identifier, never modified |
+| `label` | 1 to 60 characters, [free-text rule](#free-text-rule) | name shown in the lists and the legends |
+| `consumes` | identifier of a counter, or `null` | the counter the code debits |
+| `feeds` | identifier of a counter, or `null` | the counter the code credits |
+| `color` | `#rrggbb`, mandatory | default colour of the code |
+| `archived` | `true` or `false` | an archived code is no longer offered |
+
+- Every code names exactly one counter, in exactly one of `consumes` and `feeds`.
+- A code has no group: what it represents is its counter.
+
+### Feeding and consuming
+
+| Effect | Amount | Days | Shown in |
+| --- | --- | --- | --- |
+| Consuming code | debits its counter by 0.5 day per half-day | working days only: refused on a weekend or a legal holiday | the « Débit » of its counter |
+| Feeding code | credits its counter by 0.5 day per half-day | any day, weekends and holidays included | the « Crédit » of its counter |
+
+### Codes of the template
+
+| Code | Label | Effect | Counter | Colour |
+| --- | --- | --- | --- | --- |
+| `TT` | « Temps de travail » | feeds | `TT` | `#33d17a` |
+| `WE` | « Week-end » | feeds | `WE` | `#9a9996` |
+| `JF` | « Jour férié » | feeds | `JF` | `#9a9996` |
+| `CP` | « Congés payés » | consumes | `CP` | `#e01b24` |
+| `CSS` | « Congé sans solde » | feeds | `CSS` | `#e01b24` |
+| `RTT` | « Récupération temps de travail » | consumes | `RTT` | `#e01b24` |
+| `TP` | « Temps partiel » | feeds | `TP` | `#3584e4` |
+| `TPC` | « Temps partiel complémentaire » | consumes | `TPC` | `#9141ac` |
+| `ABS` | « Absence » | feeds | `ABS` | `#e01b24` |
+
+- The reason of an absence goes into the comment of the day.
+- An administrator adds other codes in the [configuration page](#configuration-page).
+
+### Codes offered in a grid
+
+- The lists of a grid offer the codes that are not archived.
+- They leave out a consuming code whose counter is disabled for the user or archived.
+- A feeding code of a disabled or archived counter stays offered: its half-days count in the indicators and the totals but credit nothing.
+- A value already stored on a half-day stays offered, even if its code is archived or its counter disabled.
+
+## COUNTERS
+
+### Fields of a counter
+
+| Field | Format | Meaning |
+| --- | --- | --- |
+| `id` | same format as the `id` of a [code](#fields-of-a-code) | identifier, never modified |
+| `label` | 1 to 60 characters, [free-text rule](#free-text-rule) | name shown in the pages |
+| `short_label` | 1 to 6 characters | name in the headers of the summary |
+| `enabled_by_default` | `true` or `false` | whether the counter is enabled for an account that did not choose |
+| `accrual.every` | `month` or `year` | rhythm of the accrual, « par mois » or « par an » |
+| `accrual.amount` | a [quantity](#quantities) between 0 and 366 | default amount of each accrual |
+| `period_start` | `MM-DD`, 29 February excluded | first day of the period |
+| `carry_over` | `true` or `false` | whether the balance is kept into the next period |
+| `archived` | `true` or `false` | an archived counter is disabled for every user |
+
+Every counter has a single balance.
+
+### Quantities
+
+| Rule | Value |
+| --- | --- |
+| Arithmetic | exact rationals, never floats |
+| Input | a decimal with at most six decimals, a comma or a point (`2.08`, `-1,5`), or a fraction (`7/12`) |
+| Denominator of a fraction | a divisor of 63 000 000 (2^6 × 3^2 × 5^6 × 7), for instance `7/12`, `1/3`, `1/7` |
+| Magnitude | at most 1 000 000 |
+| Storage | a string: `"2.08"`, `"7/12"` |
+| Display | rounded to two decimals with a comma: `7/12` is shown `0,58` |
+| Display of day counts | `1`, `0,5` |
+| Overflow | an arithmetic overflow stops the operation instead of returning a wrong balance |
+
+The bounds on denominators and magnitude keep every sum exact and readable back. The same rules apply to the forms, the database and the configuration template.
+
+### Counters of the template
+
+| Counter | Label | Short label | Accrual | Fed by | Period start | Carry over | Enabled by default |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `TT` | « Temps de travail » | `TT` | none (0 a year) | `TT`: worked days of the year | `01-01` | no | yes |
+| `WE` | « Week-end » | `WE` | none (0 a year) | `WE`: weekend days entered in the year | `01-01` | no | yes |
+| `JF` | « Jour férié » | `JF` | none (0 a year) | `JF`: days entered `JF` in the year | `01-01` | no | yes |
+| `CP` | « Congés payés » | `CP` | 2.08 a month | none (consumed by `CP`) | `06-01` | yes | yes |
+| `CSS` | « Congé sans solde » | `CSS` | none (0 a year) | `CSS`: unpaid leave days of the year | `01-01` | no | yes |
+| `RTT` | « Récupération temps de travail » | `RTT` | 10 a year, provisional ([Open points](#open-points)) | none (consumed by `RTT`) | `01-01` | no | yes |
+| `TP` | « Temps partiel » | `TP` | none (0 a year) | `TP`: part-time days of the year | `01-01` | no | yes |
+| `TPC` | « Temps partiel complémentaire » | `TPC` | 0 a month: each employee concerned sets an own amount, `7/12` in the [worked example](#worked-example) | none (consumed by `TPC`) | `01-01` | no | no |
+| `ABS` | « Absence » | `ABS` | none (0 a year) | `ABS`: absence days of the year | `01-01` | no | yes |
+
+### Accrual
+
+- A monthly accrual is credited on the last day of the month, labelled « Acquisition \<mois> \<année> ».
+- A yearly accrual is credited on the period start day, labelled « Acquisition annuelle \<année> ».
+- An accrual of zero writes no entry.
+- Only an enabled counter receives an accrual.
+- Nothing is credited before the tracking start: the initial balances stand for it.
+- A tracking start after the first day of its month gives that month no monthly credit: the share acquired is entered as an adjustment.
+
+### Feeding
+
+- Each half-day of a feeding code credits 0.5 day to its counter, on its date.
+- Weekends and holidays are included.
+- The credit is labelled with the label of the code followed by the comment of the day ([Ledger entries](#ledger-entries)).
+- Nothing is credited before the tracking start.
+- Nothing is credited to a disabled or archived counter.
+
+### Consumption
+
+- Each half-day of a consuming code on a working day debits 0.5 day, on its date.
+- Debits follow the chronological order, morning before afternoon.
+- The debit is labelled with the label of the code followed by the comment of the day.
+- Leave entries keep debiting a counter that the user later disabled, or that an administrator archived.
+
+### End of a period
+
+#### With carry over
+
+On the last day of each period of a counter with `carry_over`:
+
+1. The debits and credits of that day are written.
+2. If the counter is enabled and its balance is positive and fractional, an `adjustment` entry « Ajustement : arrondi du solde reporté à l'entier supérieur » rounds it up to the next whole day.
+3. The adjustments entered by the user on that day are written after the rounding.
+4. The balance is kept into the next period.
+
+- The rounding counts with the adjustments of its month.
+- It applies to the balance, not to the days acquired over the period: its amount depends on the leave taken, on fractional initial balances and on adjustments ([Simplifications](#simplifications)).
+- A disabled or archived counter is not rounded.
+
+#### Without carry over
+
+On each period start of a counter without `carry_over`, except the first day of the tracking:
+
+1. If the balance is not zero, an `adjustment` entry brings it to zero, whether it is positive or negative: a negative balance is forgiven.
+2. This zeroing comes before every other entry of the day.
+
+| Counter | Label of the zeroing |
+| --- | --- |
+| consumed by some code, archived or not | « Ajustement : perte du solde au \<jj/mm/aaaa> » |
+| consumed by no code | « Ajustement : remise à zéro du solde au \<jj/mm/aaaa> » |
+
+The zeroing also applies to a disabled or archived counter.
+
+### Order of the entries of a day
+
+Within one day, the entries of a counter come in this order:
+
+1. the zeroing of a balance at a period start;
+2. the debits of consuming codes;
+3. the yearly accrual;
+4. the credits of feeding codes;
+5. on the last day of the month, the monthly accrual;
+6. on the last day of a period, the rounding of a carried balance;
+7. last, the adjustments entered by the user.
+
+The adjustments come last so that an adjustment corrects the final balance of its day.
+
+### Negative balances
+
+- A balance that becomes negative is accepted.
+- It is shown in red (class `is-negative`).
+- At the period start of a counter without carry over, a negative balance is zeroed, hence forgiven.
+
+### Disabled and archived counters
+
+| Aspect | Disabled by the user | Archived by an administrator |
+| --- | --- | --- |
+| Scope | one account | every account |
+| Accruals and feeding credits | none | none |
+| Debits of existing day entries | kept | kept |
+| Consuming codes in the grid | no longer offered | no longer offered |
+| Feeding codes in the grid | still offered, credit nothing | still offered, credit nothing |
+| New adjustment | accepted | refused (« Compteur inconnu. ») |
+| Zeroing at the period start | applies | applies |
+| Rounding of a carried balance | none | none |
+| History | shown and counted | shown and counted |
+| Row in the settings page | shown | hidden |
+
+## USER SETTINGS
+
+The settings are edited in the [settings page](#settings-page).
+
+### Table of the settings
+
+| Setting | Label | Default | Bounds | After the first validation |
+| --- | --- | --- | --- | --- |
+| Tracking start | « Date de début » | first day of the month of the account creation | 2000-01-01 to 2099-12-31, not after the date of an existing adjustment | locked |
+| Counter enabled | « Activé » | `enabled_by_default` of the counter | | applies from the first open month |
+| Own amount | « Montant propre » | empty: the default amount | 0 to 366 | applies from the first open month |
+| Initial balance | « Solde initial » | 0 | -366 to 366 | locked |
+| Colour of a code | « Couleur » | the colour of the configuration | `#rrggbb` | applies at once |
+
+- A counter added to the configuration later follows its `enabled_by_default`, even for an account that saved its settings before.
+- The theme is not a setting of the account: it is chosen with the theme button and kept in the browser only ([Theme button](#theme-button)).
+- The colours are described in [Colours](#colours).
+
+### Initial balance
+
+1. The initial balance of a counter is its balance at the start of the first day of the tracking.
+2. It is written as an `adjustment` entry « Ajustement : solde initial » on that day, before the other entries of the day.
+3. No zeroing happens on that day.
+4. A yearly accrual due that day is added on top.
+
+### Lock after the first validation
+
+- While some month is validated, the tracking start and the initial balances are locked: the fields are disabled, and values posted anyway are ignored without error.
+- Corrections then go through adjustments.
+- The lock follows the history of the account: it is lifted when the first validated month is reopened.
+- The other settings (enabled, own amount) apply from the first open month: validated months keep their entries.
+
+### Stale settings form
+
+The form carries the account revision and the configuration revision.
+
+| Case | Status | Message |
+| --- | --- | --- |
+| The configuration changed since the form was shown (a counter added meanwhile would otherwise be saved as disabled) | 409 | « La configuration a changé entre-temps. Vérifiez puis recommencez. » |
+| The data of the account changed since the form was shown | 409 | « Les données ont changé entre-temps. Vérifiez puis recommencez. » |
+
+## ADJUSTMENTS
+
+An adjustment corrects the balance of a counter at a date. There is no forced balance: a gap with a payslip is entered as an adjustment.
+
+| Field | Label | Rule |
+| --- | --- | --- |
+| Date | « Date » | in an open month of the tracking, not before the tracking start, within the planning horizon |
+| Counter | « Compteur » | an existing counter that is not archived; a counter disabled by the user is accepted |
+| Quantity | « Quantité signée » | a signed, non-zero [quantity](#quantities) between -366 and 366, with a comma or a point, or a fraction |
+| Reason | « Motif » | mandatory, one line, 200 characters at most, [free-text rule](#free-text-rule), surrounding spaces removed |
+
+- An adjustment is added and deleted in the [activity page](#activity-page) of its month.
+- An adjustment receives an identifier.
+- An account holds at most 1000 adjustments.
+- An adjustment can be deleted while its month is open.
+- When its month is validated, an adjustment becomes a frozen `adjustment` entry « Ajustement : \<motif> ».
+- The refusals are listed in [Refusals of the activity page](#refusals-of-the-activity-page).
+
+## COUNTER BOOKKEEPING
+
+### Principle
+
+- Each counter of an account is kept like a bank account.
+- Its journal is a list of dated entries.
+- A statement gives its entries month by month.
+- Its balance is the sum of its entries.
+
+### Ledger entries
+
+#### Fields
+
+An entry has:
+
+1. an identifier;
+2. its month;
+3. its date;
+4. its counter;
+5. its kind;
+6. a signed amount;
+7. a label;
+8. an optional reference to another entry;
+9. its creation time.
+
+#### Kinds
+
+| Kind | Label | Written by | Reference |
+| --- | --- | --- | --- |
+| `debit` | the label of the consuming code, then « , \<commentaire> » when the day has a comment | each day with a consuming code | none |
+| `credit` | the label of the feeding code, then « , \<commentaire> » when the day has a comment (« Absence, Grippe ») | each day with a feeding code | none |
+| `credit` | « Acquisition \<mois> \<année> » | the monthly accrual | none |
+| `credit` | « Acquisition annuelle \<année> » | the yearly accrual | none |
+| `adjustment` | « Ajustement : \<motif> » | an adjustment entered by the user | the adjustment |
+| `adjustment` | « Ajustement : solde initial » | the initial balance, on the first day of the tracking | none |
+| `adjustment` | « Ajustement : arrondi du solde reporté à l'entier supérieur » | the rounding of a carried balance | none |
+| `adjustment` | « Ajustement : perte du solde au \<jj/mm/aaaa> » | the zeroing of a consumed counter | none |
+| `adjustment` | « Ajustement : remise à zéro du solde au \<jj/mm/aaaa> » | the zeroing of a counter that no code consumes | none |
+| `reversal` | « Contre-passation : \<motif> » | a reopening | the cancelled entry |
+
+- There is one debit or credit entry per day and per counter: a day with `CP` in the morning and `RTT` in the afternoon gives two debits.
+- When two codes of the same counter share a day, the label is the one of the morning code.
+- Once the month is validated, the label of a debit or a credit keeps the comment of its day, even if the day is edited after a reopening, until the account is deleted. This includes the reason of an absence entered `ABS` ([Personal data](#personal-data)).
+
+### Open month
+
+- The entries of an open month are provisional.
+- They are recomputed on each display, from the day entries, the user settings and the rules in force.
+- Only the day entries and the adjustments of an open month are stored.
+
+### Validation
+
+#### Conditions of a validation
+
+A month can be validated when all these conditions hold, checked in this order:
+
+1. it is not before the month of the tracking start;
+2. it is not validated already;
+3. it is over (today is after its last day);
+4. its previous month is validated, or it is the month of the tracking start;
+5. it has no missing half-day;
+6. it has no blocking anomaly.
+
+#### Anomalies
+
+| Anomaly | Blocking | Text listed above the grid |
+| --- | --- | --- |
+| A consuming code on a weekend or a legal holiday | yes | « \<jour>, \<Matin ou Après-midi> : « \<libellé> » est décompté et ne peut pas être posé un week-end ou un jour férié » |
+| A consuming code whose counter is disabled or archived | no | « \<jour>, \<Matin ou Après-midi> : le compteur « \<libellé> » n'est pas activé » |
+| An unknown code | yes | cannot occur: the load of the database refuses it |
+
+#### Effects of a validation
+
+1. The provisional entries of the month are frozen in the ledger (`ledger`), in order, each with an identifier.
+2. A snapshot of the indicators of the month is stored.
+3. A snapshot of the effective amount of every counter enabled for the account (not archived, not disabled) is stored (`rules`).
+4. The month is marked `validated` with its validation time.
+5. The history of the month records « Validé le \<jj/mm/aaaa> ».
+6. The month becomes read-only: grid, comments and adjustments.
+
+#### Disabled button
+
+The button « Valider le mois » is shown disabled, with the reason, when the validation is not allowed.
+
+| Condition not met | Reason shown |
+| --- | --- |
+| The month is before the tracking start | « Le mois précède le début du suivi. » |
+| The month is not over | « Le mois n'est pas terminé. » |
+| The previous month is open | « Le mois précédent doit être validé d'abord. » |
+| A half-day is missing | « Des demi-journées ne sont pas renseignées. » |
+| A blocking anomaly exists | « Des saisies sont invalides. » |
+| Any other case (the month is already validated) | « Le mois ne peut pas être validé. » |
+
+The validation form is not shown for a month before the tracking start, and the reopening form replaces it for the last validated month.
+
+#### Validation request
+
+- `POST /dashboard/activity/{year}/{month}/validate`, with the account revision.
+- Success: 303 back to the activity page of the month, notice `validated` « Le mois a été validé : ses écritures sont figées. ».
+- Refusal: 409 « Validation impossible : \<raison> », the reason being one of [Disabled button](#disabled-button) ([Refusals of the activity page](#refusals-of-the-activity-page)).
+
+### Reopening
+
+#### Conditions of a reopening
+
+- Only the last validated month can be reopened.
+- A reason is mandatory: one line, 200 characters at most, [free-text rule](#free-text-rule).
+
+#### Effects of a reopening
+
+1. The entries of the month are never erased.
+2. Each active entry of the month receives a `reversal` entry of opposite amount, « Contre-passation : \<motif> », referencing it.
+3. The reversal has the same date as the cancelled entry, so that every intermediate balance stays right.
+4. The reversal is created at the reopening time and attached to the month.
+5. The month becomes open again; its validation time, rules and indicators are cleared.
+6. The history of the month records « Rouvert le \<jj/mm/aaaa> : \<motif> ».
+7. The month is then validated again normally, recomputed with the rules in force.
+8. The statement lists the cancelled entries in a collapsed history (`<details>` « Écritures annulées par contre-passation (\<nombre>) »).
+
+#### Reaching an older month
+
+1. Reopen the last validated month.
+2. The month before it becomes the last validated month; reopen it in turn.
+3. Repeat until the month to correct is open.
+4. Correct it, then validate again every reopened month, in order.
+
+#### Reopening request
+
+- `POST /dashboard/activity/{year}/{month}/reopen`, with the account revision and the field `reason`.
+- Success: 303 back to the activity page of the month, notice `reopened` « Le mois a été rouvert : ses écritures ont été contre-passées. ».
+- Refusal: 409 « Seul le dernier mois validé peut être rouvert. » or 409 « Indiquez le motif de la réouverture (une ligne, 200 caractères au plus). ».
+
+### Correcting without reopening
+
+- An error in an older month can also be corrected by an adjustment in an open month.
+- Such an adjustment corrects the balance only.
+- The indicators and the summary of the erroneous month stay as validated.
+- The adjustment counts in the balance of its own month.
+
+### Rule changes
+
+- A change of a counter rule or of the configuration never touches a validated month.
+- It applies from the first open month of each account.
+- The period start, the rhythm (`accrual.every`) and the carry over of a counter can change: the new rule applies from the first open month, so two period ends, or none, can then occur within twelve months.
+- A change of the user settings (enabled, own amount) also applies from the first open month.
+
+### Invariants
+
+These invariants are checked by the tests:
+
+1. The balance equals the sum of the entries.
+2. A validated month is never rewritten.
+3. The frozen entries equal the provisional ones computed just before the validation.
+4. Reopening then validating again, without any change of day entries, settings or rules in between, gives the same balance.
+5. A reopened month is recomputed with the rules in force at the reopening.
+6. The credits of a reopened then revalidated month are counted once.
+
+## MONTHLY INDICATORS
+
+Indicators are computed in days (a half-day is 0.5) for one month, over every day of the month.
+
+| Indicator | Definition |
+| --- | --- |
+| Jours fériés (« Fériés » in the summary) | legal holidays from Monday to Friday |
+| Total (« Total ») | days from Monday to Friday |
+| Ouvrés (« Ouvrés ») | Total minus Jours fériés |
+| X, per counter | half-days of the codes that feed or consume counter X, every day of the month: `TT` the worked days, `WE` the weekend days, `TP` the part-time days, `CP` the paid leave taken |
+| « Non renseignés » | missing half-days of a tracked month, every day of the month |
+
+- Jours fériés, Total and Ouvrés always cover the whole month, the days before the tracking start included.
+- The days before the tracking start count neither their codes nor « Non renseignés ».
+
+### Invariant of the indicators
+
+Over the tracked days of a month:
+
+```text
+sum of the half-days of every counter + « Non renseignés » + upcoming half-days = number of tracked days
+```
+
+When the tracking started before the month, the number of tracked days is the number of days of the month.
+
+## PAGE STRUCTURE
+
+### List of the pages
+
+| Page | Title (`h1`) | Route | Access | Section |
+| --- | --- | --- | --- | --- |
+| Home | « Timesheet » | `/` | public | [Public pages](#public-pages) |
+| Login | « Connexion » | `/login` | public | [Public pages](#public-pages) |
+| Logout confirmation | « Déconnexion » | `/logout` | connected | [Public pages](#public-pages) |
+| Logged out | « Vous êtes déconnecté » | after `POST /logout` | connected | [Public pages](#public-pages) |
+| Dashboard | « Tableau de bord » | `/dashboard/` | connected | [Dashboard](#dashboard) |
+| Activity page | « \<Mois> \<année> » | `/dashboard/activity/{year}/{month}` | connected | [Activity page](#activity-page) |
+| Month page | « \<Mois> \<année> » | `/dashboard/month/{year}/{month}` | connected | [Month page](#month-page) |
+| Year page | « Année \<année> » | `/dashboard/year/{year}` | connected | [Year page](#year-page) |
+| Profile page | « Mon profil » | `/dashboard/profile` | connected | [Profile page](#profile-page) |
+| Settings page | « Réglages » | `/dashboard/settings` | connected | [Settings page](#settings-page) |
+| Accounts page | « Comptes » | `/admin/` | `ADMIN` | [Accounts page](#accounts-page) |
+| Account page | « Compte \<login> » | `/admin/accounts/{login}` | `ADMIN` | [Account page](#account-page) |
+| Read-only views | « Soldes de \<login> », « \<Mois> \<année> de \<login> », « Année \<année> de \<login> » | `/admin/accounts/{login}/...` | `ADMIN` | [Read-only views of another account](#read-only-views-of-another-account) |
+| Configuration page | « Configuration » | `/admin/settings` | `ADMIN` | [Configuration page](#configuration-page) |
+| Error pages | « Page introuvable », « Accès refusé », and the titles of [Refusals](#refusals) | any | any | [Public pages](#public-pages) |
+
+### Document skeleton
+
+- `<html lang="fr">` with `<meta name="color-scheme" content="light dark">`.
+- `body` is a grid of three rows: `<header>`, `<main>`, `<footer>`. The footer stays at the bottom of short pages.
+- One `h1` per page, headings without skipped level, sections with `h2`.
+- Data are in tables with `<caption>`, `<thead>` and `<th scope>`.
+- Forms use `<fieldset>` and `<legend>`, and `<label class="field">` wrapping a `<span class="field-name">` and its control.
+- No `div`, no `id`.
+- The authoring rules of the HTML templates are in [CODING.md](CODING.md#templates).
+
+### Header
+
+- The header is a dark bar, sticky at the top, full width, with its content on 1200 px.
+- It holds the brand: the logo and « Timesheet », a link to `/dashboard/` when connected and to `/` otherwise.
+- It holds the main `<nav>` of the family of the page.
+- On the pages of the dashboard and admin families, it holds the [user menu](#user-menu).
+- Every family shows a [theme button](#theme-button), connected or not, after the user menu when there is one.
+
+#### Navigation of each family
+
+| Family | Pages | Entries | `aria-label` of the `<nav>` |
+| --- | --- | --- | --- |
+| public | home, login, logout, error pages for a guest | a « Se connecter » or « Tableau de bord » button; nothing on the login page | « Navigation principale » |
+| dashboard | dashboard, activity, month, year, profile and settings pages | « Tableau de bord », « Activité », « Mois », « Année » | « Navigation principale » |
+| admin | accounts, account, configuration pages and read-only views | « Comptes », « Configuration » | « Navigation de l'administration » |
+
+- The current entry carries `aria-current="page"` and is highlighted.
+- Every entry of a menu is shown on every page of its family.
+
+#### Theme button
+
+- The button shows a sun (`sun.svg`) while the light theme is shown, and a moon (`moon.svg`) while the dark theme is shown.
+- It has `aria-label="Thème sombre"` and `aria-pressed`.
+- It is shown by `chrome_page.js` and hidden without JavaScript.
+- It switches between the light and the dark theme.
+- It keeps the choice in the `localStorage` of the browser under the key `theme`, never on the server.
+- With no stored choice, the theme follows the system.
+- It is the last element of the header of the public family.
+
+#### Narrow windows
+
+| Window width | Change |
+| --- | --- |
+| any | the name of the user beside its badge is cut with an ellipsis beyond 12 rem |
+| up to 1024 px | the dashboard and admin families replace their `<nav>` by a burger menu |
+| up to 720 px | the name of the user beside its badge is hidden |
+| up to 480 px | the text of the brand is visually hidden; it stays the name of the link and the logo alone remains |
+
+The burger menu:
+
+- is a `<details class="nav-menu">` placed last, at the right end of the header, after the theme button;
+- has a `<summary>` showing the icon `menu.svg` (`alt="Menu"`);
+- opens, below it, the same entries in a `<nav>` with the same label;
+- works without JavaScript;
+- is closed by `chrome_page.js` on a click outside or on `Échap`, like the user menu.
+
+### User menu
+
+#### Summary
+
+- The user menu is a `<details class="user-menu">`.
+- Its `<summary>` shows a decorative badge with the first two letters or digits of the login in capitals (`<span class="avatar" aria-hidden="true">`).
+- It also shows the name of the user, or the login when no name is set.
+- It opens without JavaScript, by click or keyboard.
+- `chrome_page.js` closes it on a click outside or on `Échap`.
+
+#### Entries
+
+The panel is a `<nav aria-label="Compte">`, the same on every page of the dashboard and admin families:
+
+1. the profile as its heading (`<p class="menu-heading">`): « Administrateur » or « Utilisateur »;
+2. for an `ADMIN`, « Administration », set apart by a separator line;
+3. « Mon profil »;
+4. « Mes réglages », which opens the settings page « Réglages »;
+5. the form « Se déconnecter ».
+
+- The entry of the current page carries `aria-current="page"`.
+- « Administration » is the current entry on every page of the admin family.
+
+#### Logout form
+
+- « Se déconnecter » posts to `POST /logout` with the CSRF token, without confirmation.
+- The confirmation page `GET /logout` stays available.
+
+### Main content
+
+- Notices are `<p role="status">` ([Notices](#notices)).
+- Alerts are `<p role="alert">`, followed by a plain list when they have details.
+- Then comes the content, which opens with a page header `<header class="page-header">` holding the `h1` and a line of explanation.
+- Sections are cards.
+- The login, logout and logged-out pages show a single centred card: logo, `h1`, explanation, form.
+
+### Footer
+
+- The footer is centred and has no link.
+- It shows the brand: the logo and « Timesheet ».
+- When connected, the brand carries the version: the release number written in the program (`ReleaseVersion` of `BuildInfo`), the same as the first entry of `debian/changelog`.
+- It ends with the licence line.
+
+### Columns of tiles
+
+The tiles of the dashboard and the features of the home page are laid out as follows.
+
+| Window width | Columns |
+| --- | --- |
+| above 1120 px | 4 |
+| up to 1120 px | 2 |
+| up to 600 px | 1 |
+
+### Dates
+
+| Context | Format | Example |
+| --- | --- | --- |
+| Dates in the pages | `dd/mm/yyyy` | « Soldes au 11/11/2026 », « validé le 31/10/2026 » |
+| Row of the grid | weekday and `dd/mm/yyyy` | « mardi 03/11/2026 » |
+| Period start | `dd/mm` | « 01/06 » |
+| Labels of the ledger | `dd/mm/yyyy` | « Ajustement : perte du solde au 01/01/2026 » |
+| `aria-label` of the fields of the grid | day and month in words, easier to hear | « Matin du 3 novembre » |
+
+### Themes
+
+- `chrome_page.js` sets `data-theme="light"` or `data-theme="dark"` on `<html>`, with the matching `color-scheme`, when the browser keeps a choice.
+- `theme.css` defines the light tokens on `:root`.
+- It defines the dark tokens under `:root[data-theme="dark"]`.
+- For the automatic theme, it defines them under `@media (prefers-color-scheme: dark)` on `:root:not([data-theme="light"])`.
+- The colours of the day types are the same in both themes.
+
+### Scripts
+
+The site works without JavaScript.
+
+| Script | Pages | What it does |
+| --- | --- | --- |
+| `chrome_page.js` | every page | shows the theme button and switches the theme; closes the burger menu, the user menu and the deletion box of `/admin/` on a click outside or `Échap`; gives the focus to the confirmation field of the deletion box |
+| `month_sheet_page.js` | the activity page of an editable month | copies the « Journée » choice into the half-days, empties it when a half-day of the row is changed by hand, repaints the cells |
+
+## PUBLIC PAGES
+
+| Page | Route | Content | Links and buttons in the main content |
+| --- | --- | --- | --- |
+| Home | `GET /` | a title block, `h1` « Timesheet » and a lead line, then the section « Ce que permet l'application » with four features | « Ouvrir le tableau de bord » when connected; no login button |
+| Login | `GET /login` | the form « Connexion » with « Identifiant » and « Mot de passe » | the button « Se connecter » only; a connected browser is redirected (303) to `/dashboard/` |
+| Logout confirmation | `GET /logout` | « Déconnexion » and the form | « Se déconnecter » and « Revenir au tableau de bord »; a guest is redirected (303) to `/login` |
+| Logged out | after `POST /logout`, « Déconnecter toutes mes sessions », or closing one's own sessions | « Vous êtes déconnecté » and « Votre session est fermée. » | none |
+| Not found | any unknown path | « Page introuvable » and « Cette adresse ne correspond à aucune page. » | « Revenir à l'accueil » |
+| Refused | 403 | « Accès refusé » with an alert | « Revenir à l'accueil » |
+| Other errors | 400, 405, 414, 421, 429, 500 | a title, a line and « (code \<statut>) » ([Refusals](#refusals)) | « Revenir à l'accueil » |
+
+The login and its refusals are described in [Routes](#routes) and [SECURITY.md](SECURITY.md#login-throttling).
+
+## DASHBOARD
+
+### Page header
+
+- Route `/dashboard/`, entry « Tableau de bord » of the main navigation.
+- `h1` « Tableau de bord » and the line « Soldes des compteurs au \<date du jour>. ».
+- One section only, `h2` « Soldes au \<date du jour> », holding the tiles.
+
+### Counter tiles
+
+- One tile per counter that is enabled, or whose balance today is not zero.
+- Each tile is an `<article>` with the counter as `h3`.
+- No warning announces a coming loss.
+
+| Value | Label | Definition |
+| --- | --- | --- |
+| Balance today | the large figure, followed by « à ce jour » | the validated entries plus the provisional entries dated up to today: debits, credits and adjustments |
+| Validated balance | « Validé » | the balance at the end of the last validated month |
+| Forecast | « Prévision au \<date> » | the balance at the end of the current period of the counter, adding planned leave and future credits; the date never goes beyond 31/12/2099 |
+
+The three values form the position of the counter. A negative value is shown in red.
+
+### Tile « Total »
+
+- The last tile, « Total », counts the days entered in the current year.
+- It counts from 1 January, or from the tracking start when it is later.
+- It counts every code, the days entered in advance included.
+- Its unit is « jours saisis », or « jour saisi » under 2.
+- It equals the total of the table « Totaux de l'année » of the year page minus its row « Non renseignés ».
+- « Depuis le » gives the date it starts from.
+- « Dont à venir » gives the part entered after today.
+- « Non renseignés » gives the missing days before today.
+- With a tracking start in a later year, it shows 0 from that start.
+
+## ACTIVITY PAGE
+
+- Route `/dashboard/activity/{year}/{month}`, entry « Activité » of the main navigation (`/dashboard/activity` redirects to the current month).
+- The page holds the entry of one month, and only it: half-days, validation and adjustments.
+- `h1` « \<Mois> \<année> » and the line « Saisie des demi-journées, validation et ajustements du mois. ».
+- After a save, a validation, a reopening or an adjustment, the server redirects to this page.
+
+The page holds, in this order:
+
+1. the [month toolbar](#month-toolbar);
+2. the section « Saisie »;
+3. the section « Ajustements de \<Mois> \<année> », when the month has adjustments or is open.
+
+### Month toolbar
+
+The activity page and the month page share the same toolbar:
+
+- a `<nav aria-label="Mois">` holding a list of three links: « Mois précédent », « Mois en cours », « Mois suivant »;
+- « Mois précédent » is absent in January 2000, « Mois suivant » in December 2099;
+- each link opens the same page for another month: the toolbar of the activity page stays on activity pages, the one of the month page on month pages.
+
+### Section « Saisie »
+
+#### Status of the month
+
+The `h2` « Saisie » carries the status of the month as a badge.
+
+| Status | Condition, in order |
+| --- | --- |
+| « avant le début du suivi » | the month is before the month of the tracking start |
+| « au-delà de l'horizon de planification » | the month is after the planning horizon |
+| « validé le \<jj/mm/aaaa> » | the month is validated |
+| « ouvert » | otherwise |
+
+The section then holds a legend of the codes and of the half-day states, and the list of the [anomalies](#anomalies) of the month.
+
+#### Grid
+
+- The grid is a `<table>` with one row per day, captioned « Saisie de \<Mois> \<année> : \<n> j non renseigné(s) ».
+- Each row starts with a `<th scope="row">` holding the `<time>` and, for a weekend or a holiday, the weekday or « Jour férié : \<nom> ».
+- The columns are « Jour », « Matin », « Après-midi », « Journée » (only when the month is editable) and « Commentaire ».
+- Each `<select>` and comment field is named by an `aria-label`: « Matin du 3 novembre », « Après-midi du 3 novembre », « Journée du 3 novembre », « Commentaire du 3 novembre ».
+- The lists offer the codes of [Codes offered in a grid](#codes-offered-in-a-grid).
+- A month that is not editable shows the same table without fields.
+
+#### Column « Journée »
+
+- When set, « Journée » imposes its code on both half-days; the server applies it.
+- When empty, the half-days are kept as chosen.
+- `month_sheet_page.js` copies the « Journée » choice into the half-days, so that the half-days shown are the ones saved.
+- It empties the « Journée » choice as soon as a half-day of the row is changed by hand.
+- It repaints the cells with the colour of their code.
+
+#### Saving
+
+1. « Enregistrer le mois » posts the whole month with the account revision.
+2. An empty field clears a half-day.
+3. Every tracked day is checked like an entry: offered code, consuming code on a working day only, comment rule.
+4. When a problem is found, nothing is saved and the problems are shown on their rows.
+5. Otherwise the month is saved and the page comes back with the notice `saved`.
+
+#### Validation and reopening forms
+
+- Below the grid, the form « Valider le mois » ([Validation](#validation)) or, for the last validated month, the form « Rouvrir le mois » with a field « Motif » ([Reopening](#reopening)).
+- The validation form explains: « La validation fige les écritures du mois sur les compteurs ; seul le dernier mois validé pourra être rouvert. ».
+- The reopening form explains: « Ses écritures seront contre-passées puis le mois redeviendra modifiable. ».
+
+#### Month history
+
+- A collapsed `<details>` « Historique du mois » lists the events of the month.
+- Each event is « Validé le \<jj/mm/aaaa> » or « Rouvert le \<jj/mm/aaaa> : \<motif> ».
+
+### Section « Ajustements »
+
+- The `h2` is « Ajustements de \<Mois> \<année> », for instance « Ajustements de Février 2026 ».
+- The table « Ajustements du mois » has the columns « Date », « Compteur », « Quantité », « Motif » and, in an open month, « Action » with a button « Supprimer ».
+- In an open month, the form « Ajouter un ajustement » follows ([Adjustments](#adjustments)).
+
+### Refusals of the activity page
+
+| Request | Case | Status | Message |
+| --- | --- | --- | --- |
+| Save | the month is validated, before the month of the tracking start, or beyond the planning horizon | 409 | « Ce mois n'est pas modifiable : il est validé, précède le début du suivi ou dépasse l'horizon de planification de 24 mois. » |
+| Save | a tracked day of the month has no comment field in the form (a truncated or hand-made request), with the current revision | 400 | page « Requête invalide »: nothing is saved instead of clearing the missing days |
+| Save | invalid entries | 422 | « Certaines saisies sont invalides, rien n'a été enregistré. », and on each row: « Matin : code d'activité non disponible », « Après-midi : « \<libellé> » est décompté et ne peut pas être posé un week-end ou un jour férié », « commentaire : une seule ligne de 500 caractères au plus, sans caractère de contrôle » |
+| Validation | a condition is not met | 409 | « Validation impossible : \<raison> » ([Disabled button](#disabled-button)) |
+| Reopening | not the last validated month | 409 | « Seul le dernier mois validé peut être rouvert. » |
+| Reopening | missing or invalid reason | 409 | « Indiquez le motif de la réouverture (une ligne, 200 caractères au plus). » |
+| Adjustment | unknown `action` | 400 | page « Requête invalide » |
+| Adjustment | unreadable date | 422 | « Date d'ajustement invalide. » |
+| Adjustment | date before the tracking start, in a validated month or beyond the planning horizon | 422 | « Un ajustement se saisit dans un mois ouvert, à partir du début du suivi. » |
+| Adjustment | unknown or archived counter | 422 | « Compteur inconnu. » |
+| Adjustment | invalid quantity | 422 | « Quantité invalide : un nombre signé non nul entre -366 et 366, par exemple -1,5 ou 7/12. » |
+| Adjustment | missing or invalid reason | 422 | « Le motif est obligatoire (une ligne, 200 caractères au plus). » |
+| Adjustment deletion | the adjustment belongs to a validated month | 422 | « Cet ajustement appartient à un mois validé. » |
+| Adjustment deletion | unknown identifier | 422 | « Ajustement inconnu. » |
+| Any of them | the account changed since the form was shown (another tab), or the revision field is stale | 409 | « Les données ont changé entre-temps (autre onglet ?). Rechargez la page avant de recommencer. » |
+| Any of them | unreadable revision | 400 | page « Requête invalide » |
+| Any of them | the account would grow beyond its [size limits](#size-of-an-account) | 413 | « Les données de ce compte atteignent la taille maximale autorisée. » |
+| Any of them | the database file would grow beyond 64 MiB, or another write error | 500 | page « Erreur interne » |
+
+## MONTH PAGE
+
+- Route `/dashboard/month/{year}/{month}`, entry « Mois » of the main navigation (`/dashboard/month` redirects to the current month).
+- The page is for consultation only, like the year page: it holds no form.
+- `h1` « \<Mois> \<année> » and the line « Totaux, calendrier, synthèse et relevés des compteurs du mois. ».
+
+The page holds, in this order:
+
+1. the [month toolbar](#month-toolbar);
+2. the section « Totaux du mois »;
+3. the section « Calendrier »;
+4. the section « Synthèse de \<Mois> \<année> »;
+5. one section per counter statement.
+
+### Section « Totaux du mois »
+
+The table « Totaux de l'année » of the [year page](#totals-of-the-year), reduced to the month.
+
+### Section « Calendrier »
+
+- The `h2` « Calendrier » carries the status of the month as a badge ([Status of the month](#status-of-the-month)).
+- It holds the legend and the [calendar](#calendar) of the year page, reduced to the month.
+
+### Section « Synthèse »
+
+- The [yearly summary](#yearly-summary) reduced to the month.
+- Its first row, « Report du mois précédent », gives the balance of each counter on the eve of the first day of the month.
+- Then come the row of the month and the row « Total ».
+
+### Counter statements
+
+- One section per counter that is enabled, or that has entries or cancelled entries in the month, in the order of the configuration.
+- The `h2` is the label of the counter (« Temps de travail », « Week-end »...), with the badge « provisoire » while the statement has provisional lines.
+- The table is captioned « Relevé \<compteur> de \<Mois> \<année> », for instance « Relevé Congés payés de Février 2026 ».
+
+| Row or column | Content |
+| --- | --- |
+| first row | opening balance |
+| one row per active entry | « Date », « Libellé », « Nature » (the kind), « Débit », « Crédit », « Solde » (running balance) |
+| last row | closing balance |
+| `<details>` « Écritures annulées par contre-passation (\<nombre>) » | the cancelled entries and their reversals |
+
+## YEAR PAGE
+
+- Route `/dashboard/year/{year}`, entry « Année » of the main navigation.
+- The page is for consultation only: it holds no form.
+- `h1` « Année \<année> » and the line « Calendrier des demi-journées, synthèse mensuelle, compteurs et totaux par code d'activité. ».
+
+The page holds, in this order:
+
+1. the year navigation;
+2. the table « Totaux de l'année »;
+3. the calendar;
+4. the yearly summary;
+5. one section per counter.
+
+### Year navigation
+
+- A `<nav aria-label="Années">` with « Année précédente », « Année en cours », « Année suivante ».
+- « Année précédente » is absent in 2000, « Année suivante » in 2099.
+
+### Totals of the year
+
+- Captioned « Jours par code d'activité, week-ends et fériés compris », with the columns « Code d'activité » and « Jours ».
+- One row per activity code with its days, zero included. An archived code has a row only when it has days.
+- One row « Non renseignés » for the missing days.
+- A last row « Total » (`<tfoot>`) sums them.
+- The months before the tracking start are not counted.
+
+### Calendar
+
+- One column per day of the month (1 to 31) and two rows per month: the morning above, the afternoon below.
+- One `<tbody>` per month, the month as `<th scope="rowgroup">`, the half-day as `<th scope="row">`.
+- Each cell is coloured like the grid and shows the identifier of the code entered (`TT`, `WE`, `CP`...), or « ? » for a missing half-day.
+- The full text (date, half-day, label of the code, holiday name, comment) is in an `<abbr title>`.
+- A commented day is marked by a line at the bottom of its cell.
+- A legend of the codes comes with the table.
+- A day that does not exist (30 February, 31 April) is black ([Colours](#colours)).
+
+### Yearly summary
+
+The section « Synthèse de l'année \<année> » holds one table, January to December.
+
+#### Columns
+
+| Group | Column | Content |
+| --- | --- | --- |
+| | « Mois » | the month, a link to its month page, and its status |
+| one group per counter, headed by its short label | « Débit » | the debits of the month; only for a counter that some code consumes |
+| same | « Crédit » | the credits of the month, adjustments excluded: accruals and credits of feeding codes (the « Crédit » of `TT` is the worked days, of `TP` the part-time days, of `ABS` the absences) |
+| same | « Ajustement » | the adjustments of the month, signed: initial balance, roundings, zeroings and adjustments entered by the user |
+| same | « Solde » | the balance at the end of the month |
+| « Jours » | « Ouvrés » | Total minus Fériés |
+| same | « Fériés » | legal holidays from Monday to Friday |
+| same | « Non renseignés » | missing days |
+| same | « Total » | days from Monday to Friday |
+
+#### Header and groups
+
+- A first header row gives each group its name, `<th scope="colgroup">`: the short label of the counter, or « Jours » for the indicators.
+- The names of the columns come below it.
+- Each group is a `<colgroup>`, and a vertical line separates the groups.
+- The quantities of the counters are shown with two decimals, the indicators in days.
+
+#### Rows
+
+- The first row, « Report N-1 », gives the balance of each counter on the eve of 1 January, or of the tracking start when it is later, before its adjustments.
+- The zeroing of 1 January and the initial balance therefore count in the « Ajustement » of January.
+- Each row satisfies:
+
+  ```text
+  Solde of the previous row - Débit + Crédit + Ajustement = Solde
+  ```
+
+- The last row, « Total » (`<tfoot>`), sums the Débit, Crédit, Ajustement and indicators; its Solde is the balance of the last row.
+- The current month carries `aria-current="date"`.
+
+#### Shown counters
+
+| Place | Counters shown |
+| --- | --- |
+| Dashboard tiles | enabled, or with a non-zero balance today |
+| Statements of the month page | enabled, or with entries or cancelled entries in the month |
+| Yearly summary and counter sections of the year page | enabled, or with a movement in the year |
+
+The counters come in the order of the configuration.
+
+#### Status of a month in the summary
+
+| Status | Months | Figures |
+| --- | --- | --- |
+| « validé » | validated months | indicators read from the frozen snapshot |
+| « provisoire » | past open months and the current month | computed |
+| « prévisionnel » | future months | the forecast of the journal: expected credits, planned leave, roundings and zeroings, consistent with the forecast of the dashboard |
+| « hors suivi » | months before the tracking start | none |
+
+### Counter sections
+
+- One section per counter shown, titled by its label.
+- A line gives its rule with the effective amount, for instance « 2,08 j par mois, période au 01/06, solde reporté et arrondi à l'entier supérieur »; a counter without carry over ends with « solde remis à zéro ».
+- A recap table « Récapitulatif mensuel, \<compteur> » gives one row per tracked month (the months before the tracking start are skipped).
+- A collapsed « Grand livre de l'année (\<n> écriture(s)) » lists the active entries of the year, with the columns of a statement. The cancelled entries are not listed there.
+
+| Column of the recap | Content |
+| --- | --- |
+| « Mois » | the month |
+| « État » | its status in the summary |
+| « Débit » | the leave taken |
+| « Crédit » | the accruals and the credits of feeding codes only, so that adjustments never blur the credits of the rules |
+| « Ajustement » | the adjustments, initial balances, roundings and zeroings included, signed: `+0,31`, `-0,24`, `0,00` without sign |
+| « Solde » | the balance at the end of the month |
+
+## PROFILE PAGE
+
+- Route `/dashboard/profile`, entry « Mon profil » of the user menu; `h1` « Mon profil ».
+
+### Identity
+
+The section « Identité » lists:
+
+- « Identifiant »: the login;
+- « Nom »: the name, or « non renseigné »;
+- « Profil »: « Administrateur » or « Utilisateur »;
+- « Compte créé le »: the creation date;
+- « Dernière connexion »: the date of the last login, or « jamais »;
+- « Sessions ouvertes »: the number of open sessions.
+
+### Sessions
+
+- The button « Déconnecter toutes mes sessions » (`action=sessions`) closes every session of the account, the current one included.
+- The page « Vous êtes déconnecté » follows.
+
+### Name form
+
+| Rule | Value |
+| --- | --- |
+| Field | « Nom et prénom » |
+| Length | 60 characters at most |
+| White space | every run of white space, tabs and line breaks included, is collapsed to one space |
+| Empty | allowed: the name becomes « non renseigné » |
+| Request | `action=name` |
+| Success | 303 to `/dashboard/profile?notice=name` |
+
+### Password change
+
+- The form « Changer de mot de passe » asks for « Mot de passe actuel », « Nouveau mot de passe » and « Confirmation ».
+- Its legend ends with « (obligatoire) » while the password is provisional ([Provisional password](#provisional-password)).
+- The current password is checked under the login throttle.
+- The new password follows the policy of [SECURITY.md](SECURITY.md#passwords) and differs from the current one.
+- Success: every session of the account is closed, a new one opens for the current browser, and the page comes back (303) with the notice `password`.
+
+### Refusals of the profile page
+
+| Case | Status | Message |
+| --- | --- | --- |
+| unknown `action` | 400 | page « Requête invalide » |
+| invalid name | 422 | « Le nom compte au plus 60 caractères, sur une ligne. » |
+| too many failed checks from the same address | 429, with `Retry-After` | page « Trop de tentatives » |
+| wrong current password | 422 | « Le mot de passe actuel est incorrect. » |
+| the two new passwords differ | 422 | « Les deux saisies du nouveau mot de passe diffèrent. » |
+| new password equal to the current one or against the policy | 422 | « Le nouveau mot de passe doit différer de l'actuel et compter au moins 12 caractères dont 6 distincts, sans espace au début ni à la fin, et différer de l'identifiant. » |
+| the password changed while the current one was being checked | 409 | « Le mot de passe a changé entre-temps : il n'a pas été modifié. » |
+
+## SETTINGS PAGE
+
+- Route `/dashboard/settings`, entry « Mes réglages » of the user menu; `h1` « Réglages ».
+- The rules of the settings are in [User settings](#user-settings).
+
+The section « Suivi et compteurs » holds one form:
+
+1. the fieldset « Début du suivi » with the field « Date de début », disabled once a month is validated;
+2. the table of the counters, one row per counter that is not archived, with the columns « Compteur », « Activé », « Montant propre », « Solde initial » and, last, « Couleur »;
+3. the checkbox « Rétablir les couleurs par défaut »;
+4. the button « Enregistrer les réglages ».
+
+- The field « Montant propre » shows the default amount and the rhythm as a placeholder.
+- The column « Couleur » holds a colour field for each code that feeds or consumes the counter and is not archived, named « Couleur, \<code> : \<libellé> ».
+- The column « Solde initial » is disabled once a month is validated.
+
+### Refusals of the settings page
+
+| Case | Status | Message |
+| --- | --- | --- |
+| unreadable revision of the configuration or of the account | 400 | page « Requête invalide » |
+| the configuration changed since the form was shown | 409 | « La configuration a changé entre-temps. Vérifiez puis recommencez. » |
+| invalid values | 422 | « Réglages non enregistrés. », followed by one line per problem |
+| the account changed since the form was shown | 409 | « Les données ont changé entre-temps. Vérifiez puis recommencez. » |
+| the account would grow beyond its size limits | 413 | « Les données de ce compte atteignent la taille maximale autorisée. » |
+
+The problems listed under « Réglages non enregistrés. » are:
+
+- « Date de début de suivi invalide. »;
+- « Des ajustements sont datés avant cette date de début : supprimez-les d'abord. »;
+- « \<compteur> : montant d'acquisition invalide. »;
+- « \<compteur> : solde initial invalide (entre -366 et 366). »;
+- « \<libellé du code> : couleur invalide. ».
+
+## ADMINISTRATION
+
+### Accounts page
+
+Route `/admin/`, entry « Comptes » of the administration navigation; `h1` « Comptes ».
+
+#### Table of the accounts
+
+The section « Comptes existants » holds one table, one row per account, with:
+
+- the login, the name, the profile;
+- the state, « actif » or « désactivé »; a disabled account's row is dimmed;
+- the creation date, the last login and the number of open sessions;
+- links to the read-only views of the account;
+- the actions, side by side, as icon buttons.
+
+#### Actions of a row
+
+| Action | `title` | `aria-label` | Icon | Disabled when | Effect |
+| --- | --- | --- | --- | --- | --- |
+| Close the sessions | « Fermer les sessions » | « Fermer les sessions de \<login> » | an arrow leaving a door | the account has no open session | closes every session of the account; on one's own row the current one too, and the page « Vous êtes déconnecté » follows |
+| Disable | « Désactiver » | « Désactiver \<login> » | a barred circle | one's own row | disables the account |
+| Enable | « Activer » | « Activer \<login> » | a ticked circle | never | enables a disabled account |
+| Delete | « Supprimer » | « Supprimer \<login> » | a bin | one's own row | opens the deletion box |
+
+- The icons are inline SVG drawn in the text colour.
+- The actions come back to `/admin/` (field `return=list`), with the notice on success and the alert on the same page when they fail.
+
+#### Deletion box
+
+1. « Supprimer » is the `summary` of a `<details class="account-delete">`.
+2. Its panel is a modal box: a `<dialog open>` named « Supprimer le compte \<login> », holding the form.
+3. The box is fixed in the middle of the window, over a dark backdrop that covers the page, so that the scrolling of the table never clips it.
+4. It recalls the account: « Supprimer le compte \<login> et toutes ses données ? ».
+5. It asks to retype the login in the field « Retapez « \<login> » », which receives the focus.
+6. It offers, side by side, « Supprimer » and, at its right, « Annuler ».
+7. « Annuler » is a link back to `/admin/`, so that it works without JavaScript.
+8. A click on the backdrop or `Échap` closes the box too.
+
+#### Form « Nouveau compte »
+
+The section « Créer un compte » holds the form « Nouveau compte », posted to `POST /admin/accounts`.
+
+| Field | Rule |
+| --- | --- |
+| « Identifiant » | a [login](#logins) not yet taken |
+| « Profil » | « Administrateur » then « Utilisateur », the latter selected by default |
+| « Mot de passe provisoire » | follows the password policy; the account must change it at its first login |
+
+The button « Créer le compte » creates the account, `enabled`, with its tracking start on the first day of the current month, and comes back to `/admin/` with the notice `created`.
+
+#### Refusals of the accounts page
+
+| Case | Status | Message |
+| --- | --- | --- |
+| invalid login | 422 | « Identifiant invalide : 2 à 32 caractères parmi a-z, 0-9, point, tiret et souligné, commençant par une lettre ou un chiffre. » |
+| invalid profile | 422 | « Profil invalide. » |
+| provisional password against the policy | 422 | « Mot de passe provisoire trop faible : au moins 12 caractères dont 6 distincts, sans espace au début ni à la fin, différent de l'identifiant. » |
+| login already taken | 422 | « Cet identifiant est déjà pris. » |
+| 200 accounts reached | 422 | « Le nombre maximal de comptes est atteint. » |
+| other failure | 422 | « Création impossible. » |
+
+The refusals of the row actions are those of the [account page](#refusals-of-the-account-page), shown on `/admin/`.
+
+### Account page
+
+Route `/admin/accounts/{login}`; `h1` « Compte \<login> »; an unknown login gives 404.
+
+The section « Informations » gives the name (or « non renseigné »), the profile, the state, the creation date, the last login and the number of open sessions. The forms follow.
+
+| Section | Form | Fields | `action` | Success | On one's own account |
+| --- | --- | --- | --- | --- | --- |
+| « Nom » | « Changer le nom » | « Nom et prénom », same rules as in the [profile page](#name-form) | `name` | 303 back to the account page, notice `name` | shown |
+| « Profil » | « Changer le profil » | « Profil »: « Utilisateur » or « Administrateur » | `profile` | closes every session of the account; notice `profile` | hidden |
+| « Accès » | « Désactiver le compte » or « Activer le compte » | none | `disable` or `enable` | disabling closes every session of the account; notice `disabled` or `enabled` | hidden |
+| « Accès » | « Fermer les sessions », button « Fermer toutes ses sessions », disabled without open session | none | `sessions` | closes every session of the account without preventing a new login; notice `sessions` | hidden |
+| « Mot de passe » | « Réinitialiser le mot de passe » | « Mot de passe provisoire » | `reset` | closes every session; the account must change the password; notice `reset` | hidden |
+| « Suppression » | « Supprimer le compte et toutes ses données », button « Supprimer définitivement » | « Retapez l'identifiant pour confirmer » | `delete` | deletes the account and its data, closes its sessions; 303 to `/admin/` with the notice `deleted` | hidden |
+
+#### Refusals of the account page
+
+| Action | Case | Status | Message |
+| --- | --- | --- | --- |
+| any | unknown login | 404 | page « Page introuvable » |
+| any | unknown `action` | 400 | page « Requête invalide » |
+| `name` | invalid name | 422 | « Le nom compte au plus 60 caractères, sur une ligne. » |
+| `profile` | invalid profile, or one's own profile | 422 | « Profil invalide, ou changement de son propre profil. » |
+| `profile` | would demote the last enabled `ADMIN` | 409 | « Le dernier administrateur actif ne peut être ni supprimé, ni rétrogradé, ni désactivé. » |
+| `reset` | one's own account | 422 | « Changez votre propre mot de passe depuis votre profil. » |
+| `reset` | provisional password against the policy | 422 | « Mot de passe provisoire trop faible : au moins 12 caractères dont 6 distincts, sans espace au début ni à la fin, différent de l'identifiant. » |
+| `disable`, `enable` | one's own account | 422 | « Un administrateur ne peut pas désactiver son propre compte. » |
+| `disable` | the last enabled `ADMIN` | 409 | « Le dernier administrateur actif ne peut être ni supprimé, ni rétrogradé, ni désactivé. » |
+| `delete` | wrong confirmation, or one's own account | 422 | « Retapez exactement l'identifiant pour confirmer ; un administrateur ne peut pas supprimer son propre compte. » |
+| `delete` | the last enabled `ADMIN` | 409 | « Le dernier administrateur actif ne peut être ni supprimé, ni rétrogradé, ni désactivé. » |
+| `profile`, `disable`, `enable`, `delete` | any other failure | 409 | « Opération impossible. » |
+
+### Read-only views of another account
+
+| View | Title | Route |
+| --- | --- | --- |
+| Balances | « Soldes de \<login> » | `/admin/accounts/{login}/dashboard` |
+| Month | « \<Mois> \<année> de \<login> » | `/admin/accounts/{login}/month/{year}/{month}` |
+| Year | « Année \<année> de \<login> » | `/admin/accounts/{login}/year/{year}` |
+
+- They show the balances, the calendar with the comments, the adjustments with their reasons, the statements, the summary and the ledger.
+- They do not show the settings, and there is no activity page of another account.
+- They hold no form that writes.
+- Their navigation links stay under the prefix `/admin/accounts/{login}/`, and they belong to the admin family.
+- They use the colours of the viewer.
+- An unknown login gives 404.
+
+### Configuration page
+
+Route `/admin/settings`, entry « Configuration » of the administration navigation; `h1` « Configuration ».
+
+#### Server settings shown
+
+- The section « Serveur » shows, read-only, « Adresse d'écoute », « Origines publiques », « Proxys de confiance » (« aucun » when empty) and « Fuseau horaire ».
+- They come from the [server configuration](#server-configuration) read at the start of the server, not from the options of `run`.
+- A line explains how to change them: edit the file or use `timesheet config set`, then restart the server; the options of `timesheet run` take precedence.
+
+#### Forms
+
+- The section « Codes d'activité » holds one form per code, then the form « Nouveau code d'activité ».
+- The section « Compteurs » holds one form per counter, then the form « Nouveau compteur ».
+- Each form works without JavaScript and carries an `action` and the configuration revision.
+- The legend of each form is the identifier, with « utilisé » or « archivé » when it applies.
+- The button « Supprimer » is shown only for a code or a counter that is not used.
+- The fields are listed in [Form fields](#form-fields-of-the-configuration-page).
+
+#### Validation before writing
+
+The whole configuration is checked before it is written:
+
+1. 1 to 100 activity codes, at most 20 counters;
+2. unique identifiers, in `[A-Z][A-Z0-9_]{0,15}`;
+3. labels of 1 to 60 characters, short labels of 1 to 6, [free-text rule](#free-text-rule);
+4. exactly one of `consumes` and `feeds` per code (« Effet »: « Alimente » or « Décompte »), naming an existing counter (« Compteur »);
+5. a usable colour `#rrggbb` on every code;
+6. an accrual rhythm « par mois » or « par an », and an amount between 0 and 366;
+7. a period start `MM-DD`, 29 February excluded;
+8. no change that would make the stored data invalid.
+
+#### Changing, archiving and deleting
+
+| Object | Change | Deletion | Archiving |
+| --- | --- | --- | --- |
+| Activity code | label, colour, archived; `consumes` and `feeds` only while the code is not used | only while not used (not present in any day entry) | an archived code is no longer offered; stored entries keep it |
+| Counter | label, short label, enabled by default, amount, rhythm, period start, carry over, archived; the new rule applies from the first open month | only while not used and while no code consumes or feeds it | [Disabled and archived counters](#disabled-and-archived-counters) |
+
+- An identifier never changes.
+- A code is used when it is present in some day entry.
+- A counter is used when it appears in the settings, adjustments, ledger or month rules of some account. A settings entry exists for every counter as soon as an account has saved its settings page once.
+- A used code or counter cannot be deleted, only archived.
+
+#### Refusals of the configuration page
+
+| Case | Status | Message |
+| --- | --- | --- |
+| unreadable revision or unknown `action` | 400 | page « Requête invalide » |
+| no effect chosen for a code | 422 | « Indiquez si le code alimente ou décompte son compteur. » |
+| new code with an existing identifier | 422 | « Cet identifiant de code existe déjà. » |
+| update or deletion of an unknown code | 422 | « Code inconnu. » |
+| effect or counter changed on a used code | 422 | « L'effet et le compteur d'un code déjà utilisé ne sont plus modifiables. » |
+| deletion of a used code | 422 | « Ce code est utilisé : archivez-le plutôt que de le supprimer. » |
+| unreadable amount | 422 | « Montant d'acquisition invalide. » |
+| unreadable period start | 422 | « Début de période invalide (MM-JJ). » |
+| new counter with an existing identifier | 422 | « Cet identifiant de compteur existe déjà. » |
+| update or deletion of an unknown counter | 422 | « Compteur inconnu. » |
+| deletion of a used counter | 422 | « Ce compteur est utilisé : archivez-le plutôt que de le supprimer. » |
+| deletion of a counter still fed or consumed by a code | 422 | « Un code d'activité alimente ou décompte encore ce compteur. » |
+| the configuration changed since the form was shown | 409 | « La configuration a changé entre-temps. Vérifiez puis recommencez. » |
+| the configuration fails the [validation before writing](#validation-before-writing) | 422 | « Configuration refusée : \<détail> », the details being listed after this table |
+| the change would make stored data invalid | 409 | « Configuration refusée : elle rendrait invalides des données existantes. » |
+
+The details that follow « Configuration refusée : » are:
+
+- « entre 1 et 100 codes d'activité. »;
+- « trop de compteurs (20 au plus). »;
+- « identifiant invalide ou déjà utilisé (une majuscule, puis jusqu'à 15 majuscules, chiffres ou _). »;
+- « libellé court invalide (1 à 6 caractères). »;
+- « libellé invalide (1 à 60 caractères sur une ligne). »;
+- « rythme d'acquisition invalide (mois ou année). »;
+- « montant d'acquisition invalide (entre 0 et 366). »;
+- « début de période invalide (MM-JJ). »;
+- « un code doit alimenter ou décompter un compteur existant. »;
+- « couleur invalide (#rrggbb). »;
+- « valeur invalide. ».
+
+The checks of the form itself come before the check of the revision: a form with an invalid value gets its 422 even when the configuration changed meanwhile. The validation of the whole configuration before writing (« Configuration refusée : … ») comes after it: a stale form gets 409 first.
+
+## COLOURS
+
+### Colour of a cell
+
+| Cell | Colour |
+| --- | --- |
+| entered half-day | the colour of its code ([Codes of the template](#codes-of-the-template)) |
+| missing half-day, before today | surface with a warning border (« Non renseigné ») |
+| upcoming half-day, from today | surface (« À venir ») |
+| untracked half-day, before the tracking start | surface (« Hors suivi ») |
+| day that does not exist, in the year calendar (30 February, 31 April) | black `#000000`, in both themes |
+
+### Configuration and user colours
+
+| Level | Page | Rule |
+| --- | --- | --- |
+| Configuration | [configuration page](#configuration-page) | the colour of each code, mandatory |
+| User preference | [settings page](#settings-page) | a colour per code, in the row of its counter; « Rétablir les couleurs par défaut » clears them |
+
+- Any `#rrggbb` value is accepted and stored in lower case.
+- No colour is refused for its contrast, since the text colour follows it.
+- A user colour equal to the colour of the configuration is not stored.
+- The user colour of an archived code, or of a code whose counter is archived, is kept; neither is shown in the settings page.
+- A user colour for an unknown code is refused at load.
+- The user colours of a deleted code are removed with it.
+
+### Colour sheet
+
+- `/dashboard/colors.css` serves the colours of the viewer as custom properties `--code-<id>`.
+- Each has a text colour `--code-<id>-ink`, black `#000000` or white `#ffffff`, whichever contrasts most.
+- Every colour reaches at least 4.58:1 with one of them, above [AA](#glossary).
+- A rule `.code-<id>` per code applies both.
+- A read-only view uses the colours of the viewer, not those of the account viewed.
+
+### Colour is never the only information
+
+The label of the code (grid) or its identifier (year calendar) is always written in the cell.
+
+## ROUTES
+
+| Route | Method | Access | Role |
+| --- | --- | --- | --- |
+| `/` | GET | public | home page ([Public pages](#public-pages)) |
+| `/login` | GET | public | login form « Connexion »; a connected browser is redirected (303) to `/dashboard/` |
+| `/login` | POST | public | login: 303 to `/dashboard/` on success, 401 « Identifiant ou mot de passe incorrect. » on failure, 429 « Trop de tentatives » with `Retry-After` while the address is blocked |
+| `/logout` | GET | connected | confirmation page; a guest is redirected (303) to `/login` |
+| `/logout` | POST | connected | closes the session; page « Vous êtes déconnecté » |
+| `/dashboard/` | GET | connected | [dashboard](#dashboard): balances today |
+| `/dashboard/activity` | GET | connected | 303 to the activity page of the current month |
+| `/dashboard/activity/{year}/{month}` | GET | connected | [activity page](#activity-page) of that month |
+| `/dashboard/activity/{year}/{month}` | POST | connected | saves the grid of that month |
+| `/dashboard/activity/{year}/{month}/validate` | POST | connected | validates the month ([Validation](#validation)) |
+| `/dashboard/activity/{year}/{month}/reopen` | POST | connected | reopens the last validated month ([Reopening](#reopening)) |
+| `/dashboard/month` | GET | connected | 303 to the month page of the current month |
+| `/dashboard/month/{year}/{month}` | GET | connected | [month page](#month-page): totals, calendar, summary and statements |
+| `/dashboard/year/{year}` | GET | connected | [year page](#year-page): totals, calendar, summary and counters |
+| `/dashboard/adjustments` | POST | connected | adds (`action=add`) or deletes (`action=delete`, `id`) an adjustment; 303 to the activity page of its month; any other `action` gets 400 |
+| `/dashboard/profile` | GET | connected | [profile page](#profile-page) |
+| `/dashboard/profile` | POST | connected | `action=name` saves the name; `action=sessions` closes every session of the account; `action=password` changes the password; any other `action` gets 400 |
+| `/dashboard/settings` | GET | connected | [settings page](#settings-page) |
+| `/dashboard/settings` | POST | connected | saves the user settings |
+| `/dashboard/colors.css` | GET | connected | [colour sheet](#colour-sheet) of the viewer |
+| `/admin/` | GET | ADMIN | [accounts page](#accounts-page) |
+| `/admin/accounts` | POST | ADMIN | creates an account |
+| `/admin/accounts/{login}` | GET | ADMIN | [account page](#account-page) |
+| `/admin/accounts/{login}` | POST | ADMIN | `action=name`, `profile`, `reset`, `disable`, `enable`, `sessions` or `delete`; any other `action` gets 400; with `return=list` the answer comes back to `/admin/`; `sessions` on one's own account shows « Vous êtes déconnecté » |
+| `/admin/accounts/{login}/dashboard` | GET | ADMIN | read-only balances of the account |
+| `/admin/accounts/{login}/month/{year}/{month}` | GET | ADMIN | read-only month page of the account |
+| `/admin/accounts/{login}/year/{year}` | GET | ADMIN | read-only year page of the account |
+| `/admin/settings` | GET | ADMIN | [configuration page](#configuration-page) |
+| `/admin/settings` | POST | ADMIN | changes the configuration: `action=activity-add`, `activity-update`, `activity-delete`, `counter-add`, `counter-update` or `counter-delete`; any other `action` gets 400 |
+| `/static/{path...}` | GET | public | embedded CSS, JavaScript and SVG |
+
+### Access
+
+- Public: any profile, a guest included.
+- Connected: `USER` and `ADMIN`.
+- ADMIN: `ADMIN` only.
+- `HEAD` is served like `GET`.
+- `{year}` is 2000 to 2099 and `{month}` 1 to 12 without a leading zero; another value gives 404.
+
+### Refusals
+
+The refusals below come in the order in which the server checks them: a request refused by an earlier row never reaches a later one. The HTTP chain that applies them is described in [ARCHITECTURE.md](ARCHITECTURE.md#http-chain).
+
+| Order | Status | Case | Answer |
+| --- | --- | --- | --- |
+| 1 | 431 | request headers beyond the limit (8 KiB configured; the standard library accepts up to about 12 KiB) | plain text from the standard library, without the security headers and without a log line |
+| 1 | 400 | malformed request line or headers | plain text from the standard library, without the security headers and without a log line |
+| 2 | 500 | a page fails unexpectedly, at any later step | page « Erreur interne », « Une erreur inattendue s'est produite. Réessayez plus tard. » |
+| 3 | 421 | `Host` header outside the accepted origins | page « Hôte inconnu », « Ce serveur ne répond pas pour ce nom d'hôte. » |
+| 4 | 414 | URL beyond 2048 bytes | page « Adresse trop longue », « L'adresse demandée dépasse la taille autorisée. » |
+| 5 | 403 | unsafe request whose `Origin` is missing, `null` or not an accepted origin (another host or another scheme), or whose `Sec-Fetch-Site` is present and neither `same-origin` nor `none` | page « Accès refusé », « Cette requête vient d'une autre origine et a été refusée. » |
+| 6 | 404 | unknown path | page « Page introuvable » |
+| 6 | 405 | known path, another method (`OPTIONS` included), with the header `Allow` | page « Méthode non autorisée », « Cette adresse n'accepte pas cette méthode. » |
+| 7 | 303 to `/login` | connected route without a valid session; a POST after the session expired is not saved | none |
+| 8 | 403 | `USER` on a route reserved to `ADMIN` | page « Accès refusé », « Cette page est réservée aux administrateurs. » |
+| 9 | 303 to `/dashboard/profile?notice=change-password` | account with a provisional password, outside the exempt routes ([Provisional password](#provisional-password)) | none |
+| 10 | 400 | form that cannot be read, a body beyond 256 KiB included | page « Requête invalide », « La requête ne peut pas être traitée. » |
+| 11 | 403 | POST whose CSRF token does not match its session; login posted without the login cookie of its form or with another token (the cookie lasts one hour from the last display of the form in that browser) | page « Accès refusé », « Le formulaire a expiré ou n'est pas valide. Rechargez la page et recommencez. » |
+| 12 | 429 | login, or check of the current password in the profile page, while the address is blocked by the throttle; with `Retry-After` | page « Trop de tentatives », « Patientez quelques instants avant de réessayer. » |
+| 13 | 401 | wrong login or password, disabled account | the login form with « Identifiant ou mot de passe incorrect. » |
+| 14 | 404 | invalid year or month, unknown login under `/admin/accounts/` | page « Page introuvable » |
+| 15 | 400 | unknown `action`, unreadable revision | page « Requête invalide » |
+| 16 | 409, 413, 422 | refusals of a page | the page again, with an alert: [activity page](#refusals-of-the-activity-page), [settings page](#refusals-of-the-settings-page), [profile page](#refusals-of-the-profile-page), [accounts page](#refusals-of-the-accounts-page), [account page](#refusals-of-the-account-page), [configuration page](#refusals-of-the-configuration-page) |
+| 17 | 500 | write error, the database file beyond 64 MiB included | page « Erreur interne » |
+
+Every error page offers « Revenir à l'accueil ». The answers of rows 2 to 17 carry the security headers ([SECURITY.md](SECURITY.md#pages)) and a line in the access log ([Logs](#logs)).
+
+### After a successful POST
+
+- The server redirects (303) to a fixed internal path, with a `notice` code chosen from a fixed table ([Notices](#notices)).
+- The login redirects to `/dashboard/` without a notice.
+- `POST /logout`, `action=sessions` of the profile page and `action=sessions` on one's own account answer 200 with the page « Vous êtes déconnecté ».
+
+## NOTICES
+
+A notice code is read from `?notice=` and shown as a notice `<p role="status">`. An unknown code shows nothing.
+
+| Code | Message | Shown after |
+| --- | --- | --- |
+| `saved` | « Le mois a été enregistré. » | a save of the grid |
+| `validated` | « Le mois a été validé : ses écritures sont figées. » | a validation |
+| `reopened` | « Le mois a été rouvert : ses écritures ont été contre-passées. » | a reopening |
+| `adjusted` | « L'ajustement a été enregistré. » | an adjustment added |
+| `unadjusted` | « L'ajustement a été supprimé. » | an adjustment deleted |
+| `settings` | « Les réglages ont été enregistrés. » | a save of the settings page |
+| `password` | « Le mot de passe a été changé. » | a password change in the profile page |
+| `name` | « Le nom a été enregistré. » | a name change, profile page or account page |
+| `created` | « Le compte a été créé. » | an account created |
+| `disabled` | « Le compte a été désactivé : il ne peut plus se connecter. » | an account disabled |
+| `enabled` | « Le compte a été réactivé. » | an account enabled |
+| `sessions` | « Les sessions du compte ont été fermées. » | the sessions of another account closed |
+| `deleted` | « Le compte a été supprimé. » | an account deleted |
+| `profile` | « Le profil a été changé. » | a profile changed |
+| `reset` | « Le mot de passe provisoire a été enregistré. » | a password reset |
+| `configuration` | « La configuration a été enregistrée. » | a change of the configuration |
+| `change-password` | « Choisissez un nouveau mot de passe avant de continuer. » | any request of an account with a provisional password, `GET` included ([Provisional password](#provisional-password)) |
+
+## FORM FIELDS
+
+Every form posts `application/x-www-form-urlencoded` data. Every form of a connected page carries the CSRF token of the session in the hidden field `csrf`. A checkbox is checked when its value is `on`.
+
+### Login and logout
+
+| Form | Route | Field | Control | Content |
+| --- | --- | --- | --- | --- |
+| Login | `POST /login` | `csrf` | hidden | the token of the login cookie `ts_login` |
+| Login | `POST /login` | `login` | « Identifiant », text, 32 characters | the login |
+| Login | `POST /login` | `password` | « Mot de passe », password, 256 characters | the password |
+| Logout | `POST /logout` | `csrf` | hidden | the token of the session |
+
+### Fields of the activity page
+
+| Form | Route | Field | Control | Content |
+| --- | --- | --- | --- | --- |
+| Grid | `POST /dashboard/activity/{year}/{month}` | `revision` | hidden | the account revision |
+| Grid | same | `am:YYYY-MM-DD` | « Matin du \<jour> \<mois> », list | a code identifier, or empty |
+| Grid | same | `pm:YYYY-MM-DD` | « Après-midi du \<jour> \<mois> », list | a code identifier, or empty |
+| Grid | same | `day:YYYY-MM-DD` | « Journée du \<jour> \<mois> », list | a code for both half-days, or empty to keep them |
+| Grid | same | `comment:YYYY-MM-DD` | « Commentaire du \<jour> \<mois> », text, 500 characters | the comment; mandatory for every tracked day of the month |
+| Validation | `POST /dashboard/activity/{year}/{month}/validate` | `revision` | hidden | the account revision |
+| Reopening | `POST /dashboard/activity/{year}/{month}/reopen` | `revision` | hidden | the account revision |
+| Reopening | same | `reason` | « Motif », text, 200 characters | the reason |
+| Add an adjustment | `POST /dashboard/adjustments` | `revision`, `action` | hidden | the account revision, `add` |
+| Add an adjustment | same | `date` | « Date », date from the first day of the month (or the tracking start when later) to its last day, the last day by default | `YYYY-MM-DD` |
+| Add an adjustment | same | `counter` | « Compteur », list | a counter identifier |
+| Add an adjustment | same | `amount` | « Quantité signée », text, 32 characters, placeholder « -1,5 ou 7/12 » | the quantity |
+| Add an adjustment | same | `reason` | « Motif », text, 200 characters | the reason |
+| Delete an adjustment | `POST /dashboard/adjustments` | `revision`, `action`, `id` | hidden | the account revision, `delete`, the identifier of the adjustment |
+
+`YYYY-MM-DD` is the date of the row. The rows before the tracking start have no field.
+
+### Fields of the settings page
+
+| Field | Control | Content |
+| --- | --- | --- |
+| `revision` | hidden | the account revision |
+| `configuration` | hidden | the configuration revision |
+| `start` | « Date de début », date from 2000-01-01 to 2099-12-31, disabled once a month is validated | the tracking start |
+| `enabled:<ID>` | « \<compteur> activé », checkbox | the counter is enabled |
+| `amount:<ID>` | « Montant propre, \<compteur> », text, 32 characters | the own amount, or empty for the default amount |
+| `initial:<ID>` | « Solde initial, \<compteur> », text, 32 characters, disabled once a month is validated | the initial balance; empty means 0 |
+| `color:<CODE>` | « Couleur, \<code> : \<libellé> », colour | the colour of the code |
+| `reset-colors` | « Rétablir les couleurs par défaut », checkbox | clears every user colour |
+
+`<ID>` is the identifier of a counter, `<CODE>` the identifier of a code.
+
+### Fields of the profile page
+
+| Form | Field | Control | Content |
+| --- | --- | --- | --- |
+| Sessions | `action` | hidden | `sessions` |
+| Name | `action` | hidden | `name` |
+| Name | `name` | « Nom et prénom », text, 60 characters | the name, empty allowed |
+| Password | `action` | hidden | `password` |
+| Password | `current` | « Mot de passe actuel », password, 256 characters | the current password |
+| Password | `password` | « Nouveau mot de passe », password, 12 to 256 characters | the new password |
+| Password | `confirm` | « Confirmation », password, 12 to 256 characters | the new password again |
+
+### Fields of the administration
+
+| Form | Route | Field | Control | Content |
+| --- | --- | --- | --- | --- |
+| « Nouveau compte » | `POST /admin/accounts` | `login` | « Identifiant », text, 32 characters | the login |
+| « Nouveau compte » | same | `profile` | « Profil », list | `ADMIN` or `USER` |
+| « Nouveau compte » | same | `password` | « Mot de passe provisoire », password, 12 to 256 characters | the provisional password |
+| Every form of an account | `POST /admin/accounts/{login}` | `action` | hidden | `name`, `profile`, `disable`, `enable`, `sessions`, `reset` or `delete` |
+| Every form of a row of `/admin/` | same | `return` | hidden | `list`: the answer comes back to `/admin/` |
+| « Changer le nom » | same | `name` | « Nom et prénom », text, 60 characters | the name |
+| « Changer le profil » | same | `profile` | « Profil », list | `USER` or `ADMIN` |
+| « Réinitialiser le mot de passe » | same | `password` | « Mot de passe provisoire », password, 12 to 256 characters | the provisional password |
+| Deletion | same | `confirm` | « Retapez l'identifiant pour confirmer » or « Retapez « \<login> » », text, 32 characters | the login, retyped |
+
+### Form fields of the configuration page
+
+All the forms post to `POST /admin/settings` and carry `revision`, the configuration revision.
+
+| Form | Field | Control | Content |
+| --- | --- | --- | --- |
+| Code | `action` | button « Enregistrer » or « Supprimer »; hidden in « Nouveau code d'activité » | `activity-update`, `activity-delete`, `activity-add` |
+| Code | `id` | hidden; « Identifiant », text, 16 characters, in « Nouveau code d'activité » | the identifier |
+| Code | `label` | « Libellé », text, 60 characters | the label |
+| Code | `effect` | « Effet », list « Alimente » or « Décompte » | `feeds` or `consumes` |
+| Code | `counter` | « Compteur », list | the counter fed or consumed |
+| Code | `color` | « Couleur », colour | the default colour |
+| Code | `archived` | « Archivé », checkbox, not in « Nouveau code d'activité » | the code is archived |
+| Counter | `action` | button « Enregistrer » or « Supprimer »; hidden in « Nouveau compteur » | `counter-update`, `counter-delete`, `counter-add` |
+| Counter | `id` | hidden; « Identifiant », text, 16 characters, in « Nouveau compteur » | the identifier |
+| Counter | `label` | « Libellé », text, 60 characters | the label |
+| Counter | `short` | « Libellé court », text, 6 characters | the short label |
+| Counter | `amount` | « Montant par défaut », text, 32 characters | the default amount |
+| Counter | `every` | « Rythme », list « par mois » or « par an » | `month` or `year` |
+| Counter | `period` | « Début de période (MM-JJ) », text, 5 characters | the period start |
+| Counter | `carry` | « Solde reporté (arrondi à l'entier supérieur) », checkbox | the balance is carried over |
+| Counter | `enabled` | « Activé par défaut », checkbox | enabled by default |
+| Counter | `archived` | « Archivé », checkbox, not in « Nouveau compteur » | the counter is archived |
+
+## COMMAND LINE
+
+```text
+timesheet init [--template=share/timesheet/timesheet-database-template.json]
+timesheet run [--addr=...] [--origin=...] [--trusted-proxy=...] [--tls-cert=... --tls-key=...]
+timesheet config show
+timesheet config set server.addr|server.origins|server.trusted_proxies|server.timezone VALUE
+timesheet user add LOGIN [--profile=USER|ADMIN]
+timesheet user profile LOGIN USER|ADMIN
+timesheet user passwd LOGIN
+timesheet user del LOGIN
+timesheet user list
+timesheet session clear
+timesheet import LOGIN FILE.json [--from=YYYY-MM] [--to=YYYY-MM] [--dry-run] [--replace] [--validate]
+timesheet help | version
+```
+
+### Syntax
+
+- Options are written `--name=value` (or `--name` for a flag), anywhere on the line, before or after the arguments.
+- An argument cannot start with `-`: every word starting with `-` is read as an option.
+- An option that does not apply to the command is refused.
+- The default paths are relative to the current directory: run the commands from the repository root, or give the paths.
+- Without a command, the program prints the help and exits with 0. `-h` and `--help` print it too.
+
+### Common options
+
+| Option | Value | Default |
+| --- | --- | --- |
+| `--database=<file>` | the database file; not empty, not ending with `/`, its file name not starting with a dot | `var/lib/timesheet/timesheet-database.json` |
+| `--config=<file>` | the [server configuration](#server-configuration); not empty, not ending with `/` | `etc/timesheet/timesheet.json` |
+| `--log-level=<level>` | the lowest level written on the standard error: `debug`, `info`, `warn` or `error`, in any case, with an optional offset such as `info+2` | `info` |
+
+A database file name cannot start with a dot because the lock and session files, next to it, use names starting with a dot.
+
+### Exit codes
+
+| Code | Meaning | Cases |
+| --- | --- | --- |
+| 0 | success | the command did its work; `help`, `version`, no command, `-h`, `--help` |
+| 1 | error | an invalid setting value for `config set`; an invalid `--profile` or profile argument, or an invalid `--origin` or `--addr`, which are checked once the database is open; an invalid login; an unknown account; a login taken; the last administrator; a refused import; a weak password or two different passwords; the database missing, existing already for `init`, locked by the server, malformed or insecure; `run` without an enabled `ADMIN`; `run` unable to listen or to set up TLS |
+| 2 | usage error | an unknown command, option or `config set` key; `config`, `user` or `session` without subcommand; a wrong number of arguments; an option that does not apply to the command; a malformed value of `--from`, `--to`, `--log-level` or `--trusted-proxy`; an empty `--origin=` or `--trusted-proxy=`; `--from` after `--to`; `--tls-cert` without `--tls-key`, or the reverse; an invalid `--database` or `--config` |
+| 128 + signal | password prompt interrupted | 129 for SIGHUP, 130 for SIGINT, 131 for SIGQUIT, 143 for SIGTERM; the terminal echo is restored |
+
+An error is printed on the standard error as `timesheet: <message>`. An error found while reading the options and the arguments is followed by `Try 'timesheet help' for more information.`, except `--from` after `--to`, which prints only `timesheet: --from after --to`.
+
+### Help and version
+
+- `help` prints the usage in French: the commands, the common options and the options of each command.
+- `version` prints `timesheet <version> (revision <commit>, <date>)`, the release number written in the program followed by the commit and its date, with `, modified` before the closing parenthesis when the tree had uncommitted changes.
+
+### Bootstrap
+
+1. `timesheet init` creates the database from the configuration template.
+2. `timesheet user add <login> --profile=ADMIN` creates the first administrator.
+3. `timesheet run` starts the server.
+
+The procedure, with the paths of an installed package, is in [OPERATIONS.md, Install](OPERATIONS.md#install) and [README.md, First start](../README.md#first-start).
+
+### Passwords
+
+`user add` and `user passwd` read the password from the first source available:
+
+1. the environment variable `TIMESHEET_PASSWORD`, refused when it is set but empty;
+2. otherwise, on Linux, twice on the terminal without echo; the two must match, and an interruption restores the echo;
+3. otherwise one line of the standard input (4096 bytes at most).
+
+The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The help text lists these sources in another order; the order of this list is the one applied.
+
+### Lock and running server
+
+| Command | Takes the lock | Needs the server stopped | Reads the database |
+| --- | --- | --- | --- |
+| `run` | yes, while it runs | not applicable | yes |
+| `init` | yes | yes | creates it |
+| `user add`, `user profile`, `user passwd`, `user del` | yes | yes | yes |
+| `user list` | no | no | yes |
+| `session clear` | yes | yes | yes |
+| `import`, `--dry-run` included | yes | yes | yes |
+| `config show`, `config set` | no | no | no |
+| `help`, `version` | no | no | no |
+
+- The lock is `.<file name>.lock` next to the database ([Database](#database)).
+- A command that needs the lock while the server runs fails with exit 1: `the file is used by another process`, followed by `(stop the server or use /admin/)` for the `user` commands and `(stop the server first)` for `session clear` and `import`.
+- A command that takes the lock checks the database file and its directory ([Files and directories](#files-and-directories)). `user list` checks only the file.
+
+### `timesheet init`
+
+- Reads the configuration template given by `--template` (default `share/timesheet/timesheet-database-template.json`), strictly, 1 MiB at most ([Configuration template](#configuration-template)).
+- Creates the database with that configuration and no account, mode 0600.
+- Refuses an existing database (exit 1).
+- Does not create the directory of the database: it must exist.
+- Prints « Base créée : \<fichier> » and the command that creates the first administrator.
+
+### `timesheet run`
+
+- Reads the server configuration first, then takes the lock and loads the database.
+- Refuses to start (exit 1) while no enabled `ADMIN` exists, with `no administrator account: run 'timesheet user add <login> --profile=ADMIN --database=<file>' first`.
+- Restores the sessions of the [session file](#session-file).
+- Stops on SIGINT or SIGTERM, letting the requests in progress end for up to 10 seconds.
+
+#### Address and origins
+
+| Setting | Option | Server configuration | Default |
+| --- | --- | --- | --- |
+| Listening address | `--addr=host:port` | `server.addr` | `127.0.0.1:8080` |
+| Accepted origins | `--origin=scheme://host[:port]` | `server.origins` | `http://127.0.0.1:8080`, `http://localhost:8080` |
+| Trusted proxies | `--trusted-proxy=address-or-prefix` | `server.trusted_proxies` | the RFC 1918 ranges |
+
+- `--origin` and `--trusted-proxy` can be repeated, and each also takes a comma-separated list.
+- An option replaces the matching setting of the file; it cannot empty the list of trusted proxies.
+- A page opened under a host name that is not an accepted origin gets 421 « Hôte inconnu ».
+
+#### Derived origins
+
+- With `--addr` and without `--origin`, `server.origins` is ignored: the accepted origins are derived from the listener.
+- They are `localhost`, `127.0.0.1`, `::1`, the IPv4 addresses of the interfaces, the host name and `<host name>.local`, with the port of the listener.
+- They use `https` when a certificate pair is given, `http` otherwise.
+
+#### HTTPS
+
+- `--tls-cert=<file>` and `--tls-key=<file>` serve HTTPS with a provided certificate pair.
+- They need https origins: `--origin=https://...`, https origins in the file, or origins derived with `--addr`.
+- With http origins and a pair, `run` refuses to start (exit 1).
+- With http origins and no pair, `run` warns at start that passwords and cookies travel in clear.
+
+#### Behind a reverse proxy
+
+1. Give the public URL as origin: `--origin=https://...` or `server.origins`.
+2. Give the address of the proxy as trusted proxy: `--trusted-proxy` or `server.trusted_proxies` (IP addresses or prefixes).
+3. The proxy must pass the public `Host` unchanged.
+4. The proxy must append the client address to `X-Forwarded-For`.
+
+- The header `X-Forwarded-For` is believed only from a trusted proxy.
+- The client is then the last address of that header, the one the proxy appended.
+- The risks of this set-up are in [SECURITY.md](SECURITY.md#client-address-and-trusted-proxies); the procedure is in [OPERATIONS.md](OPERATIONS.md#behind-a-reverse-proxy-on-another-machine).
+
+### `timesheet config show` and `timesheet config set`
+
+- `config show` prints the server configuration read from the file, as JSON. It prints the defaults when the file is missing, without saying so. It never shows the options of a running server.
+- `config set KEY VALUE` validates the new value, then rewrites the file atomically, mode 0644, creating its directory (mode 0755) when missing.
+- `config set` prints « \<clé> mis à jour dans \<fichier> ; relancez le serveur pour l'appliquer. ».
+- Neither reads the database nor needs the server stopped.
+- Without `--config`, both act on `etc/timesheet/timesheet.json` under the current directory; `config set` creates it there.
+
+| Key | Value |
+| --- | --- |
+| `server.addr` | `host:port`, the port being 0 to 65535 or a service name |
+| `server.origins` | a comma-separated list of `scheme://host[:port]`, all `http` or all `https`, at least one |
+| `server.trusted_proxies` | a comma-separated list of IP addresses or prefixes (`10.0.0.1`, `10.0.0.0/8`); an empty value trusts no proxy |
+| `server.timezone` | an IANA time zone such as `Europe/Paris` |
+
+Change `server.origins` together with `server.addr`: a request whose `Host` is not an accepted origin is refused (421).
+
+### `timesheet user add`
+
+- Creates an account `enabled`, with the profile of `--profile` (`USER` by default) and its tracking start on the first day of the current month in `server.timezone`.
+- Refuses a login already taken (exit 1), before reading the password.
+- Reads the password ([Passwords](#passwords)), then the server configuration.
+- The account does not have to change its password.
+- Prints « Compte \<login> créé (\<profil>). ».
+
+### `timesheet user profile`
+
+- Sets the profile `USER` or `ADMIN` of an account.
+- Closes its sessions first, even when the change is then refused (last enabled `ADMIN`, exit 1).
+- Prints « Profil de \<login> : \<profil> ».
+
+### `timesheet user passwd`
+
+- Reads a new password, closes the sessions of the account, then sets the password.
+- Clears the flag of a provisional password.
+- Prints « Mot de passe de \<login> changé. ».
+
+### `timesheet user del`
+
+- Closes the sessions of the account, then deletes the account and all its data.
+- Refuses the last enabled `ADMIN` (exit 1).
+- Prints « Compte \<login> supprimé. ».
+
+### `timesheet user list`
+
+- Prints one row per account under the headers `LOGIN`, `PROFIL`, `ÉTAT`, `CRÉÉ LE`, `DERNIÈRE CONNEXION`, `NOM`.
+- The state is `enabled` or `disabled`; it can only be changed from the web.
+- The creation and the last login are UTC timestamps (RFC 3339); the last login is `jamais` before the first.
+- Works while the server runs.
+
+### `timesheet session clear`
+
+- Closes every session of every account by emptying the [session file](#session-file).
+- Needs the server stopped, like every command that writes.
+- Prints « Toutes les sessions sont fermées. ».
+
+### `timesheet import`
+
+Imports days, adjustments and settings into an account ([Import](#import)).
+
+## IMPORT
+
+### What the import reads
+
+- `import LOGIN FILE.json` reads a JSON file of the format `timesheet-import` and writes its content into the account `LOGIN`.
+- The application reads no spreadsheet. A spreadsheet is converted to this format outside the application: its categories become activity codes, its notes comments, and the hand corrections of a balance that the rules do not explain become adjustments.
+
+### File format
+
+```json
+{
+  "format": "timesheet-import",
+  "version": 1,
+  "settings": {
+    "start": "2025-01-01",
+    "counters": {
+      "CP": { "enabled": true, "initial": "1.5" },
+      "TPC": { "enabled": true, "amount": "7/12", "initial": "0" }
+    }
+  },
+  "days": { "2025-01-02": { "am": "TT", "pm": "TT", "comment": "Réunion d'équipe" } },
+  "adjustments": [ { "date": "2025-06-30", "counter": "CP", "amount": "0.5", "reason": "Alignement sur le bulletin de paie" } ]
+}
+```
+
+| Field | Required | Content |
+| --- | --- | --- |
+| `format` | yes | exactly `"timesheet-import"` |
+| `version` | yes | exactly `1` |
+| `settings` | no | `start`, a date `YYYY-MM-DD`; `counters`, a map from a counter identifier to `enabled`, `amount` and `initial`, as in the [database](#database) |
+| `days` | no | a map from a date `YYYY-MM-DD` to a day record `am`, `pm`, `comment` |
+| `adjustments` | no | a list of `date`, `counter`, `amount`, `reason` |
+
+- The file is 8 MiB at most.
+- It is decoded strictly: unknown fields and data after the object are refused.
+- As for the database, the standard decoder matches field names without regard to case and keeps the last of repeated keys, a repeated date included.
+
+### Import template
+
+- `share/timesheet/timesheet-import-template.json` is a small fictitious file of this format, installed next to the configuration template.
+- It covers January 2026: every day entered, a holiday, paid leave, a half-day of `RTT`, an absence, comments, the settings of `CP`, `RTT` and `TPC`, and one adjustment.
+- A test imports it, so that it stays valid.
+
+### Options
+
+| Option | Effect |
+| --- | --- |
+| `--from=YYYY-MM` | skips the days and adjustments before this month; the settings are not filtered |
+| `--to=YYYY-MM` | skips the days and adjustments after this month; the settings are not filtered |
+| `--replace` | replaces an existing day entry at a date present in the file; other dates are untouched |
+| `--dry-run` | goes through every check, the size limits of the account included, and writes nothing; it still takes the lock, so it needs the server stopped |
+| `--validate` | validates the imported months afterwards ([Validation of the imported months](#validation-of-the-imported-months)); with `--dry-run`, lists the months that would be validated |
+
+`--from` after `--to`, or a malformed month, is a usage error (exit 2).
+
+### Imported settings
+
+Settings follow the rules of the [settings page](#settings-page):
+
+- only existing counters that are not archived;
+- own amounts between 0 and 366, initial balances between -366 and 366;
+- `start` and the initial balances can change only while no month is validated; the same values are accepted;
+- `start` never after the date of an existing adjustment;
+- an absent `initial` keeps the stored initial balance, an absent `enabled` the stored flag;
+- an absent `amount` means the default amount;
+- `enabled` and `amount` apply from the first open month.
+
+### Imported days
+
+- Each imported day is checked like an entry of the grid, its comment trimmed the same way.
+- Its codes must be offered: an archived code, or a consuming code whose counter is disabled, is refused unless it is already stored on that half-day.
+- A consuming code is refused on a weekend or a legal holiday.
+- The comment follows the [free-text rule](#free-text-rule), 500 characters at most.
+- The month must be within the planning horizon and not validated.
+- An existing entry is replaced only with `--replace`, even an identical one.
+- Empty days are skipped.
+
+### Imported adjustments
+
+- Each imported adjustment is checked like one entered in the activity page ([Adjustments](#adjustments)).
+- The date must fall in an open month of the tracking, not before the tracking start, within the planning horizon.
+- The counter must exist and not be archived.
+- The quantity is signed, non-zero, between -366 and 366.
+- The reason is mandatory, one line, 200 characters at most; it is trimmed.
+- It receives an identifier.
+- An adjustment identical to a stored one or to an earlier one of the same file (date, counter, amount, reason) is skipped with a warning, so that a file can be imported again with `--replace`.
+
+### Moved tracking start
+
+- When the first imported day precedes the tracking start of an account without validated month, the tracking start moves back to that day, with a warning.
+- This also overrides a later `start` given in the same file.
+- When the account has a validated month, such a file is refused.
+
+### Errors
+
+- Every problem is listed, prefixed with `erreur : `, then the command exits with 1 and nothing is written.
+- Problems of days and adjustments carry their date; problems of settings do not.
+- A file with no day and no adjustment within `--from` and `--to`, and no `settings`, is refused (« aucune journée à importer »). A file holding only `"settings": {}` is accepted.
+
+| Problem | Text after `erreur : ` |
+| --- | --- |
+| Day beyond the planning horizon | « \<date> : au-delà de l'horizon de planification » |
+| Day in a validated month | « \<date> : le mois est validé » |
+| Day already entered, without `--replace` | « \<date> : une saisie existe déjà (utilisez --replace) » |
+| Day refused by the grid rules | « \<date> : \<problème> », as in [Refusals of the activity page](#refusals-of-the-activity-page) |
+| File starting before a validated tracking start | « le fichier commence avant le début du suivi, déjà validé » |
+| Adjustment outside an open tracked month | « ajustement du \<date> : la date doit tomber dans un mois ouvert, à partir du début du suivi » |
+| Adjustment on an unknown or archived counter | « ajustement du \<date> : compteur "\<ID>" inconnu ou archivé » |
+| Adjustment quantity | « ajustement du \<date> : quantité non nulle entre -366 et 366 attendue » |
+| Adjustment reason | « ajustement du \<date> : motif obligatoire, une ligne de 200 caractères au plus » |
+| `start` locked | « début du suivi : un mois est déjà validé, il n'est plus modifiable » |
+| `start` after an adjustment | « début du suivi : des ajustements sont datés avant \<date> » |
+| Unknown or archived counter in `settings` | « compteur "\<ID>" inconnu ou archivé » |
+| Own amount | « \<compteur> : montant d'acquisition invalide (entre 0 et 366) » |
+| Initial balance | « \<compteur> : solde initial invalide (entre -366 et 366) » |
+| Initial balance locked | « \<compteur> : un mois est déjà validé, les soldes initiaux ne sont plus modifiables » |
+
+### Report
+
+The command prints, in this order:
+
+1. the warnings, prefixed with `avertissement : ` (« début du suivi avancé du \<date> au \<date> », « ajustement du \<date> déjà présent, ignoré »);
+2. « Réglages lus : début du suivi \<date>, \<n> compteur(s). » when the file has `settings`;
+3. « \<n> journée(s) lue(s), de \<mois> à \<mois>. »;
+4. month by month, « non renseigné(s) en \<mois> : \<dates> »: the days before today with a half-day or both left without entry, weekends and holidays included;
+5. « \<n> ajustement(s) lu(s). »;
+6. with `--validate`, « \<mois> validé. » per month, or « validation arrêtée à \<mois> : \<raison> »;
+7. « Simulation : rien n'a été écrit. » with `--dry-run`, otherwise « Import enregistré. ».
+
+Months are written `YYYY-MM` and dates `YYYY-MM-DD`.
+
+### Validation of the imported months
+
+With `--validate`, and only when days were imported:
+
+1. The open months are validated in order, from the first open month.
+2. The validation stops after the last imported month, and before the current month: the current month is never validated, without message.
+3. It stops at a month that was not imported (« ce mois n'a pas été importé ») or that cannot be validated.
+4. Each month is recorded as validated on its last day at 23:59:59 in `server.timezone`, its frozen entries created at that time, as if it had been validated then.
+5. A month whose history already holds a later event (it was reopened since) is recorded as validated at the time of the import, so that its history stays in order.
+
+After a validation, importing the same file again fails: its days and adjustments fall in validated months. A different `start` or initial balance would also be refused, since they are locked.
+
+### Source data
+
+The spreadsheet an employee converts, and the import file made from it, are personal data. They never enter the repository: the tests build synthetic import files.
+
+## DATABASE
+
+### File
+
+- A single JSON file holds the configuration, the accounts and their data.
+- Its default path is `var/lib/timesheet/timesheet-database.json`; the option `--database` gives another one.
+- Its mode is 0600, and it belongs to the account that runs the program.
+- `init` creates it ([`timesheet init`](#timesheet-init)).
+
+### Example
+
+```json
+{
+  "version": 1,
+  "revision": 42,
+  "configuration": {
+    "revision": 3,
+    "activities": [ { "id": "CP", "label": "Congés payés", "consumes": "CP", "feeds": null, "color": "#e01b24", "archived": false } ],
+    "counters": [ { "id": "CP", "label": "Congés payés", "short_label": "CP", "enabled_by_default": true, "accrual": { "every": "month", "amount": "2.08" }, "period_start": "06-01", "carry_over": true, "archived": false } ]
+  },
+  "accounts": [
+    {
+      "login": "jdupont",
+      "name": "Jeanne Dupont",
+      "profile": "ADMIN",
+      "password": "pbkdf2-sha256$600000$<salt>$<key>",
+      "must_change_password": false,
+      "state": "enabled",
+      "created": "2026-11-08T10:00:00Z",
+      "last_login": "2026-11-08T10:05:00Z",
+      "revision": 17,
+      "settings": { "start": "2025-01-01", "counters": { "CP": { "enabled": true, "amount": null, "initial": "1.5" }, "TPC": { "enabled": true, "amount": "7/12", "initial": "0" }, "RTT": { "enabled": false, "amount": null, "initial": "0" } }, "colors": { "TT": "#c8e0b0" } },
+      "days": { "2026-11-03": { "am": "TT", "pm": "TT", "comment": "Formation sécurité" }, "2026-11-04": { "am": "TT", "pm": null, "comment": null } },
+      "adjustments": [ { "id": "9f2c…", "date": "2026-11-30", "counter": "CP", "amount": "1.5", "reason": "alignement bulletin de paie" } ],
+      "months": { "2026-10": { "status": "validated", "validated_at": "…", "rules": { "ABS": "0", "CP": "2.08", "CSS": "0", "JF": "0", "TP": "0", "TPC": "7/12", "TT": "0", "WE": "0" }, "indicators": { "holidays": "0", "total": "22", "working_days": "22", "missing": "0", "upcoming": "0", "by_counter": { "CP": "4", "TP": "4", "TT": "14", "WE": "9" }, "by_code": { "CP": "4", "TP": "4", "TT": "14", "WE": "9" } }, "history": [ { "at": "…", "action": "validated", "reason": null } ] } },
+      "ledger": [ { "id": "a81f…", "month": "2026-10", "date": "2026-10-31", "counter": "CP", "kind": "credit", "amount": "2.08", "label": "Acquisition octobre 2026", "ref": null, "created": "…" } ]
+    }
+  ]
+}
+```
+
+The configuration of the example is shortened to one code and one counter; `rules` holds the effective amount of each counter enabled for the account at the validation (here `RTT` is disabled).
+
+### Conventions of the fields
+
+- Quantities are strings (`"2.08"`, `"7/12"`), dates `YYYY-MM-DD`, months `YYYY-MM`, times RFC 3339 in UTC.
+- Every field of the schema is always written.
+- A field without value is written `null`, and a `null` is read as an empty value.
+- Empty lists and maps are written `[]` and `{}`, except the colours of an account, written `null` while the account never changed them.
+- The configuration template follows the same rules.
+
+| Field | `null` when |
+| --- | --- |
+| `name` | no name is given |
+| `last_login` | the account never logged in |
+| `consumes`, `feeds` of a code | the code does not consume, or does not feed, a counter |
+| `am`, `pm` of a day | the half-day is not entered |
+| `comment` of a day | no comment is entered |
+| `amount` of a counter setting | no own amount is set |
+| `enabled` of a counter setting | the account did not choose |
+| `ref` of a ledger entry | the entry cancels nothing |
+| `reason` of a month event | the event is a validation |
+| `validated_at`, `rules`, `indicators`, `history` of a month | the month was never validated |
+| `colors` of the settings | the account never changed a colour |
+
+- `state` is mandatory: `enabled` for an active account, `disabled` for a disabled one.
+- `profile` is `USER` or `ADMIN`.
+- `status` of a month is `open` or `validated`; the `action` of a month event is `validated` or `reopened`.
+- `kind` of a ledger entry is `debit`, `credit`, `adjustment` or `reversal`.
+
+### Schema version
+
+- `version` is the version of the schema. Version 1 is the current one.
+- A database of a newer version is refused (`the database was written by a newer version`): an older binary cannot read it.
+- Any other version is refused as malformed.
+- The layout of version 1 changed once without a change of version: see [Migration notes](#migration-notes).
+
+### Revisions
+
+| Revision | Raised by | Checked by |
+| --- | --- | --- |
+| `revision` | every write | nothing: it counts the writes |
+| `configuration.revision` | every change of the configuration | the forms of the configuration page and of the settings page |
+| `accounts[].revision` | every write of one account: grid, settings, adjustments, validation, reopening, import; also a change of profile, state or password, from the web or the command line | the forms of that account |
+
+A write of another account never refuses one's own form.
+
+### Validation at load
+
+The whole file is validated when it is loaded. An invalid database stops the program (exit 1) with the JSON path of the error; a value that cannot be decoded, such as an invalid quantity, is reported with the decoding error.
+
+| Object | Checks |
+| --- | --- |
+| File | strict decoding: unknown fields and data after the object refused; the standard decoder matches field names without regard to case and keeps the last of repeated keys; `version` as in [Schema version](#schema-version); 64 MiB at most |
+| Configuration | the rules of [Validation before writing](#validation-before-writing) |
+| Accounts | 200 at most; logins valid and unique; profiles, states, names (one line, 60 characters at most, no surrounding space); password hashes with 1 000 to 1 200 000 iterations |
+| Settings | tracking start; counters that exist; own amounts and initial balances within their bounds; colours `#rrggbb` of codes that exist |
+| Days | known codes; comments following the [free-text rule](#free-text-rule) |
+| Adjustments | an existing counter; unique non-empty identifiers; a date; a non-zero amount between -366 and 366; a non-empty reason following the free-text rule |
+| Ledger | an existing counter; a valid kind; unique non-empty identifiers; a date within the month of the entry; a label following the free-text rule, 1000 characters at most |
+| Reversals | each cancels one earlier entry that is not itself a reversal, of the same counter, month and date, with the opposite amount, at most once |
+| Months | status `open` or `validated`; history actions and reopening reasons; a validated month has its validation time and indicators; month rules name existing counters |
+| Consistency | validated months follow each other without gap from the month of the tracking start; every entry of a month that is not validated is a reversal or cancelled by one |
+| Round trip | the file, encoded again, can be decoded again |
+
+### Writing
+
+- The database is kept in memory.
+- It is rewritten atomically and synchronously on each change: temporary file, `fsync`, rename, `fsync` of the directory.
+- Every write checks that the encoded file can be decoded again before replacing it; the load checks the same. A value that could not be read back never reaches the disk.
+- A write that would make the file larger than 64 MiB is refused.
+
+### Files and directories
+
+- The database file must be a regular file, not a symbolic link, belonging to the account that runs the program, with no access for group or other.
+- Its directory must exist, belong to the same account, and not be writable by others unless sticky. A directory writable by its group gives a warning.
+- These checks apply to every command that takes the lock; `user list` checks the file only.
+- Leftover temporary files are removed only by the holder of the lock.
+- The threats these checks answer are in [SECURITY.md](SECURITY.md#files).
+
+### Lock
+
+- An exclusive lock `.<file name>.lock`, next to the database, allows one writer at a time: `.timesheet-database.json.lock` by default.
+- The commands that take it are listed in [Lock and running server](#lock-and-running-server).
+- A command refuses to write while the server runs.
+
+### Backup and restore
+
+- A backup is a copy of the single file; writes are atomic, so a copy is always whole.
+- The server must be stopped before a restore: it keeps the database in memory and would overwrite the file.
+- The copy is put back with mode 0600, owned by the account that runs the program, in an existing directory owned by that account and not writable by others unless sticky.
+- A restored backup brings back the accounts, passwords, profiles and states of its date. Passwords changed since must be changed again, and accounts disabled or deleted since must be disabled or deleted again.
+- The sessions of the [session file](#session-file) stay open: `session clear` closes them. A session of a deleted or disabled account, or created before its account, is refused at its next request.
+- The procedure is in [OPERATIONS.md](OPERATIONS.md#backup-and-restore).
+
+## SESSION FILE
+
+- The sessions are saved, hashed, in a file named after the database: `.<name>.sessions` next to `<name>`, so `.timesheet-database.json.sessions` by default, as the lock is `.<name>.lock`.
+- Its mode is 0600, and it is 8 MiB at most.
+- It lets the sessions survive a restart of the server.
+- A session file that cannot be read at start, a file with a wrong mode included, is replaced by an empty one, with the warning `sessions not restored`.
+- The events that close sessions are in [Closing of sessions](#closing-of-sessions).
+- Its content, its writing and the expiry of the sessions are described in [SECURITY.md](SECURITY.md#sessions).
+
+## SERVER CONFIGURATION
+
+The settings of the server live in their own file, apart from the database. Its default path is `etc/timesheet/timesheet.json`; the option `--config` gives another one.
+
+```json
+{
+  "server": {
+    "addr": "127.0.0.1:8080",
+    "origins": ["http://127.0.0.1:8080", "http://localhost:8080"],
+    "trusted_proxies": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
+    "timezone": "Europe/Paris"
+  }
+}
+```
+
+### Keys of the server configuration
+
+| Setting | Format | Meaning | Default |
+| --- | --- | --- | --- |
+| `addr` | `host:port` | the listening address | `127.0.0.1:8080` |
+| `origins` | `scheme://host[:port]`, all `http` or all `https`, at least one, no path, query or user | the accepted origins: the public URLs of the server | `http://127.0.0.1:8080`, `http://localhost:8080` |
+| `trusted_proxies` | IP addresses or prefixes | the proxies whose `X-Forwarded-For` is believed; an empty list trusts none | the RFC 1918 ranges |
+| `timezone` | an IANA time zone, not `Local` | the zone of [today](#today-and-time-zone) | `Europe/Paris` |
+
+### Reading
+
+- `run` reads the file first.
+- `config show` and `config set` read it.
+- `user add` and `import` read it after their other checks, before writing.
+- The file is read strictly: unknown fields and data after the object are refused, and it is 1 MiB at most. As for the database, the standard decoder matches field names without regard to case and keeps the last of repeated keys.
+- An invalid file stops the command (exit 1) with the path of the faulty setting, for instance `server.addr: an address host:port is expected`.
+- A missing file is not an error: the defaults apply. They are also the values of the file shipped in the repository.
+- The defaults apply only when the whole file is missing. In an existing file, `addr`, `origins` and `timezone` are mandatory, and an absent `trusted_proxies` trusts no proxy.
+
+### Priority
+
+- `--addr` replaces `server.addr`.
+- `--origin` replaces `server.origins`.
+- `--addr` without `--origin` ignores `server.origins`: the origins are derived from the listener ([Derived origins](#derived-origins)).
+- `--trusted-proxy` replaces `server.trusted_proxies`; it cannot empty the list.
+- Without option, the file applies; without file, the defaults.
+- A change applies at the next start of the server.
+
+### Editing
+
+- The file holds no secret and is never written by the server.
+- It can be read by anyone (mode 0644) and edited by hand.
+- `config set` rewrites it after validating the new value ([`timesheet config show` and `timesheet config set`](#timesheet-config-show-and-timesheet-config-set)).
+- The configuration page shows the settings read at the start of the server, read-only.
+
+### Default trusted proxies
+
+- The default trusted proxies are the private ranges of RFC 1918.
+- A reverse proxy on a private network is therefore believed about its client without further setting.
+- A server that listens on the loopback only receives no request from these ranges.
+- Narrow the list to the address of the proxy.
+
+## CONFIGURATION TEMPLATE
+
+- `share/timesheet/timesheet-database-template.json` is the initial `configuration` section: codes, counters and default colours ([Codes of the template](#codes-of-the-template), [Counters of the template](#counters-of-the-template)).
+- It is read by `init` only, strictly, 1 MiB at most, and validated like the configuration.
+- Editing it afterwards has no effect on an existing database: codes, counters and default colours are then edited in the [configuration page](#configuration-page).
+- The settings of the server are not in the database: see [Server configuration](#server-configuration).
+
+## MIGRATION NOTES
+
+### Server settings moved out of the database
+
+The settings of the server once lived in the database, in a section `configuration.server` with the keys `addr`, `origins`, `trusted_proxy` (one IP address, or `null`) and `timezone`. Commit 99f0c47 moved them to the [server configuration](#server-configuration) file, without raising the schema `version`, which is still 1.
+
+| Symptom | Cause |
+| --- | --- |
+| Every command that loads the database fails with `store: malformed database: json: unknown field "server"` (exit 1) | the database still holds `configuration.server` |
+| `run` logs `cannot load <database>` with that error and exits with 1 | same |
+| A server configuration with the key `trusted_proxy` fails with `json: unknown field "trusted_proxy"` (exit 1) | the key is now the list `trusted_proxies` |
+
+Procedure:
+
+1. Stop the server and back up the database file.
+2. Copy `addr`, `origins` and `timezone` from `configuration.server` into the server configuration, by hand or with `config set`.
+3. Write the former `trusted_proxy` as the list `trusted_proxies`: `["<address>"]`, or `[]` when it was `null`. A `null` former value trusted no proxy, while the default of a missing file trusts the RFC 1918 ranges.
+4. Delete the object `server` from `configuration` in the database, keeping its mode 0600 and its owner.
+5. Check that the database loads, for instance with `user list`, then start the server.
+
+### Renamed shipped files
+
+The same commit renamed the shipped files:
+
+| Former name | Current name |
+| --- | --- |
+| `share/timesheet/timesheet-template.json` | `share/timesheet/timesheet-database-template.json` |
+| `share/timesheet/timesheet-import-example.json` | `share/timesheet/timesheet-import-template.json` |
+
+A script or an `--template` option that names a former file fails with `no such file or directory`.
+
+### Former session file
+
+- Sessions are saved in `.<database file name>.sessions` ([Session file](#session-file)).
+- A file `timesheet-sessions.json` left by an older version is no longer read: its users log in again.
+- Delete it, as it holds the CSRF tokens of its sessions.
+
+### Rule for future changes
+
+A change of the layout of the database raises its `version` and makes the program read or convert the former version, or adds a note to this section with its symptom and its procedure. The same applies to the server configuration and to the import format.
+
+## LOGS
+
+### Line format
+
+- The server writes its logs on the standard error, one line per event.
+- A line is a list of `key=value` pairs starting with `time`, `level` and `msg`.
+- `--log-level` sets the lowest level written: `info` by default.
+- The commands of the command line write their warnings in the same format.
+
+### Access log
+
+Every request that reaches the handlers gives one line `msg=request` at the level `info`, written when the answer is complete, whatever the answer: pages, static files, redirections, refusals of the guards, errors.
+
+```text
+time=2026-11-13T16:40:12.345+01:00 level=INFO msg=request client=203.0.113.9 peer=10.0.0.1 user=jdupont method=POST host=timesheet.example path=/dashboard/activity/2026/11 protocol=HTTP/1.1 status=303 bytes=0 duration=5.150547ms agent="Mozilla/5.0 …"
+```
+
+| Field | Content |
+| --- | --- |
+| `client` | the address of the client: the one given by a trusted proxy in `X-Forwarded-For`, otherwise the address of the connection |
+| `peer` | the address of the connection: the proxy, behind one |
+| `user` | the login of the session when the request reached a page that reads the session; `-` otherwise |
+| `method`, `host`, `path`, `protocol` | the method, the `Host` header, the path without its query string, the protocol version |
+| `status` | the status code |
+| `bytes` | the size of the body written by the page (a `HEAD` counts it although nothing is sent) |
+| `duration` | the time taken, as a Go duration (`370.824µs`, `5.150547ms`) |
+| `agent` | the `User-Agent` header, cut at 200 bytes |
+
+- A successful login is logged under its login, a failed one under `-`: the login typed is never logged.
+- `user` is also `-`, even with a valid session, for static files, `GET /login`, 405 answers and the refusals made before routing (403 origin, 414, 421).
+- Requests refused by the parser of the standard library (headers beyond the limit, 431; malformed request, 400) are answered in plain text without a log line.
+
+### Events
+
+| Message | Level | Fields | When |
+| --- | --- | --- | --- |
+| `starting` | INFO | `version` | `run` starts |
+| `listening` | INFO | `address`, `origins`, `database` | the server is ready |
+| `serving plain HTTP: …` | WARN | | the origins are `http` |
+| `stopped` | INFO | | the server stopped |
+| `server stopped` | ERROR | `error` | the server failed while serving |
+| `cannot load <path>`, `cannot lock <path>`, `cannot listen on <address>`, `invalid origins`, `invalid trusted proxies`, `TLS needs https origins`, `TLS setup failed`, `cannot prepare <path>`, `cannot build the site` | ERROR | `error` | `run` cannot start; it exits with 1 |
+| `sessions not restored` | WARN | `error` | the session file cannot be read at start |
+| `cannot save the sessions` | ERROR | `error` | the session file cannot be written |
+| `unreadable session file replaced by an empty one` | WARN | `error` | `user profile`, `user passwd` or `user del` met an unreadable session file |
+| `orphan temporary file removed` | WARN | `file` | a temporary file left by an interrupted write was removed |
+| `directory is writable by its group` | WARN | `directory` | the directory of the database is group-writable |
+| `file written but its directory is not synchronised` | WARN | `error` | the `fsync` of the directory failed after a write |
+| `request` | INFO | [Access log](#access-log) | every request |
+| `login` | INFO | `login` | a successful login |
+| `login failed` | WARN | `address` | a failed login |
+| `login throttled` | WARN | `address` | a login refused by the throttle |
+| `logout` | INFO | `login` | `POST /logout` |
+| `month saved` | INFO | `login`, `month` | a save of the grid |
+| `month validated` | INFO | `login`, `month` | a validation |
+| `month reopened` | INFO | `login`, `month` | a reopening |
+| `adjustments changed` | INFO | `login`, `month`, `change` (`adjusted` or `unadjusted`) | an adjustment added or deleted |
+| `settings saved` | INFO | `login` | a save of the settings page |
+| `name changed` | INFO | `login`, `by` | a name change, profile page or account page |
+| `password changed` | INFO | `login` | a password change in the profile page |
+| `password change refused` | WARN | `login` | a wrong current password, or a concurrent change (409) |
+| `all sessions closed` | INFO | `login` | « Déconnecter toutes mes sessions » |
+| `account created` | INFO | `login`, `profile`, `by` | an account created from the web |
+| `account creation refused` | WARN | `login`, `error` | a creation refused at the database (login taken, 200 accounts) |
+| `profile changed` | INFO | `login`, `profile`, `by` | a profile changed from the web |
+| `password reset` | INFO | `login`, `by` | a password reset |
+| `account disabled`, `account enabled` | INFO | `login`, `by` | an account disabled or enabled |
+| `sessions closed` | INFO | `login`, `by` | the sessions of an account closed from the administration |
+| `account deleted` | INFO | `login`, `by` | an account deleted from the web |
+| `configuration changed` | INFO | `action`, `by` | a change of the configuration |
+| `cannot save the name`, `cannot save the calendar`, `cannot save the settings`, `cannot save the configuration` | ERROR | `error` | a write failed (500) |
+| `handler panic` | ERROR | `path`, `panic` | a page failed unexpectedly (500) |
+| `template rendering failed` | ERROR | `error` | a page could not be rendered |
+| messages of the standard HTTP server | WARN, DEBUG for TLS handshake errors | | errors of connections |
+
+- `by` is the login of the administrator who acted.
+- `address` is the key of the login throttle, not the address of the client: an IPv4 address as `/32`, a public IPv6 address as its `/64`, another IPv6 address as `/128`, and `::/128` for a request from a trusted proxy without a readable `X-Forwarded-For` ([SECURITY.md](SECURITY.md#login-throttling)).
+- A password change refused by the throttle (429) logs no event.
+- The commands of the command line log no event of their own.
+
+### Never logged
+
+- passwords;
+- the login typed at a failed login;
+- session identifiers;
+- CSRF tokens;
+- query strings;
+- request bodies;
+- the content of the days: codes, comments, reasons;
+- the `User-Agent` beyond its first 200 bytes.
+
+## SECURITY REQUIREMENTS
+
+The security model, its reasons and its accepted risks are owned by [SECURITY.md](SECURITY.md). This table lists the requirements and where they are described.
+
+| Topic | Requirement | Details |
+| --- | --- | --- |
+| Sessions | kept in memory and saved hashed in the [session file](#session-file), so that they survive a restart; sliding expiry 8 h, absolute 24 h, at most 64 per account | [Sessions](SECURITY.md#sessions) |
+| Cookies | the session cookie `ts_session` and the login form cookie `ts_login`, both `HttpOnly` and `SameSite=Strict`; `Secure`, and HSTS, with https origins | [Sessions](SECURITY.md#sessions) |
+| Forms | a CSRF token on every form, and an origin check on every unsafe request | [Forms and origins](SECURITY.md#forms-and-origins) |
+| Passwords | PBKDF2-SHA256 with 600 000 iterations; at least 12 characters, 6 distinct, no surrounding space, no control, format or line separator character, 256 bytes at most, different from the login whatever the case and, from the profile page, from the current password | [Passwords](SECURITY.md#passwords) |
+| Login | throttled per address | [Login throttling](SECURITY.md#login-throttling) |
+| Pages | strict CSP with Trusted Types | [Pages](SECURITY.md#pages) |
+| Logs | no secret in the logs ([Never logged](#never-logged)) | [Logs](SECURITY.md#logs) |
+
+## LIMITS
+
+| Limit | Value | When exceeded | Section |
+| --- | --- | --- | --- |
+| Request body | 256 KiB | 400 | [Refusals](#refusals) |
+| URL | 2048 bytes | 414 | [Refusals](#refusals) |
+| Request headers | 8 KiB configured; the standard library accepts up to about 12 KiB | 431, plain text | [Refusals](#refusals) |
+| Server timeouts | reading the headers 5 s, reading the request 15 s, writing the answer 30 s, idle connection 60 s | the connection is closed | [`timesheet run`](#timesheet-run) |
+| Stop of the server | 10 s for the requests in progress | they are cut | [`timesheet run`](#timesheet-run) |
+| Accounts | 200 | 422 « Le nombre maximal de comptes est atteint. »; a database with more is refused at load | [Accounts page](#accounts-page) |
+| Data of one account | 1 MiB of compact JSON, 1000 adjustments | 413, only for a save that grows the account | [Size of an account](#size-of-an-account) |
+| Database file | 64 MiB | every write is refused (500), so the effective number of accounts depends on their size | [Writing](#writing) |
+| Session file | 8 MiB | the sessions are not restored at start | [Session file](#session-file) |
+| Sessions per account | 64 | the oldest session is closed | [SECURITY.md](SECURITY.md#sessions) |
+| Session expiry | 8 h without activity, 24 h at most | the session is closed | [SECURITY.md](SECURITY.md#sessions) |
+| Login form | 1 hour from its last display in the browser | 403 | [Refusals](#refusals) |
+| Login throttle | delay of 1 s doubling up to 5 min per address; 4096 addresses; 100 new addresses a minute | 429 | [SECURITY.md](SECURITY.md#login-throttling) |
+| Import file | 8 MiB | exit 1 | [Import](#import) |
+| Configuration template | 1 MiB | exit 1 | [Configuration template](#configuration-template) |
+| Server configuration file | 1 MiB | exit 1 | [Server configuration](#server-configuration) |
+| Password line on the standard input | 4096 bytes | the rest is not read | [Passwords](#passwords) |
+| Password | 12 characters at least, 6 distinct, 256 bytes at most | 422, exit 1 | [SECURITY.md](SECURITY.md#passwords) |
+| Login | 2 to 32 characters | 422, exit 1 | [Logins](#logins) |
+| Name | 60 characters | 422 | [Free-text rule](#free-text-rule) |
+| Comment | 500 characters, one line | 422 | [Comments](#comments) |
+| Adjustment reason, reopening reason | 200 characters, one line | 422, 409 | [Free-text rule](#free-text-rule) |
+| Label of a code or a counter | 60 characters | 422 | [Fields of a code](#fields-of-a-code) |
+| Short label of a counter | 6 characters | 422 | [Fields of a counter](#fields-of-a-counter) |
+| Identifier of a code or a counter | 16 characters | 422 | [Fields of a code](#fields-of-a-code) |
+| Label of a ledger entry | 1000 characters | the database is refused at load | [Validation at load](#validation-at-load) |
+| Activity codes | 1 to 100 | 422 | [Configuration page](#configuration-page) |
+| Counters | 20 | 422 | [Configuration page](#configuration-page) |
+| Adjustment, initial balance | -366 to 366 | 422 | [Adjustments](#adjustments) |
+| Default and own amounts | 0 to 366 | 422 | [Fields of a counter](#fields-of-a-counter) |
+| Quantity | six decimals, a denominator dividing 63 000 000, magnitude 1 000 000 | refused as invalid | [Quantities](#quantities) |
+| Planning horizon | 24 months after the current one | 409 | [Supported years and planning horizon](#supported-years-and-planning-horizon) |
+| Years | 2000 to 2099 | 404 | [Supported years and planning horizon](#supported-years-and-planning-horizon) |
+| `User-Agent` in the access log | 200 bytes | cut | [Access log](#access-log) |
+
+## NON-FUNCTIONAL REQUIREMENTS
+
+- One static Go binary, standard library only.
+- Hand-written HTML, CSS and JavaScript, no framework.
+- The site works without JavaScript.
+- Every page can be used with the keyboard.
+- Text reaches the [AA](#glossary) contrast level.
+- The look is sober and professional ([CODING.md](CODING.md#styles)).
+
+## OUT OF SCOPE
+
+- CSV or PDF export.
+- The holidays and the leave rules of another country than France.
+- An interface in another language.
+- The holidays of Alsace-Moselle and of the overseas territories.
+- A recurring part-time pattern, or any pre-filling: part-time days are entered by hand.
+- Contract modelling: full-time base, rate, days per year.
+- Tracking worked days against a contract.
+- Validation of months by a manager or an administrator: users validate their own months.
+- Reopening a month other than the last validated one.
+- Changing the login of an account.
+- Automatic backup.
+
+## SIMPLIFICATIONS
+
+These are choices of the application. Each one gives the way to reach the expected figure when it matters.
+
+- Paid leave is counted in working days, Monday to Friday: 2.08 days a month, about 25 a year (12 × 2.08 = 24.96). A count in jours ouvrables, Saturdays included (2.5 days a month, 30 a year), is not supported: a consuming code is refused on a Saturday.
+- The acquisition period of paid leave is 1 June to 31 May in the template; another period is set with the period start of the counter.
+- A counter has a single balance: leave acquired and leave being acquired are merged, where a payslip often shows them apart.
+- The carry-over without limit of `CP` and the zeroing of `RTT` and `TPC` on 1 January are choices of the template, not rules the application checks.
+- The rounding at the end of a period applies to the carried balance, not to the days acquired over the period. It differs from rounding the acquired days whenever the balance carries a fraction that does not come from the accrual: half-days taken, a fractional initial balance or an adjustment. Correct the difference with an adjustment.
+- Counters credit the configured amount at each accrual, whatever the absences: paid leave is not reduced for unpaid absences, and `RTT` is not reduced for absences. A code has no nature beyond its counter.
+- Sick leave has no specific accrual and no fifteen-month carry over.
+- There are no extra splitting days (jours de fractionnement).
+- The number of `RTT` days comes from a company agreement; the template's 10 days a year is provisional ([Open points](#open-points)).
+- `TPC` and the arrangement of the [worked example](#worked-example) are the arrangement of one employer, not a legal scheme.
+- Every legal holiday is treated as not worked: leave cannot be entered on a holiday that the employer makes worked, such as Whit Monday as the solidarity day. Enter the day with a code that is not consuming, for instance `JF`, and the leave taken as a negative adjustment of its counter.
+- The eleven national holidays are built in; the extra holidays of Alsace-Moselle and of the overseas territories are not.
+- Leave is debited only on the half-days entered with a consuming code. When the employer counts the usual day off of a part-time employee within a week of leave, the employee enters the consuming code on that day too.
+- Gaps with the payslip are entered as adjustments.
+
+## PERSONAL DATA
+
+### What is sensitive
+
+- The `ABS` code with its comment, and free comments in general, can reveal health or family events.
+- The label of a frozen debit or credit keeps the comment of its day, the comment of an `ABS` day included, until the account is deleted ([Ledger entries](#ledger-entries)).
+
+### Inventory
+
+| Data | Where | Who can read it | Kept until | How removed |
+| --- | --- | --- | --- | --- |
+| Login, name, profile, state, creation and last login times | database | the person; every `ADMIN` (accounts page); the operator | the account is deleted | deletion of the account |
+| Password hash | database | the operator | the next password change, or the deletion | deletion of the account |
+| Day entries, comments, adjustments and their reasons, user settings | database | the person; every `ADMIN` (read-only views); the operator | the account is deleted, also while it is disabled | the person edits an open month; deletion of the account |
+| Ledger entries with the comments frozen in their labels | database | the person; every `ADMIN`; the operator | the account is deleted, reopenings included | deletion of the account only |
+| Sessions: login, creation and last activity | [session file](#session-file) | the operator | the session closes or expires | logout, `session clear` |
+| Access log: client and proxy addresses, login, path, user agent, time | logs on the standard error | the operator | as long as the service manager or the file that collects them keeps them | outside the application |
+| Events: logins, failed and throttled logins with their address key, account events with the administrator, configuration changes, saves, validations, reopenings, changes of adjustments, settings and names, with their login | logs | the operator | same | outside the application |
+| Backups of the database | wherever the operator keeps them | whoever holds them | as long as they are kept | outside the application |
+| Import files and the spreadsheets they come from | outside the application | whoever holds them | as long as they are kept | outside the application |
+
+- The database and the backups are not encrypted.
+- The reads of an `ADMIN` on another account appear in the access log, with the administrator and the page read.
+- The logs never hold the content of a day ([Never logged](#never-logged)). The commands of the command line log no event.
+- Deleting an account purges neither the backups nor the logs. Restoring a backup brings back the accounts deleted since, which must then be deleted again.
+- Data are kept without automatic retention limit.
+- The application gives no export and no selective erasure: a comment frozen in a validated month is erased only with the account.
+- The person who runs the service is responsible for the legal obligations attached to these data.
+- The protection of the files is described in [SECURITY.md](SECURITY.md#data-protection).
+
+## OPEN POINTS
+
+- The default amount of `RTT`, 10 days a year, is provisional and still to be set.
+- `RTT` is enabled by default, so every account that does not disable it receives these 10 days on 1 January.

@@ -1,0 +1,110 @@
+{{- /*
+ * admin_settings.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "title"}}Configuration{{end}}
+{{define "content"}}{{with .Data}}            <header class="page-header">
+                <h1>Configuration</h1>
+                <p>Serveur, codes d'activité, compteurs et couleurs par défaut.</p>
+            </header>
+            <section>
+                <h2>Serveur</h2>
+                <dl class="facts">
+                    <dt>Adresse d'écoute</dt>
+                    <dd><code>{{.Server.Addr}}</code></dd>
+                    <dt>Origines publiques</dt>
+                    <dd><code>{{.Origins}}</code></dd>
+                    <dt>Proxys de confiance</dt>
+                    <dd><code>{{if .Proxies}}{{.Proxies}}{{else}}aucun{{end}}</code></dd>
+                    <dt>Fuseau horaire</dt>
+                    <dd><code>{{.Server.Timezone}}</code></dd>
+                </dl>
+                <p>Ces réglages viennent du fichier de configuration du serveur et s'appliquent au démarrage : modifiez ce fichier, ou utilisez <code>timesheet config set</code>, puis relancez le serveur. Les options de <code>timesheet run</code> passent avant eux.</p>
+            </section>
+            <section>
+                <h2>Codes d'activité</h2>
+                <p>Chaque code alimente ou décompte un compteur de 0,5 j par demi-journée : un code qui alimente compte tous les jours, un code qui décompte seulement les jours ouvrés. Chaque code a sa couleur. Un code utilisé ne peut plus changer d'effet ni de compteur, ni être supprimé : archivez-le pour le retirer des listes de saisie.</p>
+{{- range .Activities}}
+                <form method="post" action="/admin/settings" class="config-item">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="revision" value="{{$.Data.Revision}}">
+                    <input type="hidden" name="id" value="{{.ID}}">
+                    <fieldset>
+                        <legend><code>{{.ID}}</code>{{if .Used}} <small>utilisé</small>{{end}}{{if .Archived}} <small>archivé</small>{{end}}</legend>
+                        <label class="field"><span class="field-name">Libellé</span><input type="text" name="label" value="{{.Label}}" maxlength="60" required></label>
+                        <label class="field"><span class="field-name">Effet</span><select name="effect">{{range .Effects}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+                        <label class="field"><span class="field-name">Compteur</span><select name="counter">{{range .Counters}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+                        <label class="field"><span class="field-name">Couleur</span><input type="color" name="color" value="{{.Color}}"></label>
+                        <label class="field"><input type="checkbox" name="archived"{{if .Archived}} checked{{end}}> <span class="field-name">Archivé</span></label>
+                        <p class="actions"><button type="submit" name="action" value="activity-update">Enregistrer</button>{{if not .Used}} <button type="submit" name="action" value="activity-delete" class="danger">Supprimer</button>{{end}}</p>
+                    </fieldset>
+                </form>
+{{- end}}
+                <form method="post" action="/admin/settings" class="config-item">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="revision" value="{{.Revision}}">
+                    <input type="hidden" name="action" value="activity-add">
+                    <fieldset>
+                        <legend>Nouveau code d'activité</legend>
+                        <label class="field"><span class="field-name">Identifiant</span><input type="text" name="id" pattern="[A-Z][A-Z0-9_]{0,15}" maxlength="16" required></label>
+                        <label class="field"><span class="field-name">Libellé</span><input type="text" name="label" maxlength="60" required></label>
+                        <label class="field"><span class="field-name">Effet</span><select name="effect">{{range .Effects}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+                        <label class="field"><span class="field-name">Compteur</span><select name="counter">{{range .Counter}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+                        <label class="field"><span class="field-name">Couleur</span><input type="color" name="color" value="#afd095"></label>
+                        <p class="actions"><button type="submit">Ajouter le code</button></p>
+                    </fieldset>
+                </form>
+            </section>
+            <section>
+                <h2>Compteurs</h2>
+                <p>Un changement de règle ne s'applique qu'aux mois non validés de chaque utilisateur ; un compteur utilisé ne peut plus être supprimé : archivez-le.</p>
+{{- range .Counters}}
+                <form method="post" action="/admin/settings" class="config-item">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="revision" value="{{$.Data.Revision}}">
+                    <input type="hidden" name="id" value="{{.ID}}">
+                    <fieldset>
+                        <legend><code>{{.ID}}</code>{{if .Used}} <small>utilisé</small>{{end}}{{if .Archived}} <small>archivé</small>{{end}}</legend>
+                        <label class="field"><span class="field-name">Libellé</span><input type="text" name="label" value="{{.Label}}" maxlength="60" required></label>
+                        <label class="field"><span class="field-name">Libellé court</span><input type="text" name="short" value="{{.ShortLabel}}" maxlength="6" required></label>
+                        <label class="field"><span class="field-name">Montant par défaut</span><input type="text" name="amount" value="{{.Amount}}" inputmode="decimal" maxlength="32" required></label>
+                        <label class="field"><span class="field-name">Rythme</span><select name="every">{{range .Every}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+                        <label class="field"><span class="field-name">Début de période (MM-JJ)</span><input type="text" name="period" value="{{.Period}}" pattern="[0-1][0-9]-[0-3][0-9]" maxlength="5" required></label>
+                        <label class="field"><input type="checkbox" name="carry"{{if .CarryOver}} checked{{end}}> <span class="field-name">Solde reporté (arrondi à l'entier supérieur)</span></label>
+                        <label class="field"><input type="checkbox" name="enabled"{{if .Enabled}} checked{{end}}> <span class="field-name">Activé par défaut</span></label>
+                        <label class="field"><input type="checkbox" name="archived"{{if .Archived}} checked{{end}}> <span class="field-name">Archivé</span></label>
+                        <p class="actions"><button type="submit" name="action" value="counter-update">Enregistrer</button>{{if not .Used}} <button type="submit" name="action" value="counter-delete" class="danger">Supprimer</button>{{end}}</p>
+                    </fieldset>
+                </form>
+{{- end}}
+                <form method="post" action="/admin/settings" class="config-item">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="revision" value="{{.Revision}}">
+                    <input type="hidden" name="action" value="counter-add">
+                    <fieldset>
+                        <legend>Nouveau compteur</legend>
+                        <label class="field"><span class="field-name">Identifiant</span><input type="text" name="id" pattern="[A-Z][A-Z0-9_]{0,15}" maxlength="16" required></label>
+                        <label class="field"><span class="field-name">Libellé</span><input type="text" name="label" maxlength="60" required></label>
+                        <label class="field"><span class="field-name">Libellé court</span><input type="text" name="short" maxlength="6" required></label>
+                        <label class="field"><span class="field-name">Montant par défaut</span><input type="text" name="amount" value="0" inputmode="decimal" maxlength="32" required></label>
+                        <label class="field"><span class="field-name">Rythme</span><select name="every">{{range .Every}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></label>
+                        <label class="field"><span class="field-name">Début de période (MM-JJ)</span><input type="text" name="period" value="01-01" pattern="[0-1][0-9]-[0-3][0-9]" maxlength="5" required></label>
+                        <label class="field"><input type="checkbox" name="carry"> <span class="field-name">Solde reporté (arrondi à l'entier supérieur)</span></label>
+                        <label class="field"><input type="checkbox" name="enabled"> <span class="field-name">Activé par défaut</span></label>
+                        <p class="actions"><button type="submit">Ajouter le compteur</button></p>
+                    </fieldset>
+                </form>
+            </section>
+{{end}}{{end}}

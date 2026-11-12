@@ -1,0 +1,277 @@
+/*
+ * theme.css - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+:root {
+    color-scheme: light;
+    --background: #f4f6f9;
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --surface-sunken: #eef1f4;
+    --ink: #1f2933;
+    --ink-soft: #52606d;
+    --border: #e1e6ec;
+    --border-strong: #c5ced8;
+    --accent: #2f5d8a;
+    --accent-hover: #234766;
+    --accent-soft: #e6eef6;
+    --on-accent: #ffffff;
+    --success: #276b43;
+    --success-soft: #e8f3ec;
+    --warning: #8a5c00;
+    --warning-soft: #fdf4e3;
+    --danger: #b42318;
+    --danger-soft: #fdecea;
+    --on-danger: #ffffff;
+    --bar: #1f2933;
+    --bar-ink: #e6ebf0;
+    --bar-ink-soft: #9aa7b4;
+    --bar-hover: #2c3a47;
+    --bar-accent: #7fa9d6;
+    --footer: #e9edf2;
+    --day-outside: #000000;
+    --backdrop: rgba(17, 22, 28, 0.55);
+    --shadow: 0 1px 3px rgba(31, 41, 51, 0.08), 0 1px 2px rgba(31, 41, 51, 0.04);
+    --shadow-raised: 0 12px 32px rgba(31, 41, 51, 0.18);
+    --radius: 8px;
+    --radius-large: 12px;
+    --radius-round: 999px;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-7: 3rem;
+    --width: 1200px;
+    --gutter: max(var(--space-4), calc((100% - var(--width)) / 2));
+    --bar-height: 3.75rem;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --background: #11161c;
+    --surface: #1a2129;
+    --surface-raised: #222b35;
+    --surface-sunken: #151b22;
+    --ink: #e6ebf0;
+    --ink-soft: #9aa7b4;
+    --border: #2c3640;
+    --border-strong: #3d4955;
+    --accent: #7fa9d6;
+    --accent-hover: #a3c2e3;
+    --accent-soft: #1f3347;
+    --on-accent: #11161c;
+    --success: #5fb385;
+    --success-soft: #16291f;
+    --warning: #d9a441;
+    --warning-soft: #2e2512;
+    --danger: #f08a80;
+    --danger-soft: #3a1c19;
+    --on-danger: #11161c;
+    --bar: #0b0f14;
+    --bar-ink: #e6ebf0;
+    --bar-ink-soft: #9aa7b4;
+    --bar-hover: #1c242d;
+    --bar-accent: #7fa9d6;
+    --footer: #0d1218;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-raised: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --background: #11161c;
+        --surface: #1a2129;
+        --surface-raised: #222b35;
+        --surface-sunken: #151b22;
+        --ink: #e6ebf0;
+        --ink-soft: #9aa7b4;
+        --border: #2c3640;
+        --border-strong: #3d4955;
+        --accent: #7fa9d6;
+        --accent-hover: #a3c2e3;
+        --accent-soft: #1f3347;
+        --on-accent: #11161c;
+        --success: #5fb385;
+        --success-soft: #16291f;
+        --warning: #d9a441;
+        --warning-soft: #2e2512;
+        --danger: #f08a80;
+        --danger-soft: #3a1c19;
+        --on-danger: #11161c;
+        --bar: #0b0f14;
+        --bar-ink: #e6ebf0;
+        --bar-ink-soft: #9aa7b4;
+        --bar-hover: #1c242d;
+        --bar-accent: #7fa9d6;
+        --footer: #0d1218;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        --shadow-raised: 0 12px 32px rgba(0, 0, 0, 0.55);
+    }
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--background);
+    color: var(--ink);
+    font-family: var(--font);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+    line-height: 1.25;
+    margin: 0 0 var(--space-4);
+    letter-spacing: -0.01em;
+}
+
+h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 1.2rem;
+    font-weight: 650;
+}
+
+h3 {
+    font-size: 1rem;
+    font-weight: 650;
+}
+
+h2 small, caption small, th small, legend small {
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    font-weight: normal;
+}
+
+p, ul, dl {
+    margin: 0 0 var(--space-4);
+}
+
+small {
+    font-size: 0.85rem;
+}
+
+a {
+    color: var(--accent);
+    text-underline-offset: 0.15em;
+}
+
+a:hover {
+    color: var(--accent-hover);
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+img {
+    max-width: 100%;
+}
+
+code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+}
+
+abbr[title] {
+    text-decoration: none;
+    cursor: help;
+}
+
+details {
+    margin-bottom: var(--space-4);
+}
+
+summary {
+    cursor: pointer;
+    color: var(--accent);
+}
+
+body {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+}
+
+body > header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2) var(--space-5);
+    min-height: var(--bar-height);
+    padding: var(--space-2) var(--gutter);
+    background: var(--bar);
+    color: var(--bar-ink);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+body > main {
+    width: 100%;
+    max-width: calc(var(--width) + (2 * var(--space-4)));
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4) var(--space-7);
+    min-width: 0;
+}
+
+body > footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    text-align: center;
+    padding: var(--space-5) var(--gutter);
+    background: var(--footer);
+    border-top: 1px solid var(--border);
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+    body > main {
+        padding-top: var(--space-5);
+    }
+
+    h1 {
+        font-size: 1.4rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation: none;
+        transition: none;
+        scroll-behavior: auto;
+    }
+}

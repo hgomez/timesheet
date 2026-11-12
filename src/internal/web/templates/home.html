@@ -1,0 +1,54 @@
+{{- /*
+ * home.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "title"}}Accueil{{end}}
+{{define "content"}}            <header class="page-header intro">
+                <h1>Timesheet</h1>
+                <p class="lead">Suivez votre activité professionnelle jour après jour, à la demi-journée, et gardez vos compteurs de congés à jour.</p>
+{{- if .Chrome.Connected}}
+                <p class="actions"><a href="/dashboard/">Ouvrir le tableau de bord</a></p>
+{{- end}}
+            </header>
+            <section class="features">
+                <h2>Ce que permet l'application</h2>
+                <ul>
+                    <li>
+                        <article>
+                            <h3>Saisie à la demi-journée</h3>
+                            <p>Travail, temps partiel, congés payés, RTT, temps partiel complémentaire, absences, avec un commentaire libre par jour.</p>
+                        </article>
+                    </li>
+                    <li>
+                        <article>
+                            <h3>Calendrier automatique</h3>
+                            <p>Les week-ends et les jours fériés de France métropolitaine sont reconnus pour nommer les jours et refuser les congés ces jours-là.</p>
+                        </article>
+                    </li>
+                    <li>
+                        <article>
+                            <h3>Compteurs bancaires</h3>
+                            <p>Acquisitions mensuelles ou annuelles, prises au fil de l'eau, report ou remise à zéro en fin de période et ajustements motivés.</p>
+                        </article>
+                    </li>
+                    <li>
+                        <article>
+                            <h3>Clôture et synthèse</h3>
+                            <p>Chaque mois écoulé est validé pour figer ses écritures, et la synthèse de l'année reste consultable.</p>
+                        </article>
+                    </li>
+                </ul>
+            </section>
+{{end}}

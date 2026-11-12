@@ -1,0 +1,83 @@
+{{- /*
+ * layout.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "layout"}}<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <title>{{template "title" .}} | Timesheet</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="color-scheme" content="light dark">
+        <meta name="description" content="{{block "description" .}}Suivi de l'activité professionnelle à la demi-journée : saisie, compteurs et synthèse annuelle.{{end}}">
+        <meta name="author" content="Olivier Poncet">
+        <link rel="icon" href="/static/img/icons/favicon.svg" type="image/svg+xml">
+        <link rel="stylesheet" href="/static/css/theme.css">
+        <link rel="stylesheet" href="/static/css/components.css">
+{{- if .Chrome.Connected}}
+        <link rel="stylesheet" href="/dashboard/colors.css">
+{{- end}}
+    </head>
+    <body class="{{.Chrome.Family}}">
+{{template "header" .}}
+        <main>
+{{- if .Notice}}
+            <p role="status">{{.Notice}}</p>
+{{- end}}
+{{- if .Alert}}
+            <p role="alert">{{.Alert}}</p>
+{{- end}}
+{{- if .Alerts}}
+            <ul class="alert-details">
+{{- range .Alerts}}
+                <li>{{.}}</li>
+{{- end}}
+            </ul>
+{{- end}}
+{{template "content" .}}
+        </main>
+        <footer>
+            <p class="brand"><img src="/static/img/icons/logo.svg" alt="" width="24" height="24"> Timesheet{{if .Chrome.Connected}} <small>version {{.Chrome.Version}}</small>{{end}}</p>
+            <p><small>Logiciel libre sous licence GNU GPL version 2 ou ultérieure, © 2023-{{.Chrome.Year}} Olivier Poncet.</small></p>
+        </footer>
+        <script type="module" src="/static/js/chrome_page.js"></script>
+{{- block "scripts" .}}{{end}}
+    </body>
+</html>
+{{end}}
+{{define "brand"}}            <a href="{{if .Chrome.Connected}}/dashboard/{{else}}/{{end}}" class="brand"><img src="/static/img/icons/logo.svg" alt="" width="32" height="32"> <span>Timesheet</span></a>
+{{end}}
+{{define "theme-toggle"}}            <button type="button" class="theme-toggle" aria-label="Thème sombre" aria-pressed="false" hidden><img src="/static/img/icons/sun.svg" alt="" width="20" height="20"></button>
+{{end}}
+{{define "user-menu"}}            <details class="user-menu">
+                <summary><span class="avatar" aria-hidden="true">{{.Chrome.Initials}}</span> <strong>{{.Chrome.Name}}</strong></summary>
+                <nav aria-label="Compte">
+                    <p class="menu-heading">{{.Chrome.ProfileLabel}}</p>
+                    <ul>
+{{- if .Chrome.Admin}}
+                        <li><a href="/admin/"{{if eq .Chrome.Family "admin"}} aria-current="page"{{end}}>Administration</a></li>
+{{- end}}
+                        <li><a href="/dashboard/profile"{{if eq .Section "profile"}} aria-current="page"{{end}}>Mon profil</a></li>
+                        <li><a href="/dashboard/settings"{{if eq .Section "settings"}} aria-current="page"{{end}}>Mes réglages</a></li>
+                        <li>
+                            <form method="post" action="/logout">
+                                <input type="hidden" name="csrf" value="{{.Chrome.CSRF}}">
+                                <button type="submit">Se déconnecter</button>
+                            </form>
+                        </li>
+                    </ul>
+                </nav>
+            </details>
+{{end}}

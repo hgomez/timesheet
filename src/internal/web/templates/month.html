@@ -1,0 +1,193 @@
+{{- /*
+ * month.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "title"}}{{.Data.Month.Label}}{{end}}
+{{define "content"}}{{with .Data}}            <header class="page-header">
+                <h1>{{if .Owner}}{{.Month.Label}} de {{.Owner}}{{else}}{{.Month.Label}}{{end}}</h1>
+                <p>Totaux, calendrier, synthèse et relevés des compteurs du mois.</p>
+            </header>
+            <nav aria-label="Mois" class="period-navigation">
+                <ul>
+{{- if .Month.Previous}}
+                    <li><a href="{{.Month.Previous}}" rel="prev">Mois précédent</a></li>
+{{- end}}
+                    <li><a href="{{.Month.Current}}">Mois en cours</a></li>
+{{- if .Month.Next}}
+                    <li><a href="{{.Month.Next}}" rel="next">Mois suivant</a></li>
+{{- end}}
+                </ul>
+            </nav>
+            <section>
+                <h2>Totaux du mois</h2>
+                <table class="totals">
+                    <caption>Jours par code d'activité, week-ends et fériés compris</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Code d'activité</th>
+                            <th scope="col">Jours</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{- range .Totals}}
+                        <tr>
+                            <th scope="row">{{.Label}}</th>
+                            <td>{{.Value}}</td>
+                        </tr>
+{{- end}}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row">Total</th>
+                            <td>{{.Total}}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </section>
+            <section class="calendar">
+                <h2>Calendrier <small class="status{{if .Month.Validated}} is-validated{{end}}">{{.Month.Status}}</small></h2>
+                <ul class="legend">
+{{- range .Legend}}
+                    <li class="{{.Class}}">{{.Label}}</li>
+{{- end}}
+                </ul>
+                <table>
+                    <caption>Demi-journées de {{.Month.Label}} : le code saisi (voir la légende), ? non renseigné ; un trait au bas de la case signale un commentaire</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Mois</th>
+                            <th scope="col">Demi-journée</th>
+{{- range .Days}}
+                            <th scope="col">{{.}}</th>
+{{- end}}
+                        </tr>
+                    </thead>
+                    <tbody>
+{{- range $index, $half := .Calendar.Halves}}
+                        <tr>
+{{- if eq $index 0}}
+                            <th scope="rowgroup" rowspan="2">{{$.Data.Calendar.Label}}</th>
+{{- end}}
+                            <th scope="row">{{$half.Label}}</th>
+{{- range $half.Cells}}
+                            <td class="{{.Class}}{{if .Comment}} is-commented{{end}}">{{if .Title}}<abbr title="{{.Title}}">{{.Letter}}</abbr>{{end}}</td>
+{{- end}}
+                        </tr>
+{{- end}}
+                    </tbody>
+                </table>
+            </section>
+            <section class="summary">
+                <h2>{{.Summary.Caption}}</h2>
+                <table class="summary-table">
+                    <caption>{{.Summary.Caption}} : report du mois précédent, mois et total</caption>
+                    <colgroup span="1"></colgroup>
+{{- range .Summary.Groups}}
+                    <colgroup span="{{.Span}}"></colgroup>
+{{- end}}
+                    <thead>
+                        <tr>
+                            <th scope="col" rowspan="2">Mois</th>
+{{- range .Summary.Groups}}
+                            <th scope="colgroup" colspan="{{.Span}}"><abbr title="{{.Title}}">{{.Label}}</abbr></th>
+{{- end}}
+                        </tr>
+                        <tr>
+{{- range .Summary.Headers}}
+                            <th scope="col"><abbr title="{{.Title}}">{{.Short}}</abbr></th>
+{{- end}}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="is-report">
+                            <th scope="row">{{.Summary.Report}}</th>
+{{- range .Summary.Opening}}
+                            <td{{if .Negative}} class="is-negative"{{end}}>{{.Value}}</td>
+{{- end}}
+                        </tr>
+{{- range .Summary.Rows}}
+                        <tr class="is-{{.State}}"{{if .Current}} aria-current="date"{{end}}>
+                            <th scope="row"><a href="{{.Path}}">{{.Month}}</a> <small>{{.StateName}}</small></th>
+{{- if .Cells}}
+{{- range .Cells}}
+                            <td{{if .Negative}} class="is-negative"{{end}}>{{if .Title}}<abbr title="{{.Title}}">{{.Value}}</abbr>{{else}}{{.Value}}{{end}}</td>
+{{- end}}
+{{- else}}
+                            <td colspan="{{len $.Data.Summary.Headers}}">hors suivi</td>
+{{- end}}
+                        </tr>
+{{- end}}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row">Total</th>
+{{- range .Summary.Totals}}
+                            <td{{if .Negative}} class="is-negative"{{end}}>{{.Value}}</td>
+{{- end}}
+                        </tr>
+                    </tfoot>
+                </table>
+            </section>
+{{- range .Statements}}
+            <section>
+                <h2>{{.Counter}}{{if .Provisional}} <small class="status">provisoire</small>{{end}}</h2>
+                <table class="statement">
+                    <caption>Relevé {{.Counter}} de {{$.Data.Month.Label}}</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Libellé</th>
+                            <th scope="col">Nature</th>
+                            <th scope="col">Débit</th>
+                            <th scope="col">Crédit</th>
+                            <th scope="col">Solde</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row" colspan="5">Solde au premier jour du mois</th>
+                            <td{{if .OpeningNegative}} class="is-negative"{{end}}>{{.Opening}}</td>
+                        </tr>
+{{- range .Lines}}
+                        <tr{{if .Provisional}} class="is-provisional"{{end}}>
+                            <td><time datetime="{{.Date}}">{{.DateLabel}}</time></td>
+                            <td>{{.Label}}</td>
+                            <td>{{.Kind}}</td>
+                            <td>{{.Debit}}</td>
+                            <td>{{.Credit}}</td>
+                            <td{{if .Negative}} class="is-negative"{{end}}>{{.Balance}}</td>
+                        </tr>
+{{- end}}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row" colspan="5">Solde au dernier jour du mois</th>
+                            <td{{if .ClosingNegative}} class="is-negative"{{end}}>{{.Closing}}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+{{- if .Cancelled}}
+                <details>
+                    <summary>Écritures annulées par contre-passation ({{len .Cancelled}})</summary>
+                    <ul>
+{{- range .Cancelled}}
+                        <li><time datetime="{{.Date}}">{{.DateLabel}}</time>, {{.Kind}}, {{.Label}} : {{.Signed}}</li>
+{{- end}}
+                    </ul>
+                </details>
+{{- end}}
+            </section>
+{{- end}}
+{{end}}{{end}}

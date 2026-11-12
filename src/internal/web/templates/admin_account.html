@@ -1,0 +1,115 @@
+{{- /*
+ * admin_account.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "title"}}Compte {{.Data.Login}}{{end}}
+{{define "content"}}{{with .Data}}            <header class="page-header">
+                <h1>Compte {{.Login}}</h1>
+                <p>Informations, nom, profil, accès, mot de passe et suppression du compte.</p>
+            </header>
+            <section>
+                <h2>Informations</h2>
+                <dl class="facts">
+                    <dt>Nom</dt>
+                    <dd>{{if .Name}}{{.Name}}{{else}}non renseigné{{end}}</dd>
+                    <dt>Profil</dt>
+                    <dd>{{.Profile}}</dd>
+                    <dt>État</dt>
+                    <dd>{{.State}}</dd>
+                    <dt>Créé le</dt>
+                    <dd><time datetime="{{.CreatedDate}}">{{.Created}}</time></dd>
+                    <dt>Dernière connexion</dt>
+                    <dd>{{if .LastLoginDate}}<time datetime="{{.LastLoginDate}}">{{.LastLogin}}</time>{{else}}{{.LastLogin}}{{end}}</dd>
+                    <dt>Sessions ouvertes</dt>
+                    <dd>{{.Sessions}}</dd>
+                    <dt>Activité, en lecture seule</dt>
+                    <dd><a href="{{.Balances}}">Soldes</a>, <a href="{{.Dashboard}}">mois en cours</a>, <a href="{{.Year}}">année</a></dd>
+                </dl>
+            </section>
+            <section>
+                <h2>Nom</h2>
+                <form method="post" action="{{.Path}}">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="action" value="name">
+                    <fieldset>
+                        <legend>Changer le nom</legend>
+                        <label class="field"><span class="field-name">Nom et prénom</span><input type="text" name="name" value="{{.Name}}" autocomplete="off" maxlength="60"></label>
+                        <p><small>Vide, le menu du compte affiche son identifiant.</small></p>
+                        <p class="actions"><button type="submit">Enregistrer le nom</button></p>
+                    </fieldset>
+                </form>
+            </section>
+{{- if not .Self}}
+            <section>
+                <h2>Profil</h2>
+                <form method="post" action="{{.Path}}">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="action" value="profile">
+                    <fieldset>
+                        <legend>Changer le profil</legend>
+                        <label class="field"><span class="field-name">Profil</span><select name="profile"><option value="USER"{{if not .Admin}} selected{{end}}>Utilisateur</option><option value="ADMIN"{{if .Admin}} selected{{end}}>Administrateur</option></select></label>
+                        <p class="actions"><button type="submit">Changer le profil</button></p>
+                    </fieldset>
+                </form>
+            </section>
+            <section>
+                <h2>Accès</h2>
+                <form method="post" action="{{.Path}}">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="action" value="{{if .Disabled}}enable{{else}}disable{{end}}">
+                    <fieldset>
+                        <legend>{{if .Disabled}}Activer le compte{{else}}Désactiver le compte{{end}}</legend>
+                        <p>{{if .Disabled}}Le compte est désactivé : il ne peut pas se connecter.{{else}}Un compte désactivé ne peut plus se connecter et ses sessions sont fermées ; ses données sont conservées.{{end}}</p>
+                        <p class="actions"><button type="submit">{{if .Disabled}}Activer le compte{{else}}Désactiver le compte{{end}}</button></p>
+                    </fieldset>
+                </form>
+                <form method="post" action="{{.Path}}">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="action" value="sessions">
+                    <fieldset>
+                        <legend>Fermer les sessions</legend>
+                        <p>Fermer les sessions déconnecte le compte de tous ses navigateurs ; il peut se reconnecter.</p>
+                        <p class="actions"><button type="submit"{{if not .Sessions}} disabled{{end}}>Fermer toutes ses sessions</button></p>
+                    </fieldset>
+                </form>
+            </section>
+            <section>
+                <h2>Mot de passe</h2>
+                <form method="post" action="{{.Path}}">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="action" value="reset">
+                    <fieldset>
+                        <legend>Réinitialiser le mot de passe</legend>
+                        <label class="field"><span class="field-name">Mot de passe provisoire</span><input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+                        <p>Les sessions du compte seront fermées et le changement de mot de passe exigé à la prochaine connexion.</p>
+                        <p class="actions"><button type="submit">Réinitialiser</button></p>
+                    </fieldset>
+                </form>
+            </section>
+            <section>
+                <h2>Suppression</h2>
+                <form method="post" action="{{.Path}}">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="action" value="delete">
+                    <fieldset>
+                        <legend>Supprimer le compte et toutes ses données</legend>
+                        <label class="field"><span class="field-name">Retapez l'identifiant pour confirmer</span><input type="text" name="confirm" autocapitalize="none" spellcheck="false" maxlength="32" required></label>
+                        <p class="actions"><button type="submit" class="danger">Supprimer définitivement</button></p>
+                    </fieldset>
+                </form>
+            </section>
+{{- end}}
+            <p class="actions"><a href="/admin/">Revenir à la liste des comptes</a></p>
+{{end}}{{end}}

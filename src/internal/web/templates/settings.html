@@ -1,0 +1,62 @@
+{{- /*
+ * settings.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "title"}}Réglages{{end}}
+{{define "content"}}{{with .Data}}            <header class="page-header">
+                <h1>Réglages</h1>
+                <p>Début du suivi, compteurs et couleurs des codes.</p>
+            </header>
+            <section>
+                <h2>Suivi et compteurs</h2>
+                <form method="post" action="/dashboard/settings">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="revision" value="{{.Revision}}">
+                    <input type="hidden" name="configuration" value="{{.Configuration}}">
+                    <fieldset>
+                        <legend>Début du suivi</legend>
+                        <label class="field"><span class="field-name">Date de début</span><input type="date" name="start" value="{{.Start}}" min="2000-01-01" max="2099-12-31"{{if .Locked}} disabled{{end}} required></label>
+{{- if .Locked}}
+                        <p>Un mois est déjà validé : le début du suivi et les soldes initiaux ne sont plus modifiables, corrigez par un ajustement.</p>
+{{- end}}
+                    </fieldset>
+                    <table>
+                        <caption>Compteurs : activation, montant d'acquisition propre (vide pour le montant par défaut), soldes initiaux au début du suivi et couleurs des codes du compteur</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Compteur</th>
+                                <th scope="col">Activé</th>
+                                <th scope="col">Montant propre</th>
+                                <th scope="col">Solde initial</th>
+                                <th scope="col">Couleur</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+{{- range .Counters}}
+                            <tr>
+                                <th scope="row">{{.Label}}</th>
+                                <td><input type="checkbox" name="enabled:{{.ID}}" aria-label="{{.Label}} activé"{{if .Enabled}} checked{{end}}></td>
+                                <td><input type="text" name="amount:{{.ID}}" value="{{.Amount}}" aria-label="Montant propre, {{.Label}}" placeholder="{{.Default}} {{.Period}}" inputmode="decimal" maxlength="32"></td>
+                                <td><input type="text" name="initial:{{.ID}}" value="{{.Initial}}" aria-label="Solde initial, {{.Label}}" inputmode="decimal" maxlength="32"{{if $.Data.Locked}} disabled{{end}}></td>
+                                <td>{{range .Colors}}<input type="color" name="color:{{.Name}}" value="{{.Value}}" aria-label="Couleur, {{.Label}}">{{end}}</td>
+                            </tr>
+{{- end}}
+                        </tbody>
+                    </table>
+                    <label class="field"><input type="checkbox" name="reset-colors"> <span class="field-name">Rétablir les couleurs par défaut</span></label>
+                    <p class="actions"><button type="submit">Enregistrer les réglages</button></p>
+                </form>
+            </section>
+{{end}}{{end}}

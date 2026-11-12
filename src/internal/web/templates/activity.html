@@ -1,0 +1,175 @@
+{{- /*
+ * activity.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "title"}}{{.Data.Month.Label}}{{end}}
+{{define "content"}}{{with .Data}}            <header class="page-header">
+                <h1>{{if .Owner}}{{.Month.Label}} de {{.Owner}}{{else}}{{.Month.Label}}{{end}}</h1>
+                <p>Saisie des demi-journées, validation et ajustements du mois.</p>
+            </header>
+            <nav aria-label="Mois" class="period-navigation">
+                <ul>
+{{- if .Month.Previous}}
+                    <li><a href="{{.Month.Previous}}" rel="prev">Mois précédent</a></li>
+{{- end}}
+                    <li><a href="{{.Month.Current}}">Mois en cours</a></li>
+{{- if .Month.Next}}
+                    <li><a href="{{.Month.Next}}" rel="next">Mois suivant</a></li>
+{{- end}}
+                </ul>
+            </nav>
+            <section>
+                <h2>Saisie <small class="status{{if .Month.Validated}} is-validated{{end}}">{{.Month.Status}}</small></h2>
+                <ul class="legend">
+{{- range .Legend}}
+                    <li class="{{.Class}}">{{.Label}}</li>
+{{- end}}
+                </ul>
+{{- if .Month.Anomalies}}
+                <ul class="anomalies">
+{{- range .Month.Anomalies}}
+                    <li>{{.}}</li>
+{{- end}}
+                </ul>
+{{- end}}
+{{- if .Month.Editable}}
+                <form method="post" action="{{.Month.FormAction}}">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="revision" value="{{.Month.Revision}}">
+{{- end}}
+                    <table class="month-grid">
+                        <caption>Saisie de {{.Month.Label}} : {{.Month.Missing}} j non renseigné(s)</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Jour</th>
+                                <th scope="col">Matin</th>
+                                <th scope="col">Après-midi</th>
+{{- if .Month.Editable}}
+                                <th scope="col">Journée</th>
+{{- end}}
+                                <th scope="col">Commentaire</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+{{- range $row := .Month.Rows}}
+                            <tr{{if .States}} class="{{.States}}"{{end}}>
+                                <th scope="row"><time datetime="{{.Date}}">{{.Label}}</time>{{if .Kind}} <small>{{.Kind}}</small>{{end}}</th>
+{{- range .Halves}}
+                                <td class="{{.Class}}" data-blank="{{.Blank}}">{{if $row.Editable}}<select name="{{.Name}}" aria-label="{{.AriaLabel}}">{{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>{{else}}{{if .Text}}{{.Text}}{{else}}{{.TypeLabel}}{{end}}{{end}}</td>
+{{- end}}
+{{- if $.Data.Month.Editable}}
+                                <td>{{if .Editable}}<select name="{{.Day.Name}}" aria-label="{{.Day.AriaLabel}}">{{range .Day.Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>{{end}}</td>
+{{- end}}
+                                <td>{{if .Editable}}<input type="text" name="{{.Comment.Name}}" value="{{.Comment.Value}}" aria-label="{{.Comment.AriaLabel}}" maxlength="500">{{else}}{{.Comment.Value}}{{end}}{{if .Problems}}<ul class="problems">{{range .Problems}}<li>{{.}}</li>{{end}}</ul>{{end}}</td>
+                            </tr>
+{{- end}}
+                        </tbody>
+                    </table>
+{{- if .Month.Editable}}
+                    <p class="actions"><button type="submit">Enregistrer le mois</button></p>
+                </form>
+{{- end}}
+{{- if not .ReadOnly}}
+{{- if .Month.CanReopen}}
+                <form method="post" action="{{.Month.ReopenAction}}" class="closing">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="revision" value="{{.Month.Revision}}">
+                    <fieldset>
+                        <legend>Rouvrir le mois</legend>
+                        <p>Ses écritures seront contre-passées puis le mois redeviendra modifiable.</p>
+                        <label class="field"><span class="field-name">Motif</span><input type="text" name="reason" maxlength="200" required></label>
+                        <p class="actions"><button type="submit">Rouvrir le mois</button></p>
+                    </fieldset>
+                </form>
+{{- else if not .Month.Validated}}{{if not .Month.BeforeStart}}
+                <form method="post" action="{{.Month.ValidateAction}}" class="closing">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="revision" value="{{.Month.Revision}}">
+                    <fieldset>
+                        <legend>Valider le mois</legend>
+                        <p>La validation fige les écritures du mois sur les compteurs ; seul le dernier mois validé pourra être rouvert.</p>
+{{- if .Month.ValidateReason}}
+                        <p class="reason">{{.Month.ValidateReason}}</p>
+{{- end}}
+                        <p class="actions"><button type="submit"{{if not .Month.CanValidate}} disabled{{end}}>Valider le mois</button></p>
+                    </fieldset>
+                </form>
+{{- end}}{{end}}
+{{- end}}
+{{- if .Month.History}}
+                <details>
+                    <summary>Historique du mois</summary>
+                    <ul>
+{{- range .Month.History}}
+                        <li>{{.}}</li>
+{{- end}}
+                    </ul>
+                </details>
+{{- end}}
+            </section>
+{{- if or .Adjustments.Items .Adjustments.Editable}}
+            <section>
+                <h2>Ajustements de {{.Month.Label}}</h2>
+{{- if .Adjustments.Items}}
+                <table class="adjustments">
+                    <caption>Ajustements du mois</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Compteur</th>
+                            <th scope="col">Quantité</th>
+                            <th scope="col">Motif</th>
+{{- if .Adjustments.Editable}}
+                            <th scope="col">Action</th>
+{{- end}}
+                        </tr>
+                    </thead>
+                    <tbody>
+{{- range .Adjustments.Items}}
+                        <tr>
+                            <td><time datetime="{{.Date}}">{{.Label}}</time></td>
+                            <td>{{.Counter}}</td>
+                            <td>{{.Amount}}</td>
+                            <td>{{.Reason}}</td>
+{{- if $.Data.Adjustments.Editable}}
+                            <td><form method="post" action="{{$.Data.Adjustments.Action}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="revision" value="{{$.Data.Month.Revision}}"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{.ID}}"><button type="submit">Supprimer</button></form></td>
+{{- end}}
+                        </tr>
+{{- end}}
+                    </tbody>
+                </table>
+{{- end}}
+{{- if .Adjustments.Editable}}
+                <form method="post" action="{{.Adjustments.Action}}">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="revision" value="{{.Month.Revision}}">
+                    <input type="hidden" name="action" value="add">
+                    <fieldset>
+                        <legend>Ajouter un ajustement</legend>
+                        <label class="field"><span class="field-name">Date</span><input type="date" name="date" min="{{.Adjustments.Min}}" max="{{.Adjustments.Max}}" value="{{.Adjustments.Max}}" required></label>
+                        <label class="field"><span class="field-name">Compteur</span><select name="counter">{{range .Adjustments.Counters}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></label>
+                        <label class="field"><span class="field-name">Quantité signée</span><input type="text" name="amount" inputmode="decimal" placeholder="-1,5 ou 7/12" maxlength="32" required></label>
+                        <label class="field"><span class="field-name">Motif</span><input type="text" name="reason" maxlength="200" required></label>
+                        <p class="actions"><button type="submit">Ajouter</button></p>
+                    </fieldset>
+                </form>
+{{- end}}
+            </section>
+{{- end}}
+{{end}}{{end}}
+{{define "scripts"}}{{if .Data.Month.Editable}}
+        <script type="application/json">{{.Data.Codes}}</script>
+        <script type="module" src="/static/js/month_sheet_page.js"></script>
+{{- end}}{{end}}

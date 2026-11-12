@@ -1,0 +1,72 @@
+{{- /*
+ * profile.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "title"}}Mon profil{{end}}
+{{define "content"}}{{with .Data}}            <header class="page-header">
+                <h1>Mon profil</h1>
+                <p>Votre identité dans l'application, votre nom et votre mot de passe.</p>
+            </header>
+            <section>
+                <h2>Identité</h2>
+                <dl class="facts">
+                    <dt>Identifiant</dt>
+                    <dd>{{.Login}}</dd>
+                    <dt>Nom</dt>
+                    <dd>{{if .Name}}{{.Name}}{{else}}non renseigné{{end}}</dd>
+                    <dt>Profil</dt>
+                    <dd>{{.Profile}}</dd>
+                    <dt>Compte créé le</dt>
+                    <dd><time datetime="{{.CreatedDate}}">{{.Created}}</time></dd>
+                    <dt>Dernière connexion</dt>
+                    <dd>{{if .LastLoginDate}}<time datetime="{{.LastLoginDate}}">{{.LastLogin}}</time>{{else}}{{.LastLogin}}{{end}}</dd>
+                    <dt>Sessions ouvertes</dt>
+                    <dd>{{.Sessions}}</dd>
+                </dl>
+                <form method="post" action="/dashboard/profile">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="action" value="sessions">
+                    <p class="actions"><button type="submit">Déconnecter toutes mes sessions</button></p>
+                </form>
+            </section>
+            <section>
+                <h2>Nom</h2>
+                <form method="post" action="/dashboard/profile">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="action" value="name">
+                    <fieldset>
+                        <legend>Changer le nom</legend>
+                        <label class="field"><span class="field-name">Nom et prénom</span><input type="text" name="name" value="{{.Name}}" autocomplete="name" maxlength="60"></label>
+                        <p><small>Affiché dans le menu à la place de l'identifiant ; vide, le menu affiche l'identifiant.</small></p>
+                        <p class="actions"><button type="submit">Enregistrer le nom</button></p>
+                    </fieldset>
+                </form>
+            </section>
+            <section>
+                <h2>Mot de passe</h2>
+                <form method="post" action="/dashboard/profile" class="password-form">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="action" value="password">
+                    <fieldset>
+                        <legend>Changer de mot de passe{{if .MustChange}} (obligatoire){{end}}</legend>
+                        <label class="field"><span class="field-name">Mot de passe actuel</span><input type="password" name="current" autocomplete="current-password" maxlength="256" required></label>
+                        <label class="field"><span class="field-name">Nouveau mot de passe</span><input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+                        <label class="field"><span class="field-name">Confirmation</span><input type="password" name="confirm" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+                        <p><small>Au moins 12 caractères dont 6 distincts, sans espace au début ni à la fin ni caractère de contrôle, différent de l'identifiant. Les autres sessions du compte seront fermées.</small></p>
+                        <p class="actions"><button type="submit">Changer le mot de passe</button></p>
+                    </fieldset>
+                </form>
+            </section>
+{{end}}{{end}}

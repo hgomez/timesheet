@@ -1,0 +1,81 @@
+{{- /*
+ * admin_accounts.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "title"}}Comptes{{end}}
+{{define "content"}}{{with .Data}}            <header class="page-header">
+                <h1>Comptes</h1>
+                <p>Comptes de l'application : création, consultation en lecture seule, sessions, activation et suppression.</p>
+            </header>
+            <section>
+                <h2>Comptes existants</h2>
+                <table class="accounts">
+                    <caption>{{len .Accounts}} compte(s)</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Identifiant</th>
+                            <th scope="col">Nom</th>
+                            <th scope="col">Profil</th>
+                            <th scope="col">État</th>
+                            <th scope="col">Créé le</th>
+                            <th scope="col">Dernière connexion</th>
+                            <th scope="col">Sessions</th>
+                            <th scope="col">Consulter</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+{{- range .Accounts}}
+                        <tr{{if .Disabled}} class="is-disabled"{{end}}>
+                            <th scope="row"><a href="{{.Path}}">{{.Login}}</a>{{if .Self}} <small>vous</small>{{end}}</th>
+                            <td>{{.Name}}</td>
+                            <td>{{.Profile}}</td>
+                            <td>{{.State}}</td>
+                            <td><time datetime="{{.CreatedDate}}">{{.Created}}</time></td>
+                            <td>{{if .LastLoginDate}}<time datetime="{{.LastLoginDate}}">{{.LastLogin}}</time>{{else}}{{.LastLogin}}{{end}}</td>
+                            <td>{{.Sessions}}</td>
+                            <td><a href="{{.Balances}}">Soldes</a>, <a href="{{.Dashboard}}">mois</a>, <a href="{{.Year}}">année</a></td>
+                            <td class="account-actions">
+                                <form method="post" action="{{.Path}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="return" value="list"><input type="hidden" name="action" value="sessions"><button type="submit" class="icon-button" aria-label="Fermer les sessions de {{.Login}}" title="Fermer les sessions"{{if not .Sessions}} disabled{{end}}><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M8 3.5H4.5v13H8M12.5 6.5 16 10l-3.5 3.5M16 10H7.5"/></svg></button></form>
+                                <form method="post" action="{{.Path}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="return" value="list"><input type="hidden" name="action" value="{{if .Disabled}}enable{{else}}disable{{end}}">{{if .Disabled}}<button type="submit" class="icon-button" aria-label="Activer {{.Login}}" title="Activer"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M6.6 10.2 8.9 12.5 13.4 7.8"/></svg></button>{{else}}<button type="submit" class="icon-button" aria-label="Désactiver {{.Login}}" title="Désactiver"{{if .Self}} disabled{{end}}><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M4.7 4.7 15.3 15.3"/></svg></button>{{end}}</form>
+{{- if .Self}}
+                                <button type="button" class="icon-button" aria-label="Supprimer {{.Login}}" title="Supprimer" disabled><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.2 5.5l.8 11h8l.8-11M8.3 8.5v5M11.7 8.5v5"/></svg></button>
+{{- else}}
+                                <details class="account-delete">
+                                    <summary class="icon-button" aria-label="Supprimer {{.Login}}" title="Supprimer"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.2 5.5l.8 11h8l.8-11M8.3 8.5v5M11.7 8.5v5"/></svg></summary>
+                                    <dialog open aria-label="Supprimer le compte {{.Login}}"><form method="post" action="{{.Path}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="return" value="list"><input type="hidden" name="action" value="delete"><p>Supprimer le compte {{.Login}} et toutes ses données ?</p><label class="field"><span class="field-name">Retapez « {{.Login}} »</span><input type="text" name="confirm" autocapitalize="none" spellcheck="false" maxlength="32" required></label><p class="actions"><button type="submit" class="danger">Supprimer</button><a href="/admin/">Annuler</a></p></form></dialog>
+                                </details>
+{{- end}}
+                            </td>
+                        </tr>
+{{- end}}
+                    </tbody>
+                </table>
+            </section>
+            <section>
+                <h2>Créer un compte</h2>
+                <form method="post" action="/admin/accounts">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <fieldset>
+                        <legend>Nouveau compte</legend>
+                        <label class="field"><span class="field-name">Identifiant</span><input type="text" name="login" value="{{.Login}}" autocapitalize="none" spellcheck="false" maxlength="32" required></label>
+                        <label class="field"><span class="field-name">Profil</span><select name="profile"><option value="ADMIN"{{if eq .Profile "ADMIN"}} selected{{end}}>Administrateur</option><option value="USER"{{if ne .Profile "ADMIN"}} selected{{end}}>Utilisateur</option></select></label>
+                        <label class="field"><span class="field-name">Mot de passe provisoire</span><input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+                        <p>L'utilisateur devra changer ce mot de passe à sa première connexion.</p>
+                        <p class="actions"><button type="submit">Créer le compte</button></p>
+                    </fieldset>
+                </form>
+            </section>
+{{end}}{{end}}
