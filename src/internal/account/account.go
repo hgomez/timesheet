@@ -39,8 +39,6 @@ type Account struct {
     LastLogin          time.Time    `json:"last_login"`
 }
 
-const MaxAccounts = 200
-
 var (
     ErrUnknownAccount  = errors.New("account: unknown account")
     ErrDuplicateLogin  = errors.New("account: this login is already taken")

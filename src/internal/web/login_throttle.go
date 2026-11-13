@@ -30,13 +30,18 @@ import (
 // ---------------------------------------------------------------------------
 
 type LoginThrottle struct {
-    mu          sync.Mutex
-    clock       activity.Clock
-    entries     map[netip.Prefix]*throttleEntry
-    maxKeys     int
-    budget      int
-    windowStart time.Time
-    newFailures int
+    mu           sync.Mutex
+    clock        activity.Clock
+    entries      map[netip.Prefix]*throttleEntry
+    maxKeys      int
+    budget       int
+    initialDelay time.Duration
+    maxDelay     time.Duration
+    doublings    int
+    window       time.Duration
+    forget       time.Duration
+    windowStart  time.Time
+    newFailures  int
 }
 
 type throttleEntry struct {
@@ -47,32 +52,30 @@ type throttleEntry struct {
     overBudget   bool
 }
 
-const (
-    DefaultThrottleKeys   = 4096
-    DefaultThrottleBudget = 100
-    throttleMaxDelay      = 5 * time.Minute
-    throttleWindow        = time.Minute
-    throttleForget        = time.Hour
-)
+const inFlightRetry = time.Second
 
 // ---------------------------------------------------------------------------
 // LoginThrottle implementation
 // ---------------------------------------------------------------------------
 
-func NewLoginThrottle(clock activity.Clock, maxKeys int, budget int) *LoginThrottle {
-    return &LoginThrottle{clock: clock, entries: map[netip.Prefix]*throttleEntry{}, maxKeys: maxKeys, budget: budget}
+func NewLoginThrottle(clock activity.Clock, settings activity.LoginSettings) *LoginThrottle {
+    throttle := &LoginThrottle{clock: clock, entries: map[netip.Prefix]*throttleEntry{}, maxKeys: int(settings.TrackedAddresses), budget: int(settings.NewAddressesPerWindow), initialDelay: settings.InitialDelay.Std(), maxDelay: settings.MaxDelay.Std(), window: settings.BudgetWindow.Std(), forget: settings.ForgetAfter.Std()}
+    for delay := throttle.initialDelay; delay < throttle.maxDelay; delay *= 2 {
+        throttle.doublings++
+    }
+    return throttle
 }
 
 func (t *LoginThrottle) Begin(key netip.Prefix) (bool, time.Duration) {
     t.mu.Lock()
     defer t.mu.Unlock()
     now := t.clock.Now()
-    if entry, known := t.entries[key]; known && !entry.inFlight && (now.Sub(entry.lastFailure) >= throttleForget) && !now.Before(entry.blockedUntil) {
+    if entry, known := t.entries[key]; known && !entry.inFlight && (now.Sub(entry.lastFailure) >= t.forget) && !now.Before(entry.blockedUntil) {
         delete(t.entries, key)
     }
     if entry, known := t.entries[key]; known {
         if entry.inFlight {
-            return false, time.Second
+            return false, inFlightRetry
         }
         if now.Before(entry.blockedUntil) {
             return false, entry.blockedUntil.Sub(now)
@@ -80,14 +83,14 @@ func (t *LoginThrottle) Begin(key netip.Prefix) (bool, time.Duration) {
         entry.inFlight = true
         return true, 0
     }
-    if now.Sub(t.windowStart) >= throttleWindow {
+    if now.Sub(t.windowStart) >= t.window {
         t.windowStart = now
         t.newFailures = 0
     }
     if len(t.entries) >= t.maxKeys {
         t.expire(now)
         if (len(t.entries) >= t.maxKeys) && !t.evict(now) {
-            return false, throttleWindow
+            return false, t.window
         }
     }
     overBudget := t.newFailures >= t.budget
@@ -115,16 +118,16 @@ func (t *LoginThrottle) End(key netip.Prefix, success bool) {
     }
     entry.failures++
     entry.lastFailure = t.clock.Now()
-    delay := time.Second << min(entry.failures - 1, 9)
-    if (delay > throttleMaxDelay) || entry.overBudget {
-        delay = throttleMaxDelay
+    delay := t.initialDelay << min(entry.failures - 1, t.doublings)
+    if (delay > t.maxDelay) || entry.overBudget {
+        delay = t.maxDelay
     }
     entry.blockedUntil = t.clock.Now().Add(delay)
 }
 
 func (t *LoginThrottle) expire(now time.Time) {
     for key, entry := range t.entries {
-        if !entry.inFlight && (now.Sub(entry.blockedUntil) >= throttleMaxDelay) {
+        if !entry.inFlight && (now.Sub(entry.blockedUntil) >= t.maxDelay) {
             delete(t.entries, key)
         }
     }

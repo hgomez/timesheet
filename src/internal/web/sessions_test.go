@@ -36,7 +36,7 @@ func TestSessionsSurviveARestart(t *testing.T) {
     clock := activity.NewManualClock(time.Date(2026, time.November, 11, 21, 0, 0, 0, time.UTC))
     archive := &memoryArchive{}
     logger := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
-    before := NewSessions(clock, strings.NewReader(strings.Repeat("a", 256)), false, DefaultSessionSliding, DefaultSessionAbsolute, DefaultSessionsPerUser)
+    before := NewSessions(clock, strings.NewReader(strings.Repeat("a", 256)), false, activity.NewDefaultSessionSettings())
     before.Restore(archive, logger)
     id, err := before.Open("oponcet", "")
     if (err != nil) || (len(archive.records) != 1) || (archive.records[0].Key != before.Hash(id)) || strings.Contains(archive.records[0].Key, id) {
@@ -53,7 +53,7 @@ func TestSessionsSurviveARestart(t *testing.T) {
     if (archive.saves != (saves + 1)) || !archive.records[0].Seen.Equal(clock.Now()) {
         t.Fatal("the sliding expiry must be saved once a minute")
     }
-    after := NewSessions(clock, strings.NewReader(strings.Repeat("b", 256)), false, DefaultSessionSliding, DefaultSessionAbsolute, DefaultSessionsPerUser)
+    after := NewSessions(clock, strings.NewReader(strings.Repeat("b", 256)), false, activity.NewDefaultSessionSettings())
     after.Restore(archive, logger)
     if login, _, _, found := after.Lookup(id); !found || (login != "oponcet") {
         t.Fatal("a session must survive a restart")
@@ -62,9 +62,9 @@ func TestSessionsSurviveARestart(t *testing.T) {
     if len(archive.records) != 0 {
         t.Fatal("closed sessions must leave the file")
     }
-    clock.Advance(DefaultSessionAbsolute)
-    archive.records = []account.SessionRecord{{Key: strings.Repeat("ab", 32), Login: "oponcet", CSRF: "t", Created: clock.Now().Add(-DefaultSessionAbsolute - time.Hour), Seen: clock.Now()}}
-    expired := NewSessions(clock, strings.NewReader(""), false, DefaultSessionSliding, DefaultSessionAbsolute, DefaultSessionsPerUser)
+    clock.Advance(activity.NewDefaultSessionSettings().MaxLifetime.Std())
+    archive.records = []account.SessionRecord{{Key: strings.Repeat("ab", 32), Login: "oponcet", CSRF: "t", Created: clock.Now().Add(-activity.NewDefaultSessionSettings().MaxLifetime.Std() - time.Hour), Seen: clock.Now()}}
+    expired := NewSessions(clock, strings.NewReader(""), false, activity.NewDefaultSessionSettings())
     expired.Restore(archive, logger)
     if len(archive.records) != 0 {
         t.Fatal("expired sessions must be dropped at restart")

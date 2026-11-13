@@ -38,10 +38,6 @@ type ServerFile struct {
     path string
 }
 
-type serverFileRecord struct {
-    Server activity.ServerSettings `json:"server"`
-}
-
 const (
     maxServerFileSize   = 1 << 20
     serverFileMode      = 0o644
@@ -60,53 +56,53 @@ func (f *ServerFile) Path() string {
     return f.path
 }
 
-func (f *ServerFile) Load() (activity.ServerSettings, error) {
+func (f *ServerFile) Load() (activity.ServerConfiguration, error) {
     file, err := os.Open(f.path)
     if errors.Is(err, fs.ErrNotExist) {
-        return activity.NewDefaultServerSettings(), nil
+        return activity.NewDefaultServerConfiguration(), nil
     }
     if err != nil {
-        return activity.ServerSettings{}, err
+        return activity.ServerConfiguration{}, err
     }
     defer file.Close()
     data, err := io.ReadAll(io.LimitReader(file, maxServerFileSize + 1))
     if err != nil {
-        return activity.ServerSettings{}, err
+        return activity.ServerConfiguration{}, err
     }
     if len(data) > maxServerFileSize {
-        return activity.ServerSettings{}, fmt.Errorf("%s: larger than %d MiB", f.path, maxServerFileSize >> 20)
+        return activity.ServerConfiguration{}, fmt.Errorf("%s: larger than %d MiB", f.path, maxServerFileSize >> 20)
     }
-    record := serverFileRecord{}
+    record := activity.NewOptionalServerConfiguration()
     decoder := json.NewDecoder(bytes.NewReader(data))
     decoder.DisallowUnknownFields()
     if err := decoder.Decode(&record); err != nil {
-        return activity.ServerSettings{}, fmt.Errorf("%s: %w", f.path, err)
+        return activity.ServerConfiguration{}, fmt.Errorf("%s: %w", f.path, err)
     }
     if _, err := decoder.Token(); err != io.EOF {
-        return activity.ServerSettings{}, fmt.Errorf("%s: data after the configuration", f.path)
+        return activity.ServerConfiguration{}, fmt.Errorf("%s: data after the configuration", f.path)
     }
-    if err := record.Server.Validate(); err != nil {
-        return activity.ServerSettings{}, fmt.Errorf("%s: %w", f.path, err)
+    if err := record.Validate(); err != nil {
+        return activity.ServerConfiguration{}, fmt.Errorf("%s: %w", f.path, err)
     }
-    return record.Server, nil
+    return record, nil
 }
 
-func (f *ServerFile) Encode(server activity.ServerSettings) ([]byte, error) {
+func (f *ServerFile) Encode(configuration activity.ServerConfiguration) ([]byte, error) {
     var data bytes.Buffer
     encoder := json.NewEncoder(&data)
     encoder.SetEscapeHTML(false)
     encoder.SetIndent("", "  ")
-    if err := encoder.Encode(serverFileRecord{Server: server}); err != nil {
+    if err := encoder.Encode(configuration); err != nil {
         return nil, err
     }
     return data.Bytes(), nil
 }
 
-func (f *ServerFile) Save(server activity.ServerSettings) error {
-    if err := server.Validate(); err != nil {
+func (f *ServerFile) Save(configuration activity.ServerConfiguration) error {
+    if err := configuration.Validate(); err != nil {
         return err
     }
-    data, err := f.Encode(server)
+    data, err := f.Encode(configuration)
     if err != nil {
         return err
     }

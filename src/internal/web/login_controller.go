@@ -24,6 +24,7 @@ import (
     "net/http"
     "regexp"
     "strconv"
+    "time"
 
     "timesheet/internal/account"
     "timesheet/internal/activity"
@@ -43,6 +44,7 @@ type LoginController struct {
     errors     *ErrorPages
     clock      activity.Clock
     decoy      account.PasswordHash
+    lifetime   int
     logger     *slog.Logger
 }
 
@@ -50,21 +52,18 @@ type loginRecord struct {
     Login string
 }
 
-const (
-    LoginCookie     = "ts_login"
-    loginCookieLife = 3600
-)
+const LoginCookie = "ts_login"
 
 // ---------------------------------------------------------------------------
 // LoginController implementation
 // ---------------------------------------------------------------------------
 
-func NewLoginController(guard *AuthGuard, sessions *Sessions, repository Repository, throttle *LoginThrottle, address *ClientAddress, renderer *Renderer, errors *ErrorPages, clock activity.Clock, random io.Reader, iterations int, logger *slog.Logger) (*LoginController, error) {
+func NewLoginController(guard *AuthGuard, sessions *Sessions, repository Repository, throttle *LoginThrottle, address *ClientAddress, renderer *Renderer, errors *ErrorPages, clock activity.Clock, random io.Reader, iterations int, lifetime time.Duration, logger *slog.Logger) (*LoginController, error) {
     decoy, err := account.NewPasswordHash("decoy password never used", iterations, random)
     if err != nil {
         return nil, err
     }
-    return &LoginController{guard: guard, sessions: sessions, repository: repository, throttle: throttle, address: address, renderer: renderer, errors: errors, clock: clock, decoy: decoy, logger: logger}, nil
+    return &LoginController{guard: guard, sessions: sessions, repository: repository, throttle: throttle, address: address, renderer: renderer, errors: errors, clock: clock, decoy: decoy, lifetime: int(lifetime / time.Second), logger: logger}, nil
 }
 
 func (c *LoginController) Show(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +82,7 @@ func (c *LoginController) form(w http.ResponseWriter, r *http.Request, status in
         c.errors.Status(w, r, http.StatusInternalServerError)
         return
     }
-    http.SetCookie(w, c.sessions.Cookie(LoginCookie, token, loginCookieLife))
+    http.SetCookie(w, c.sessions.Cookie(LoginCookie, token, c.lifetime))
     c.renderer.Render(w, r, status, "login", PageModel{Section: "login", CSRF: token, Alert: alert, Data: loginRecord{Login: login}})
 }
 

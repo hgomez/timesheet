@@ -35,6 +35,7 @@ import (
 
 type InitCommand struct {
     settings *Settings
+    server   activity.ServerConfiguration
     logger   *slog.Logger
 }
 
@@ -44,8 +45,8 @@ const maxTemplateSize = 1 << 20
 // InitCommand implementation
 // ---------------------------------------------------------------------------
 
-func NewInitCommand(settings *Settings, logger *slog.Logger) *InitCommand {
-    return &InitCommand{settings: settings, logger: logger}
+func NewInitCommand(settings *Settings, server activity.ServerConfiguration, logger *slog.Logger) *InitCommand {
+    return &InitCommand{settings: settings, server: server, logger: logger}
 }
 
 func (c *InitCommand) Run(out io.Writer) error {
@@ -53,7 +54,7 @@ func (c *InitCommand) Run(out io.Writer) error {
     if err != nil {
         return err
     }
-    database := store.NewDatabase(c.settings.Database(), c.logger)
+    database := store.NewDatabase(c.settings.Database(), c.logger, c.server.Database.MaxBytes, c.server.Limits)
     if err := database.Lock(); err != nil {
         return err
     }

@@ -48,8 +48,8 @@ func NewUsage(program string) *Usage {
             {title: "Commandes", options: [][2]string{
                 {"init", "créer la base à partir du modèle de configuration"},
                 {"run", "lancer le serveur web"},
-                {"config show", "afficher la configuration du serveur"},
-                {"config set KEY VALUE", "changer un réglage du fichier de configuration (server.addr, server.origins, server.trusted_proxies, server.timezone)"},
+                {"config show [KEY]", "afficher la configuration du serveur, ou la seule valeur d'une clé"},
+                {"config set KEY VALUE...", "changer un ou plusieurs réglages du fichier de configuration (les clés de config show)"},
                 {"user add LOGIN", "créer un compte (mot de passe demandé)"},
                 {"user profile LOGIN PROFILE", "changer le profil d'un compte (USER ou ADMIN)"},
                 {"user passwd LOGIN", "changer le mot de passe d'un compte"},
@@ -61,20 +61,20 @@ func NewUsage(program string) *Usage {
                 {"version", "afficher la version"},
             }},
             {title: "Options communes", options: [][2]string{
-                {"--database=<file>", "base unique (défaut " + DefaultDatabase + ")"},
+                {"--database=<file>", "base unique (défaut database.path de la configuration)"},
                 {"--config=<file>", "configuration du serveur (défaut " + DefaultConfig + ")"},
-                {"--log-level=<level>", "debug, info, warn ou error (défaut info)"},
+                {"--log-level=<level>", "debug, info, warn ou error (défaut info, server.log_level de la configuration pour run)"},
                 {"-h, --help", "afficher cette aide"},
             }},
             {title: "Options de init", options: [][2]string{
                 {"--template=<file>", "modèle de configuration (défaut " + DefaultTemplate + ")"},
             }},
             {title: "Options de run", options: [][2]string{
-                {"--addr=<address>", "adresse d'écoute (défaut celle de la configuration)"},
+                {"--listen=<address>", "adresse d'écoute (défaut celle de la configuration)"},
                 {"--origin=<origin>", "origine publique, répétable (défaut celles de la configuration)"},
                 {"--trusted-proxy=<address>", "proxy dont X-Forwarded-For est accepté, adresse ou préfixe, répétable (défaut ceux de la configuration)"},
-                {"--tls-cert=<file>", "certificat d'une paire fournie (HTTPS)"},
-                {"--tls-key=<file>", "clé privée d'une paire fournie (HTTPS)"},
+                {"--tls-cert=<file>", "certificat d'une paire fournie (HTTPS, défaut celui de la configuration)"},
+                {"--tls-key=<file>", "clé privée d'une paire fournie (HTTPS, défaut celle de la configuration)"},
             }},
             {title: "Options de user add", options: [][2]string{
                 {"--profile=<profile>", "USER ou ADMIN (défaut USER)"},

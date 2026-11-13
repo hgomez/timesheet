@@ -433,9 +433,9 @@ func TestSecurityHeadersAndErrors(t *testing.T) {
         t.Fatalf("csp: %s", csp)
     }
     recorder := httptest.NewRecorder()
-    NewSecurityHeaders(http.NotFoundHandler(), true).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
-    if !strings.Contains(recorder.Header().Get("Strict-Transport-Security"), "max-age=") {
-        t.Fatal("HSTS missing with https origins")
+    NewSecurityHeaders(http.NotFoundHandler(), true, 48 * time.Hour).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+    if hsts := recorder.Header().Get("Strict-Transport-Security"); hsts != "max-age=172800" {
+        t.Fatalf("HSTS follows its setting with https origins: %q", hsts)
     }
     guest := site.client()
     if status, _, body := guest.get("/nope"); (status != http.StatusNotFound) || !strings.Contains(body, "Page introuvable") {
@@ -509,6 +509,34 @@ func TestNegativeBalancesAreMarkedInTheStatements(t *testing.T) {
     }
     if _, _, page := user.get("/dashboard/year/2026"); strings.Count(page, `<td class="is-negative">-3,00</td>`) < 3 {
         t.Fatal("the recap and the ledger of the year do not mark their negative balances")
+    }
+}
+
+func TestConfigurationPageShowsEveryServerSetting(t *testing.T) {
+    site := newTestSite(t)
+    admin := site.client().login("root")
+    _, _, body := admin.get("/admin/settings")
+    for _, text := range []string{"<h3>Sessions</h3>", "<dt>Expiration sans activité</dt>", "<dd><code>8 h</code></dd>", "<dd><code>1 min</code></dd>", "<dt>Taille maximale</dt>", "<dd><code>64 Mio</code></dd>", "<dd><code>256 Kio</code></dd>", "<dd><code>2048 octets</code></dd>", "<dt>Certificat TLS</dt>", "<dd><code>aucun</code></dd>", "<dd><code>/var/lib/timesheet/timesheet-database.json</code></dd>"} {
+        if !strings.Contains(body, text) {
+            t.Errorf("missing %q", text)
+        }
+    }
+}
+
+func TestTheLargestMonthFormFitsTheSmallestBodyLimit(t *testing.T) {
+    form := url.Values{"csrf": {strings.Repeat("c", 43)}, "revision": {"9223372036854775807"}}
+    code := strings.Repeat("X", 16)
+    for d := activity.NewDate(2026, time.October, 1); d.Month().Number() == 10; d = d.AddDays(1) {
+        form.Set("am:" + d.String(), code)
+        form.Set("pm:" + d.String(), code)
+        form.Set("day:" + d.String(), code)
+        form.Set("comment:" + d.String(), strings.Repeat("\U0001F600", activity.MaxCommentLength))
+    }
+    size := int64(len(form.Encode()))
+    settings := activity.NewDefaultServerSettings()
+    settings.MaxBodyBytes = size - 1
+    if err := settings.Validate(); err == nil {
+        t.Fatalf("a body limit below the largest legitimate form (%d bytes) must be refused", size)
     }
 }
 

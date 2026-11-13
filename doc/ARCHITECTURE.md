@@ -68,11 +68,11 @@ src/
     static/                       css, js, img (embedded)
   internal/app/                   command line, commands, application lifecycle
 etc/timesheet/
-  timesheet.json                  server configuration (address, origins, trusted proxies, time zone)
+  timesheet.json                  server configuration: address, origins, database path, timeouts, sessions, login, limits
 share/timesheet/
   timesheet-database-template.json   configuration template read by init
   timesheet-import-template.json     fictitious example of an import file
-var/lib/timesheet/                default location of the database, its lock and the session file
+var/lib/timesheet/                database of the repository, given with --database, its lock and the session file
 debian/                           Debian packaging
 .ci/                              GitLab CI configuration and the build scripts
 ```
@@ -162,7 +162,11 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | `Accrual` | record | Amount credited per month or per year |
 | `CounterRule` | record | Counter rule: accrual, period start, carry over (with rounding up) or zeroing of its single balance |
 | `Configuration` | record | Configuration section of the database (codes, counters, revision), with `Validate` (which returns the path of the faulty field) and lookups. `NewDefaultConfiguration` mirrors `share/timesheet/timesheet-database-template.json` |
-| `ServerSettings` | record | Server configuration (address, origins, trusted proxies, time zone), with `Validate` and `Location`. `NewDefaultServerSettings` mirrors `etc/timesheet/timesheet.json` |
+| `ServerConfiguration` | record | The whole server configuration file: its sections `ServerSettings`, `DatabaseSettings`, `SessionSettings`, `LoginSettings`, `PasswordSettings` and `LimitSettings`, their defaults (`NewDefaultServerConfiguration`, whose encoding is `etc/timesheet/timesheet.json`), the bounds checked by `Validate`, including the links between keys, and the access by key `section.key` (`Keys`, `Value`, `Set`) used by `config show` and `config set` |
+| `ServerSettings` | record | Section `server`: address, origins, trusted proxies, time zone, log level, TLS pair (`NullableText`, written `null` without a pair) and version, HSTS, timeouts and request sizes, with `Validate`, `Location` and `Level` |
+| `DatabaseSettings`, `SessionSettings`, `LoginSettings`, `PasswordSettings`, `LimitSettings` | record | Sections `database`, `sessions`, `login`, `passwords` and `limits`, each with its defaults and `Validate` |
+| `Duration` | value | Duration of the server configuration: read like `time.ParseDuration`, a whole number of milliseconds, written in its shortest form (`8h`, `1m`), shown in French (`8 h`, `1 min`) |
+| `SettingCheck` | service | Bound checks of the server configuration, with the path `section.key` in the error |
 | `TrustedProxies` | value | Addresses and prefixes of the proxies whose `X-Forwarded-For` header is believed, built from the list `server.trusted_proxies` |
 | `HolidayCalendar` | service | Easter (Meeus/Butcher algorithm), the eleven legal holidays of metropolitan France, and the kind of a day |
 
@@ -481,7 +485,7 @@ Each guard wraps the next one and may answer instead of it.
 | 2 | `SecurityHeaders` | Sets the security headers on every response | none |
 | 3 | `RecoveryHandler` | Turns a panic into a 500 page when nothing was written yet | 500 |
 | 4 | `HostGuard` | Refuses a `Host` that is not an accepted origin | 421 |
-| 5 | `RequestLimits` | Caps the URL (2048 bytes) and the body (256 KiB) | 414 for the URL; a body over the cap makes the reading of the form fail later (400) |
+| 5 | `RequestLimits` | Caps the URL and the body (`server.max_url_bytes` and `server.max_body_bytes`, 2048 bytes and 256 KiB by default) | 414 for the URL; a body over the cap makes the reading of the form fail later (400) |
 | 6 | `OriginGuard` | Refuses an unsafe request (any method other than GET, HEAD, OPTIONS, TRACE) without an accepted `Origin`, or with a `Sec-Fetch-Site` other than absent, `same-origin` or `none` | 403 |
 | 7 | `Router` | Dispatches by path and method | 404, 405 |
 | 8 | `AuthGuard` | Resolves the session, reloads the account, enforces the minimal profile, redirects to « Mon profil » while the password must change, checks the CSRF token of every POST | redirection to `/login` without session, 403, 400 when the form cannot be read |
@@ -502,7 +506,7 @@ Requests refused by the HTTP parser of `net/http` itself (headers beyond the lim
 
 `SecurityHeaders` sets, on every response that reaches the chain:
 
-- HSTS (HTTP Strict Transport Security) when the origins are `https`;
+- HSTS (HTTP Strict Transport Security), with the `max-age` of `server.hsts_max_age`, when the origins are `https`;
 - the CSP (Content Security Policy):
   - `default-src 'none'`;
   - scripts, styles, images, connections and fonts from `'self'`;
@@ -557,7 +561,7 @@ The configuration page and the settings page follow the same revision check.
 | leaf lock of `Sessions` | The sessions in memory | One operation on the sessions |
 | leaf lock of `LoginThrottle` | The counters of failed logins | One operation on the throttle |
 | leaf lock of `ManualClock` | The time of the test clock | One read or change |
-| leaf lock of `Application` | The listening address read by `Addr` | One read or change |
+| leaf lock of `Application` | The listening address read by `Listen` | One read or change |
 
 - `Database` reads copy the data.
 - `Database` writes build a new record that replaces only what changes, write the file, then replace the state.
@@ -587,10 +591,12 @@ The content of the template is specified in [SPECIFICATIONS.md, Configuration te
 
 ### Server configuration
 
-1. The server configuration (address, origins, trusted proxies, time zone) lives in `etc/timesheet/timesheet.json`.
-2. `ServerFile` reads it at the start of the commands that need it.
-3. `Application` gives it to the web layer through `SiteDependencies`.
-4. The database never holds it.
+1. The server configuration lives in `etc/timesheet/timesheet.json` from the sources, `/etc/timesheet/timesheet.json` in the package; `--config` gives its path, `DefaultConfig` of `app` (relative to the current directory) by default.
+2. `Application` reads it with `ServerFile` before any command but `help`, `version` and the `config` commands, which read it themselves.
+3. `Settings.ResolveDatabase` takes the database path from `database.path` unless `--database` is given, and makes it absolute.
+4. `Application` hands the configuration to the commands, which open the database with `store.NewDatabase(path, logger, database.max_bytes, limits)` and hash with `passwords.iterations`.
+5. `run` builds the `http.Server` from the section `server`, and gives the whole configuration to the web layer through `SiteDependencies.Server`: `NewSessions` takes the section `sessions`, `NewLoginThrottle` the section `login`, `NewRequestLimits` and `NewSecurityHeaders` the sizes and HSTS, the login controller the life of its form, the configuration page every value.
+6. The database never holds it.
 
 Its settings are specified in [SPECIFICATIONS.md, Server configuration](SPECIFICATIONS.md#server-configuration).
 
@@ -607,24 +613,25 @@ Its settings are specified in [SPECIFICATIONS.md, Server configuration](SPECIFIC
 
 1. Parse the options (`Settings`).
 2. Create the logger.
-3. Read the server configuration file.
+3. Read the server configuration file, resolve the database path, and create the logger again at `server.log_level` when `--log-level` is not given.
 4. Lock, then load the database.
 5. Check that an administrator account exists.
 6. Open the listener.
 7. Compute the accepted origins.
-8. Load the TLS pair, when one is given.
+8. Load the TLS pair of the options or of the file, when one is given, after the check that the origins are https.
 9. Open the session file: check its directory, remove the leftover temporary files.
 10. Build the site with `web.NewSite`, which restores the saved sessions.
-11. Build the `http.Server`.
+11. Build the `http.Server` with the timeouts and the header size of the section `server`.
 12. Serve until the signal context ends.
-13. Shut down gracefully, within 10 seconds.
+13. Shut down gracefully, within `server.shutdown_timeout`.
 
 ### Other commands
 
 1. Restore the default signal handling (`WithSignals`), so that one interrupt stops the command.
-2. Open the database.
-3. Lock it when the command writes: `init`, `user add`, `user profile`, `user passwd`, `user del`, `session clear` and `import`, `--dry-run` included. `user list` reads without the lock; `config show` and `config set` do not open the database.
-4. Act, then exit.
+2. Read the server configuration and resolve the database path, except for `config show` and `config set`, which only read or rewrite the file.
+3. Open the database.
+4. Lock it when the command writes: `init`, `user add`, `user profile`, `user passwd`, `user del`, `session clear` and `import`, `--dry-run` included. `user list` reads without the lock; `config show` and `config set` do not open the database.
+5. Act, then exit.
 
 ## GLOSSARY
 

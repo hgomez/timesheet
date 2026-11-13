@@ -173,7 +173,7 @@ The number of extra days comes from the employment contract: the application doe
 | reversal | An entry of opposite amount that cancels an earlier entry, labelled « Contre-passation : \<motif> ». |
 | revision | A number raised by each write, used to refuse a form shown before another write. |
 | rounding | The adjustment that rounds a carried balance up to the next whole day. |
-| server configuration | The file `etc/timesheet/timesheet.json` holding the settings of the server ([Server configuration](#server-configuration)). |
+| server configuration | The file `etc/timesheet/timesheet.json` (`/etc/timesheet/timesheet.json` in the Debian package) holding the settings of the server and of its operation: address, origins, database path, timeouts, sessions, login throttle, password hashing and capacity ([Server configuration](#server-configuration)). |
 | statement | The table of the entries of one counter for one month, with opening and closing balances. |
 | summary | The yearly table of the movements of every counter ([Yearly summary](#yearly-summary)). |
 | tile | One counter on the dashboard, an `<article>`. |
@@ -423,8 +423,10 @@ The colour of each state is in [Colours](#colours).
 
 | Limit | Value | Refusal |
 | --- | --- | --- |
-| Account record, encoded as compact JSON | 1 MiB | 413 « Les données de ce compte atteignent la taille maximale autorisée. » |
-| Adjustments of one account | 1000 | 413, same message |
+| Account record, encoded as compact JSON | `limits.account_bytes`, 1 MiB by default | 413 « Les données de ce compte atteignent la taille maximale autorisée. » |
+| Adjustments of one account | `limits.adjustments`, 1000 by default | 413, same message |
+
+The limits are set in the [section limits](#section-limits) of the server configuration.
 
 - The account record is the whole account: login, name, password hash, dates, settings, colours, days, adjustments, months and ledger. An empty account weighs about 400 bytes.
 - On disk, where the file is indented, an account takes more room: about 1.8 times for ordinary data, close to 1 time for long comments.
@@ -434,7 +436,7 @@ The colour of each state is in [Colours](#colours).
 How long the limit lasts:
 
 - Validated entries are never removed.
-- With every day entered and every month validated, the limit is reached after about ten years of tracking.
+- With every day entered and every month validated, the default limit is reached after about ten years of tracking.
 - It is reached sooner with long comments or many reopenings: each reopening adds a reversal per entry of the month.
 - Nothing in the application then frees space.
 
@@ -674,7 +676,7 @@ An adjustment corrects the balance of a counter at a date. There is no forced ba
 
 - An adjustment is added and deleted in the [activity page](#activity-page) of its month.
 - An adjustment receives an identifier.
-- An account holds at most 1000 adjustments.
+- An account holds at most `limits.adjustments` adjustments, 1000 by default ([Size of an account](#size-of-an-account)).
 - An adjustment can be deleted while its month is open.
 - When its month is validated, an adjustment becomes a frozen `adjustment` entry « Ajustement : \<motif> ».
 - The refusals are listed in [Refusals of the activity page](#refusals-of-the-activity-page).
@@ -1166,7 +1168,7 @@ The section then holds a legend of the codes and of the half-day states, and the
 | Any of them | the account changed since the form was shown (another tab), or the revision field is stale | 409 | « Les données ont changé entre-temps (autre onglet ?). Rechargez la page avant de recommencer. » |
 | Any of them | unreadable revision | 400 | page « Requête invalide » |
 | Any of them | the account would grow beyond its [size limits](#size-of-an-account) | 413 | « Les données de ce compte atteignent la taille maximale autorisée. » |
-| Any of them | the database file would grow beyond 64 MiB, or another write error | 500 | page « Erreur interne » |
+| Any of them | the database file would grow beyond `database.max_bytes` (64 MiB by default), or another write error | 500 | page « Erreur interne » |
 
 ## MONTH PAGE
 
@@ -1464,7 +1466,7 @@ The button « Créer le compte » creates the account, `enabled`, with its track
 | invalid profile | 422 | « Profil invalide. » |
 | provisional password against the policy | 422 | « Mot de passe provisoire trop faible : au moins 12 caractères dont 6 distincts, sans espace au début ni à la fin, différent de l'identifiant. » |
 | login already taken | 422 | « Cet identifiant est déjà pris. » |
-| 200 accounts reached | 422 | « Le nombre maximal de comptes est atteint. » |
+| `limits.accounts` accounts reached, 200 by default | 422 | « Le nombre maximal de comptes est atteint. » |
 | other failure | 422 | « Création impossible. » |
 
 The refusals of the row actions are those of the [account page](#refusals-of-the-account-page), shown on `/admin/`.
@@ -1522,9 +1524,22 @@ Route `/admin/settings`, entry « Configuration » of the administration navigat
 
 #### Server settings shown
 
-- The section « Serveur » shows, read-only, « Adresse d'écoute », « Origines publiques », « Proxys de confiance » (« aucun » when empty) and « Fuseau horaire ».
+- The section « Serveur » shows, read-only, every setting of the [server configuration](#server-configuration), one `h3` and one list of facts per group:
+
+| Group | Facts |
+| --- | --- |
+| « Réseau » | « Adresse d'écoute », « Origines publiques », « Proxys de confiance », « Fuseau horaire », « Niveau du journal », « Certificat TLS », « Clé TLS », « Version TLS minimale », « Durée HSTS » |
+| « Requêtes » | « Lecture des en-têtes », « Lecture de la requête », « Écriture de la réponse », « Connexion inactive », « Arrêt du serveur », « Taille des en-têtes », « Taille du corps », « Longueur de l'adresse » |
+| « Base de données » | « Fichier », « Taille maximale » |
+| « Sessions » | « Expiration sans activité », « Durée maximale », « Sessions par compte », « Enregistrement des sessions » |
+| « Connexion » | « Validité du formulaire », « Premier délai », « Délai maximal », « Fenêtre du budget », « Nouvelles adresses par fenêtre », « Adresses suivies », « Oubli d'une adresse » |
+| « Mots de passe » | « Itérations PBKDF2 » |
+| « Limites » | « Comptes », « Taille d'un compte », « Ajustements par compte » |
+
+- A duration is shown with its French unit: `8 h`, `1 min`, `30 s`, `500 ms`, in the shortest form of the file. A size is shown in `Mio` or `Kio` when it is a whole number of them, otherwise in `octets`; the length of the address is always in `octets`.
+- An empty list of proxies and a missing certificate pair are shown « aucun ».
 - They come from the [server configuration](#server-configuration) read at the start of the server, not from the options of `run`.
-- A line explains how to change them: edit the file or use `timesheet config set`, then restart the server; the options of `timesheet run` take precedence.
+- A line explains how to change them: edit the file or use `timesheet config set`, then restart the server; the options of `timesheet run`, `--database` included, take precedence.
 
 #### Forms
 
@@ -1683,25 +1698,25 @@ The refusals below come in the order in which the server checks them: a request 
 
 | Order | Status | Case | Answer |
 | --- | --- | --- | --- |
-| 1 | 431 | request headers beyond the limit (8 KiB configured; the standard library accepts up to about 12 KiB) | plain text from the standard library, without the security headers and without a log line |
+| 1 | 431 | request headers beyond the limit (`server.max_header_bytes`, 8 KiB by default; the standard library accepts about 4 KiB more) | plain text from the standard library, without the security headers and without a log line |
 | 1 | 400 | malformed request line or headers | plain text from the standard library, without the security headers and without a log line |
 | 2 | 500 | a page fails unexpectedly, at any later step | page « Erreur interne », « Une erreur inattendue s'est produite. Réessayez plus tard. » |
 | 3 | 421 | `Host` header outside the accepted origins | page « Hôte inconnu », « Ce serveur ne répond pas pour ce nom d'hôte. » |
-| 4 | 414 | URL beyond 2048 bytes | page « Adresse trop longue », « L'adresse demandée dépasse la taille autorisée. » |
+| 4 | 414 | URL beyond `server.max_url_bytes` (2048 bytes by default) | page « Adresse trop longue », « L'adresse demandée dépasse la taille autorisée. » |
 | 5 | 403 | unsafe request whose `Origin` is missing, `null` or not an accepted origin (another host or another scheme), or whose `Sec-Fetch-Site` is present and neither `same-origin` nor `none` | page « Accès refusé », « Cette requête vient d'une autre origine et a été refusée. » |
 | 6 | 404 | unknown path | page « Page introuvable » |
 | 6 | 405 | known path, another method (`OPTIONS` included), with the header `Allow` | page « Méthode non autorisée », « Cette adresse n'accepte pas cette méthode. » |
 | 7 | 303 to `/login` | connected route without a valid session; a POST after the session expired is not saved | none |
 | 8 | 403 | `USER` on a route reserved to `ADMIN` | page « Accès refusé », « Cette page est réservée aux administrateurs. » |
 | 9 | 303 to `/dashboard/profile?notice=change-password` | account with a provisional password, outside the exempt routes ([Provisional password](#provisional-password)) | none |
-| 10 | 400 | form that cannot be read, a body beyond 256 KiB included | page « Requête invalide », « La requête ne peut pas être traitée. » |
-| 11 | 403 | POST whose CSRF token does not match its session; login posted without the login cookie of its form or with another token (the cookie lasts one hour from the last display of the form in that browser) | page « Accès refusé », « Le formulaire a expiré ou n'est pas valide. Rechargez la page et recommencez. » |
+| 10 | 400 | form that cannot be read, a body beyond `server.max_body_bytes` (256 KiB by default) included | page « Requête invalide », « La requête ne peut pas être traitée. » |
+| 11 | 403 | POST whose CSRF token does not match its session; login posted without the login cookie of its form or with another token (the cookie lasts `login.form_lifetime`, one hour by default, from the last display of the form in that browser; the browser then drops it) | page « Accès refusé », « Le formulaire a expiré ou n'est pas valide. Rechargez la page et recommencez. » |
 | 12 | 429 | login, or check of the current password in the profile page, while the address is blocked by the throttle; with `Retry-After` | page « Trop de tentatives », « Patientez quelques instants avant de réessayer. » |
 | 13 | 401 | wrong login or password, disabled account | the login form with « Identifiant ou mot de passe incorrect. » |
 | 14 | 404 | invalid year or month, unknown login under `/admin/accounts/` | page « Page introuvable » |
 | 15 | 400 | unknown `action`, unreadable revision | page « Requête invalide » |
 | 16 | 409, 413, 422 | refusals of a page | the page again, with an alert: [activity page](#refusals-of-the-activity-page), [settings page](#refusals-of-the-settings-page), [profile page](#refusals-of-the-profile-page), [accounts page](#refusals-of-the-accounts-page), [account page](#refusals-of-the-account-page), [configuration page](#refusals-of-the-configuration-page) |
-| 17 | 500 | write error, the database file beyond 64 MiB included | page « Erreur interne » |
+| 17 | 500 | write error, the database file beyond `database.max_bytes` (64 MiB by default) included | page « Erreur interne » |
 
 Every error page offers « Revenir à l'accueil ». The answers of rows 2 to 17 carry the security headers ([SECURITY.md](SECURITY.md#pages)) and a line in the access log ([Logs](#logs)).
 
@@ -1838,9 +1853,9 @@ All the forms post to `POST /admin/settings` and carry `revision`, the configura
 
 ```text
 timesheet init [--template=share/timesheet/timesheet-database-template.json]
-timesheet run [--addr=...] [--origin=...] [--trusted-proxy=...] [--tls-cert=... --tls-key=...]
-timesheet config show
-timesheet config set server.addr|server.origins|server.trusted_proxies|server.timezone VALUE
+timesheet run [--listen=...] [--origin=...] [--trusted-proxy=...] [--tls-cert=... --tls-key=...]
+timesheet config show [KEY]
+timesheet config set KEY VALUE [KEY VALUE...]
 timesheet user add LOGIN [--profile=USER|ADMIN]
 timesheet user profile LOGIN USER|ADMIN
 timesheet user passwd LOGIN
@@ -1856,26 +1871,29 @@ timesheet help | version
 - Options are written `--name=value` (or `--name` for a flag), anywhere on the line, before or after the arguments.
 - An argument cannot start with `-`: every word starting with `-` is read as an option.
 - An option that does not apply to the command is refused.
-- The default paths are relative to the current directory: run the commands from the repository root, or give the paths.
+- The default paths of `--config` and `--template` are relative to the current directory from the sources: run the commands from the repository root, or give the paths. The default database comes from the [server configuration](#server-configuration).
 - Without a command, the program prints the help and exits with 0. `-h` and `--help` print it too.
 
 ### Common options
 
 | Option | Value | Default |
 | --- | --- | --- |
-| `--database=<file>` | the database file; not empty, not ending with `/`, its file name not starting with a dot | `var/lib/timesheet/timesheet-database.json` |
+| `--database=<file>` | the database file; not empty, not ending with `/`, its file name not starting with a dot | `database.path` of the [server configuration](#server-configuration), `/var/lib/timesheet/timesheet-database.json` by default |
 | `--config=<file>` | the [server configuration](#server-configuration); not empty, not ending with `/` | `etc/timesheet/timesheet.json` |
-| `--log-level=<level>` | the lowest level written on the standard error: `debug`, `info`, `warn` or `error`, in any case, with an optional offset such as `info+2` | `info` |
+| `--log-level=<level>` | the lowest level written on the standard error: `debug`, `info`, `warn` or `error`, in any case, with an optional offset such as `info+2` | `info`; `server.log_level` of the server configuration for `run` |
 
-A database file name cannot start with a dot because the lock and session files, next to it, use names starting with a dot.
+- A database file name cannot start with a dot because the lock and session files, next to it, use names starting with a dot.
+- A relative database path, given by `--database` or by `database.path`, is relative to the current directory; the commands turn it into an absolute path before opening the file.
+- From the sources, the database of the repository is given explicitly: `--database=var/lib/timesheet/timesheet-database.json`. Without it, a command opens `/var/lib/timesheet/timesheet-database.json`, the database of the package.
+- The default of `--config` is relative to the current directory, for the binary of the Debian package too: its unit and its commands give `--config=/etc/timesheet/timesheet.json` ([OPERATIONS.md](OPERATIONS.md#two-installations)).
 
 ### Exit codes
 
 | Code | Meaning | Cases |
 | --- | --- | --- |
 | 0 | success | the command did its work; `help`, `version`, no command, `-h`, `--help` |
-| 1 | error | an invalid setting value for `config set`; an invalid `--profile` or profile argument, or an invalid `--origin` or `--addr`, which are checked once the database is open; an invalid login; an unknown account; a login taken; the last administrator; a refused import; a weak password or two different passwords; the database missing, existing already for `init`, locked by the server, malformed or insecure; `run` without an enabled `ADMIN`; `run` unable to listen or to set up TLS |
-| 2 | usage error | an unknown command, option or `config set` key; `config`, `user` or `session` without subcommand; a wrong number of arguments; an option that does not apply to the command; a malformed value of `--from`, `--to`, `--log-level` or `--trusted-proxy`; an empty `--origin=` or `--trusted-proxy=`; `--from` after `--to`; `--tls-cert` without `--tls-key`, or the reverse; an invalid `--database` or `--config` |
+| 1 | error | an invalid or out-of-bounds setting value for `config set`, or two linked values that do not agree; an invalid server configuration, for every command that reads it; an invalid `--profile` or profile argument, or an invalid `--origin` or `--listen`, which are checked once the database is open; an invalid login; an unknown account; a login taken; the last administrator; a refused import; a weak password or two different passwords; the database missing, existing already for `init`, locked by the server, malformed or insecure; `run` without an enabled `ADMIN`; `run` unable to listen or to set up TLS |
+| 2 | usage error | an unknown command, option or key of `config show` or `config set`; `config`, `user` or `session` without subcommand; a wrong number of arguments, `config set` without a value for each key included; an option that does not apply to the command; a malformed value of `--from`, `--to`, `--log-level` or `--trusted-proxy`; an empty `--origin=` or `--trusted-proxy=`; `--from` after `--to`; `--tls-cert` without `--tls-key`, or the reverse; an invalid `--database` or `--config` |
 | 128 + signal | password prompt interrupted | 129 for SIGHUP, 130 for SIGINT, 131 for SIGQUIT, 143 for SIGTERM; the terminal echo is restored |
 
 An error is printed on the standard error as `timesheet: <message>`. An error found while reading the options and the arguments is followed by `Try 'timesheet help' for more information.`, except `--from` after `--to`, which prints only `timesheet: --from after --to`.
@@ -1914,6 +1932,8 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 | `session clear` | yes | yes | yes |
 | `import`, `--dry-run` included | yes | yes | yes |
 | `config show`, `config set` | no | no | no |
+
+- Every command but `help` and `version` reads the [server configuration](#server-configuration) first; the commands that open the database take its path, its size limit, the limits of the accounts and the iterations of the password hashes from it.
 | `help`, `version` | no | no | no |
 
 - The lock is `.<file name>.lock` next to the database ([Database](#database)).
@@ -1933,13 +1953,14 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 - Reads the server configuration first, then takes the lock and loads the database.
 - Refuses to start (exit 1) while no enabled `ADMIN` exists, with `no administrator account: run 'timesheet user add <login> --profile=ADMIN --database=<file>' first`.
 - Restores the sessions of the [session file](#session-file).
-- Stops on SIGINT or SIGTERM, letting the requests in progress end for up to 10 seconds.
+- Stops on SIGINT or SIGTERM, letting the requests in progress end for up to `server.shutdown_timeout` (10 seconds by default).
+- Takes its timeouts and request sizes from the [section server](#section-server) of the server configuration, and the durations of its sessions and of its login throttle from the sections [sessions](#section-sessions) and [login](#section-login).
 
 #### Address and origins
 
 | Setting | Option | Server configuration | Default |
 | --- | --- | --- | --- |
-| Listening address | `--addr=host:port` | `server.addr` | `127.0.0.1:8080` |
+| Listening address | `--listen=host:port` | `server.listen` | `127.0.0.1:8080` |
 | Accepted origins | `--origin=scheme://host[:port]` | `server.origins` | `http://127.0.0.1:8080`, `http://localhost:8080` |
 | Trusted proxies | `--trusted-proxy=address-or-prefix` | `server.trusted_proxies` | the RFC 1918 ranges |
 
@@ -1949,14 +1970,16 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 
 #### Derived origins
 
-- With `--addr` and without `--origin`, `server.origins` is ignored: the accepted origins are derived from the listener.
+- With `--listen` and without `--origin`, `server.origins` is ignored: the accepted origins are derived from the listener.
 - They are `localhost`, `127.0.0.1`, `::1`, the IPv4 addresses of the interfaces, the host name and `<host name>.local`, with the port of the listener.
 - They use `https` when a certificate pair is given, `http` otherwise.
 
 #### HTTPS
 
-- `--tls-cert=<file>` and `--tls-key=<file>` serve HTTPS with a provided certificate pair.
-- They need https origins: `--origin=https://...`, https origins in the file, or origins derived with `--addr`.
+- `--tls-cert=<file>` and `--tls-key=<file>`, or `server.tls_cert` and `server.tls_key` in the server configuration, serve HTTPS with a provided certificate pair. The options replace the pair of the file.
+- They need https origins: `--origin=https://...`, https origins in the file, or origins derived with `--listen`. The check is made once the options are applied, so that `--origin=https://...` can go with a pair of the file.
+- The lowest TLS version is `server.tls_min_version` (1.2 by default); the cipher suites are fixed ([SECURITY.md](SECURITY.md#transport)).
+- With https origins, every answer carries `Strict-Transport-Security` with the `max-age` of `server.hsts_max_age` (one year by default).
 - With http origins and a pair, `run` refuses to start (exit 1).
 - With http origins and no pair, `run` warns at start that passwords and cookies travel in clear.
 
@@ -1973,26 +1996,32 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 
 ### `timesheet config show` and `timesheet config set`
 
-- `config show` prints the server configuration read from the file, as JSON. It prints the defaults when the file is missing, without saying so. It never shows the options of a running server.
-- `config set KEY VALUE` validates the new value, then rewrites the file atomically, mode 0644, creating its directory (mode 0755) when missing.
-- `config set` prints « \<clé> mis à jour dans \<fichier> ; relancez le serveur pour l'appliquer. ».
+- `config show` prints the server configuration read from the file, as JSON, in the [layout](#layout) of the file, every key included. It prints the defaults when the file is missing, without saying so. It never shows the options of a running server.
+- `config show KEY` prints only the value of one key, raw, on one line: a string without quotes, a duration in its shortest form, a number, a list as values separated by commas, `null` for no value. A script reads a setting this way, for instance `config show database.path`.
+- `config set KEY VALUE [KEY VALUE...]` reads each value according to the type of its key, applies all of them, validates the whole configuration, then rewrites the file atomically in its layout, mode 0644, creating its directory (mode 0755) when missing. Nothing is written when one value is refused.
+- Linked keys are set in the same command: `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` and `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. Set one after the other, the first may be refused.
+- `config set` prints « \<clés> mis à jour dans \<fichier> ; relancez le serveur pour l'appliquer. », the keys separated by commas.
 - Neither reads the database nor needs the server stopped.
-- Without `--config`, both act on `etc/timesheet/timesheet.json` under the current directory; `config set` creates it there.
+- Without `--config`, both act on `etc/timesheet/timesheet.json` under the current directory; `config set` creates it there. On a Debian package, give `--config=/etc/timesheet/timesheet.json`.
+- The keys are those of the [server configuration](#server-configuration), written `<section>.<key>`: `server.listen`, `sessions.idle_timeout`, `limits.accounts`, and so on. An unknown key is a usage error (exit 2).
 
-| Key | Value |
+| Type of the key | Value given to `config set` |
 | --- | --- |
-| `server.addr` | `host:port`, the port being 0 to 65535 or a service name |
-| `server.origins` | a comma-separated list of `scheme://host[:port]`, all `http` or all `https`, at least one |
-| `server.trusted_proxies` | a comma-separated list of IP addresses or prefixes (`10.0.0.1`, `10.0.0.0/8`); an empty value trusts no proxy |
-| `server.timezone` | an IANA time zone such as `Europe/Paris` |
+| address (`server.listen`) | `host:port`, the port being 0 to 65535 or a service name |
+| list (`server.origins`, `server.trusted_proxies`) | values separated by commas, spaces around them ignored; an empty value gives an empty list, which `server.trusted_proxies` accepts and `server.origins` refuses |
+| text (`server.timezone`, `server.log_level`, `server.tls_min_version`, `database.path`) | the value as given |
+| path (`server.tls_cert`, `server.tls_key`) | a path, or `null` to remove it |
+| duration (`server.*_timeout`, `server.hsts_max_age`, `sessions.*`, `login.*`) | a duration such as `500ms`, `30s`, `5m`, `1h30m` or `8h` |
+| number (sizes, counts, `passwords.iterations`) | a whole number |
 
-Change `server.origins` together with `server.addr`: a request whose `Host` is not an accepted origin is refused (421).
+Change `server.origins` together with `server.listen`: a request whose `Host` is not an accepted origin is refused (421). Both can go in the same command, for instance `config set server.listen 0.0.0.0:8080 server.origins http://timesheet.example:8080`.
 
 ### `timesheet user add`
 
 - Creates an account `enabled`, with the profile of `--profile` (`USER` by default) and its tracking start on the first day of the current month in `server.timezone`.
+- Reads the server configuration first, for the path of the database, the time zone, the limit of accounts and the iterations of the hash.
 - Refuses a login already taken (exit 1), before reading the password.
-- Reads the password ([Passwords](#passwords)), then the server configuration.
+- Reads the password ([Passwords](#passwords)).
 - The account does not have to change its password.
 - Prints « Compte \<login> créé (\<profil>). ».
 
@@ -2183,7 +2212,7 @@ The spreadsheet an employee converts, and the import file made from it, are pers
 ### File
 
 - A single JSON file holds the configuration, the accounts and their data.
-- Its default path is `var/lib/timesheet/timesheet-database.json`; the option `--database` gives another one.
+- Its path is `database.path` of the [server configuration](#server-configuration), `/var/lib/timesheet/timesheet-database.json` by default; the option `--database` gives another one.
 - Its mode is 0600, and it belongs to the account that runs the program.
 - `init` creates it ([`timesheet init`](#timesheet-init)).
 
@@ -2271,9 +2300,9 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 
 | Object | Checks |
 | --- | --- |
-| File | strict decoding: unknown fields and data after the object refused; the standard decoder matches field names without regard to case and keeps the last of repeated keys; `version` as in [Schema version](#schema-version); 64 MiB at most |
+| File | strict decoding: unknown fields and data after the object refused; the standard decoder matches field names without regard to case and keeps the last of repeated keys; `version` as in [Schema version](#schema-version); `database.max_bytes` at most (64 MiB by default) |
 | Configuration | the rules of [Validation before writing](#validation-before-writing) |
-| Accounts | 200 at most; logins valid and unique; profiles, states, names (one line, 60 characters at most, no surrounding space); password hashes with 1 000 to 1 200 000 iterations |
+| Accounts | logins valid and unique; profiles, states, names (one line, 60 characters at most, no surrounding space); password hashes with 1 000 to 1 200 000 iterations |
 | Settings | tracking start; counters that exist; own amounts and initial balances within their bounds; colours `#rrggbb` of codes that exist |
 | Days | known codes; comments following the [free-text rule](#free-text-rule) |
 | Adjustments | an existing counter; unique non-empty identifiers; a date; a non-zero amount between -366 and 366; a non-empty reason following the free-text rule |
@@ -2288,7 +2317,7 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 - The database is kept in memory.
 - It is rewritten atomically and synchronously on each change: temporary file, `fsync`, rename, `fsync` of the directory.
 - Every write checks that the encoded file can be decoded again before replacing it; the load checks the same. A value that could not be read back never reaches the disk.
-- A write that would make the file larger than 64 MiB is refused.
+- A write that would make the file larger than `database.max_bytes` (64 MiB by default) is refused.
 
 ### Files and directories
 
@@ -2316,7 +2345,8 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 ## SESSION FILE
 
 - The sessions are saved, hashed, in a file named after the database: `.<name>.sessions` next to `<name>`, so `.timesheet-database.json.sessions` by default, as the lock is `.<name>.lock`.
-- Its mode is 0600, and it is 8 MiB at most.
+- Its mode is 0600, and it is 8 MiB at most. The bound of 16 384 sessions on `limits.accounts` × `sessions.per_account` keeps it below ([Section sessions](#section-sessions)).
+- A request that only refreshes the last use of its session writes it at most once per `sessions.save_interval` (1 minute by default).
 - It lets the sessions survive a restart of the server.
 - A session file that cannot be read at start, a file with a wrong mode included, is replaced by an empty one, with the warning `sessions not restored`.
 - The events that close sessions are in [Closing of sessions](#closing-of-sessions).
@@ -2324,53 +2354,182 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 
 ## SERVER CONFIGURATION
 
-The settings of the server live in their own file, apart from the database. Its default path is `etc/timesheet/timesheet.json`; the option `--config` gives another one.
+The settings of the server live in their own file, apart from the database. Its default path is `etc/timesheet/timesheet.json` under the current directory; the option `--config` gives another one, `/etc/timesheet/timesheet.json` for the Debian package. The file shipped in the repository, installed as is by `make install` and by the package, holds the defaults:
 
 ```json
 {
   "server": {
-    "addr": "127.0.0.1:8080",
-    "origins": ["http://127.0.0.1:8080", "http://localhost:8080"],
-    "trusted_proxies": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
-    "timezone": "Europe/Paris"
+    "listen": "127.0.0.1:8080",
+    "origins": [
+      "http://127.0.0.1:8080",
+      "http://localhost:8080"
+    ],
+    "trusted_proxies": [
+      "10.0.0.0/8",
+      "172.16.0.0/12",
+      "192.168.0.0/16"
+    ],
+    "timezone": "Europe/Paris",
+    "log_level": "info",
+    "tls_cert": null,
+    "tls_key": null,
+    "tls_min_version": "1.2",
+    "hsts_max_age": "8760h",
+    "read_header_timeout": "5s",
+    "read_timeout": "15s",
+    "write_timeout": "30s",
+    "keep_alive_timeout": "1m",
+    "shutdown_timeout": "10s",
+    "max_header_bytes": 8192,
+    "max_body_bytes": 262144,
+    "max_url_bytes": 2048
+  },
+  "database": {
+    "path": "/var/lib/timesheet/timesheet-database.json",
+    "max_bytes": 67108864
+  },
+  "sessions": {
+    "idle_timeout": "8h",
+    "max_lifetime": "24h",
+    "per_account": 64,
+    "save_interval": "1m"
+  },
+  "login": {
+    "form_lifetime": "1h",
+    "initial_delay": "1s",
+    "max_delay": "5m",
+    "budget_window": "1m",
+    "new_addresses_per_window": 100,
+    "tracked_addresses": 4096,
+    "forget_after": "1h"
+  },
+  "passwords": {
+    "iterations": 600000
+  },
+  "limits": {
+    "accounts": 200,
+    "account_bytes": 1048576,
+    "adjustments": 1000
   }
 }
 ```
 
-### Keys of the server configuration
+### Layout
 
-| Setting | Format | Meaning | Default |
+The file is written by `config set` (and printed by `config show`) in a fixed layout, which the shipped file follows byte for byte:
+
+- an indentation of 2 spaces;
+- one key per line in each object, one element per line in each array;
+- `[]` for an empty array;
+- the keys in the order of the example;
+- a final line break.
+
+A file edited by hand may use any layout: the next `config set` rewrites it in this one.
+
+### Values
+
+- A duration is a string read like `300ms`, `30s`, `5m`, `1h30m` or `8h`: a whole number of milliseconds. It is written in its shortest form, the largest of the units `h`, `m`, `s` and `ms` that divides it exactly: `60s` is written `1m`, `1h30m` is written `90m`.
+- A size is a number of bytes.
+- `null` stands for no value. It is the value of `tls_cert` and `tls_key` without a certificate pair. For any other key, `null` is read like an absent key.
+
+### Section server
+
+| Key | Format and bounds | Meaning | Default | Option that replaces it |
+| --- | --- | --- | --- | --- |
+| `listen` | `host:port`, the port being 0 to 65535 or a service name | the listening address | `127.0.0.1:8080` | `--listen` |
+| `origins` | `scheme://host[:port]`, all `http` or all `https`, at least one, no path, query or user | the accepted origins: the public URLs of the server | `http://127.0.0.1:8080`, `http://localhost:8080` | `--origin` |
+| `trusted_proxies` | IP addresses or prefixes | the proxies whose `X-Forwarded-For` is believed; an empty list trusts none | the RFC 1918 ranges | `--trusted-proxy` |
+| `timezone` | an IANA time zone, not `Local` | the zone of [today](#today-and-time-zone) | `Europe/Paris` | none |
+| `log_level` | as `--log-level` | the lowest level of the logs of `run` ([Logs](#logs)) | `info` | `--log-level` |
+| `tls_cert`, `tls_key` | two paths, or both `null` | the certificate pair of [HTTPS](#https) | `null` | `--tls-cert`, `--tls-key` |
+| `tls_min_version` | `1.2` or `1.3` | the lowest TLS version accepted with a certificate pair | `1.2` | none |
+| `hsts_max_age` | a duration from 24 h to 17 520 h (2 years) | the `max-age` of `Strict-Transport-Security`, sent with https origins | `8760h` (1 year) | none |
+| `read_header_timeout` | a duration from 1 s to 10 min | the time to read the headers of a request | `5s` | none |
+| `read_timeout` | same | the time to read a whole request | `15s` | none |
+| `write_timeout` | same | the time to write an answer | `30s` | none |
+| `keep_alive_timeout` | same | the time an idle connection is kept open | `1m` | none |
+| `shutdown_timeout` | a duration from 1 s to 60 s, under the 90 s that systemd waits by default | the time left to the requests in progress when the server stops | `10s` | none |
+| `max_header_bytes` | 4096 to 1 048 576 | the size of the request headers; the standard library accepts about 4 KiB more | `8192` | none |
+| `max_body_bytes` | 262 144 to 8 388 608 | the size of a request body; the floor holds the largest legitimate form, the grid of a month of 31 days with comments of 500 characters | `262144` | none |
+| `max_url_bytes` | 1024 to 65 536 | the length of the URL of a request | `2048` | none |
+
+### Section database
+
+| Key | Format and bounds | Meaning | Default | Option that replaces it |
+| --- | --- | --- | --- | --- |
+| `path` | a file; not empty, not ending with `/`, its file name not starting with a dot; a relative path is relative to the current directory | the [database file](#database), with its lock and session files next to it | `/var/lib/timesheet/timesheet-database.json` | `--database` |
+| `max_bytes` | 1 048 576 to 1 073 741 824 | the size of the database file, read or written ([Writing](#writing)) | `67108864` (64 MiB) | none |
+
+### Section sessions
+
+| Key | Format and bounds | Meaning | Default |
 | --- | --- | --- | --- |
-| `addr` | `host:port` | the listening address | `127.0.0.1:8080` |
-| `origins` | `scheme://host[:port]`, all `http` or all `https`, at least one, no path, query or user | the accepted origins: the public URLs of the server | `http://127.0.0.1:8080`, `http://localhost:8080` |
-| `trusted_proxies` | IP addresses or prefixes | the proxies whose `X-Forwarded-For` is believed; an empty list trusts none | the RFC 1918 ranges |
-| `timezone` | an IANA time zone, not `Local` | the zone of [today](#today-and-time-zone) | `Europe/Paris` |
+| `idle_timeout` | a duration from 5 min to 7 days | a session without request for this long is closed | `8h` |
+| `max_lifetime` | a duration from `idle_timeout` to 30 days | a session is closed this long after the login | `24h` |
+| `per_account` | 1 to 1000, and `limits.accounts` × `per_account` at most 16 384 | the open sessions of one account; a new login closes the oldest one beyond | `64` |
+| `save_interval` | a duration from 5 s to 1 h | a request that only refreshes the last use of its session writes the [session file](#session-file) at most once in this time; logins, logouts and closings write it at once | `1m` |
+
+- The durations apply to the sessions restored at start too: they are compared when the session is used.
+- The bound of 16 384 sessions keeps the session file under its 8 MiB, so that the sessions can always be restored.
+
+### Section login
+
+| Key | Format and bounds | Meaning | Default |
+| --- | --- | --- | --- |
+| `form_lifetime` | a duration from 1 min to 24 h | the life of the login cookie `ts_login`, counted from the last display of the form in the browser | `1h` |
+| `initial_delay` | a duration from 100 ms to 10 s, at most `max_delay` | the wait after a first failure; it doubles at each further failure | `1s` |
+| `max_delay` | a duration from 1 s to 1 h | the longest wait, and the wait of an address beyond the budget | `5m` |
+| `budget_window` | a duration from 10 s to 1 h | the window of the global budget | `1m` |
+| `new_addresses_per_window` | 1 to 10 000 | the new addresses that may fail in a window before the next ones wait `max_delay` | `100` |
+| `tracked_addresses` | 16 to 1 000 000 | the addresses followed at once | `4096` |
+| `forget_after` | a duration from `max_delay` to 7 days | an address without failure for this long starts again from `initial_delay` | `1h` |
+
+The throttle itself is described in [SECURITY.md](SECURITY.md#login-throttling).
+
+### Section passwords
+
+| Key | Format and bounds | Meaning | Default |
+| --- | --- | --- | --- |
+| `iterations` | 600 000 to 1 200 000 | the PBKDF2-SHA256 iterations of a new password hash | `600000` |
+
+The existing hashes keep their own count; any count from 1 000 to 1 200 000 is accepted at login ([SECURITY.md](SECURITY.md#passwords)).
+
+### Section limits
+
+| Key | Format and bounds | Meaning | Default |
+| --- | --- | --- | --- |
+| `accounts` | 1 to 10 000 | the accounts of the database ([Accounts page](#accounts-page)) | `200` |
+| `account_bytes` | 65 536 to 16 777 216 | the size of one account record as compact JSON ([Size of an account](#size-of-an-account)) | `1048576` (1 MiB) |
+| `adjustments` | 1 to 100 000 | the adjustments of one account | `1000` |
+
+These limits apply only to a write that grows the database: a lowered limit never makes an existing database unreadable, it only refuses the next account, or the next save that would grow an account beyond it.
 
 ### Reading
 
-- `run` reads the file first.
-- `config show` and `config set` read it.
-- `user add` and `import` read it after their other checks, before writing.
+- Every command reads the file first, except `help` and `version`: `run`, `init`, `user`, `session clear` and `import` before opening the database, `config show` and `config set` to print or change it.
 - The file is read strictly: unknown fields and data after the object are refused, and it is 1 MiB at most. As for the database, the standard decoder matches field names without regard to case and keeps the last of repeated keys.
-- An invalid file stops the command (exit 1) with the path of the faulty setting, for instance `server.addr: an address host:port is expected`.
+- An invalid file stops the command (exit 1) with the path of the faulty setting, for instance `server.listen: an address host:port is expected` or `sessions.idle_timeout: a duration from 5m to 168h is expected`.
 - A missing file is not an error: the defaults apply. They are also the values of the file shipped in the repository.
-- The defaults apply only when the whole file is missing. In an existing file, `addr`, `origins` and `timezone` are mandatory, and an absent `trusted_proxies` trusts no proxy.
+- In an existing file, `server.listen`, `server.origins` and `server.timezone` are mandatory, and an absent `server.trusted_proxies` trusts no proxy. Every other absent key takes its default.
 
 ### Priority
 
-- `--addr` replaces `server.addr`.
+- `--listen` replaces `server.listen`.
 - `--origin` replaces `server.origins`.
-- `--addr` without `--origin` ignores `server.origins`: the origins are derived from the listener ([Derived origins](#derived-origins)).
+- `--listen` without `--origin` ignores `server.origins`: the origins are derived from the listener ([Derived origins](#derived-origins)).
 - `--trusted-proxy` replaces `server.trusted_proxies`; it cannot empty the list.
+- `--tls-cert` and `--tls-key` replace `server.tls_cert` and `server.tls_key`.
+- `--database` replaces `database.path`.
+- `--log-level` replaces `server.log_level` for `run`.
 - Without option, the file applies; without file, the defaults.
-- A change applies at the next start of the server.
+- A change applies at the next start of the server, or at the next command.
 
 ### Editing
 
 - The file holds no secret and is never written by the server.
 - It can be read by anyone (mode 0644) and edited by hand.
-- `config set` rewrites it after validating the new value ([`timesheet config show` and `timesheet config set`](#timesheet-config-show-and-timesheet-config-set)).
-- The configuration page shows the settings read at the start of the server, read-only.
+- `config set` rewrites it after validating the new values ([`timesheet config show` and `timesheet config set`](#timesheet-config-show-and-timesheet-config-set)).
+- The configuration page shows the settings read at the start of the server, read-only ([Server settings shown](#server-settings-shown)).
 
 ### Default trusted proxies
 
@@ -2390,7 +2549,7 @@ The settings of the server live in their own file, apart from the database. Its 
 
 ### Server settings moved out of the database
 
-The settings of the server once lived in the database, in a section `configuration.server` with the keys `addr`, `origins`, `trusted_proxy` (one IP address, or `null`) and `timezone`. Commit 99f0c47 moved them to the [server configuration](#server-configuration) file, without raising the schema `version`, which is still 1.
+The settings of the server once lived in the database, in a section `configuration.server` with the keys `addr`, `origins`, `trusted_proxy` (one IP address, or `null`) and `timezone`. An earlier version moved them to the [server configuration](#server-configuration) file, without raising the schema `version`, which is still 1.
 
 | Symptom | Cause |
 | --- | --- |
@@ -2408,7 +2567,7 @@ Procedure:
 
 ### Renamed shipped files
 
-The same commit renamed the shipped files:
+The same version renamed the shipped files:
 
 | Former name | Current name |
 | --- | --- |
@@ -2423,6 +2582,31 @@ A script or an `--template` option that names a former file fails with `no such 
 - A file `timesheet-sessions.json` left by an older version is no longer read: its users log in again.
 - Delete it, as it holds the CSRF tokens of its sessions.
 
+### Listening address renamed
+
+The key `addr` of the server configuration became `listen`, and the option `--addr` of `run` became `--listen`. The same version added the keys of the other sections ([Server configuration](#server-configuration)); their defaults are the former fixed values, so a file without them keeps the former behaviour.
+
+| Symptom | Cause |
+| --- | --- |
+| Every command that reads the server configuration, `run` and `config show` included, fails with `json: unknown field "addr"` (exit 1) | the file still holds `addr` |
+| `timesheet: flag provided but not defined: -addr` (exit 2) | a script or a unit still passes `--addr` |
+| The installation of the Debian package warns `timesheet: /etc/timesheet/timesheet.json cannot be read, no database created` | the file kept by `dpkg` still holds `addr` |
+
+Procedure:
+
+1. Stop the server.
+2. Rename the key `addr` into `listen` in the server configuration, `/etc/timesheet/timesheet.json` for the package. `dpkg` keeps a configuration file changed by hand, so a modified file is not replaced by the new one.
+3. Replace `--addr` by `--listen` in the scripts and in the drop-ins of the unit.
+4. Check the file with `timesheet config show`, then start the server.
+
+### Database path in the server configuration
+
+The path of the database moved from the default of `--database` into the key `database.path` of the server configuration, whose default is `/var/lib/timesheet/timesheet-database.json`.
+
+- Debian package: nothing to do. A file without the key takes that default, which is the database of the package, and a drop-in that still passes `--database` keeps working, since the option comes first. The unit of the package now passes only `--config=/etc/timesheet/timesheet.json`: the database comes from that file.
+- From the sources: a command run without `--database` now opens `/var/lib/timesheet/timesheet-database.json` instead of `var/lib/timesheet/timesheet-database.json` under the current directory, and fails with `store: the database does not exist, run init first` or with a permission error naming that path. Give `--database=var/lib/timesheet/timesheet-database.json`, or start the server with `bin/timesheet.sh`, which passes it.
+- The installation script of the package reads the path with `timesheet config show database.path --config=/etc/timesheet/timesheet.json`. When the file cannot be read, it warns and creates no database; fix the file, then run `dpkg-reconfigure timesheet`.
+
 ### Rule for future changes
 
 A change of the layout of the database raises its `version` and makes the program read or convert the former version, or adds a note to this section with its symptom and its procedure. The same applies to the server configuration and to the import format.
@@ -2433,7 +2617,7 @@ A change of the layout of the database raises its `version` and makes the progra
 
 - The server writes its logs on the standard error, one line per event.
 - A line is a list of `key=value` pairs starting with `time`, `level` and `msg`.
-- `--log-level` sets the lowest level written: `info` by default.
+- `--log-level` sets the lowest level written: `info` by default. For `run`, the default is `server.log_level` of the [server configuration](#server-configuration); the lines written before the file is read use `info`.
 - The commands of the command line write their warnings in the same format.
 
 ### Access log
@@ -2464,7 +2648,7 @@ time=2026-11-13T16:40:12.345+01:00 level=INFO msg=request client=203.0.113.9 pee
 | Message | Level | Fields | When |
 | --- | --- | --- | --- |
 | `starting` | INFO | `version` | `run` starts |
-| `listening` | INFO | `address`, `origins`, `database` | the server is ready |
+| `listening` | INFO | `address`, `origins`, `database` | the server is ready; `database` is the absolute path of the database file |
 | `serving plain HTTP: …` | WARN | | the origins are `http` |
 | `stopped` | INFO | | the server stopped |
 | `server stopped` | ERROR | `error` | the server failed while serving |
@@ -2490,7 +2674,7 @@ time=2026-11-13T16:40:12.345+01:00 level=INFO msg=request client=203.0.113.9 pee
 | `password change refused` | WARN | `login` | a wrong current password, or a concurrent change (409) |
 | `all sessions closed` | INFO | `login` | « Déconnecter toutes mes sessions » |
 | `account created` | INFO | `login`, `profile`, `by` | an account created from the web |
-| `account creation refused` | WARN | `login`, `error` | a creation refused at the database (login taken, 200 accounts) |
+| `account creation refused` | WARN | `login`, `error` | a creation refused at the database (login taken, `limits.accounts` reached) |
 | `profile changed` | INFO | `login`, `profile`, `by` | a profile changed from the web |
 | `password reset` | INFO | `login`, `by` | a password reset |
 | `account disabled`, `account enabled` | INFO | `login`, `by` | an account disabled or enabled |
@@ -2524,52 +2708,54 @@ The security model, its reasons and its accepted risks are owned by [SECURITY.md
 
 | Topic | Requirement | Details |
 | --- | --- | --- |
-| Sessions | kept in memory and saved hashed in the [session file](#session-file), so that they survive a restart; sliding expiry 8 h, absolute 24 h, at most 64 per account | [Sessions](SECURITY.md#sessions) |
-| Cookies | the session cookie `ts_session` and the login form cookie `ts_login`, both `HttpOnly` and `SameSite=Strict`; `Secure`, and HSTS, with https origins | [Sessions](SECURITY.md#sessions) |
+| Sessions | kept in memory and saved hashed in the [session file](#session-file), so that they survive a restart; sliding expiry, absolute expiry and number per account set in the [section sessions](#section-sessions), 8 h, 24 h and 64 by default | [Sessions](SECURITY.md#sessions) |
+| Cookies | the session cookie `ts_session` and the login form cookie `ts_login`, both `HttpOnly` and `SameSite=Strict`; `Secure`, and HSTS of `server.hsts_max_age`, with https origins | [Sessions](SECURITY.md#sessions) |
 | Forms | a CSRF token on every form, and an origin check on every unsafe request | [Forms and origins](SECURITY.md#forms-and-origins) |
-| Passwords | PBKDF2-SHA256 with 600 000 iterations; at least 12 characters, 6 distinct, no surrounding space, no control, format or line separator character, 256 bytes at most, different from the login whatever the case and, from the profile page, from the current password | [Passwords](SECURITY.md#passwords) |
-| Login | throttled per address | [Login throttling](SECURITY.md#login-throttling) |
+| Passwords | PBKDF2-SHA256 with `passwords.iterations` iterations, 600 000 at least and by default; at least 12 characters, 6 distinct, no surrounding space, no control, format or line separator character, 256 bytes at most, different from the login whatever the case and, from the profile page, from the current password | [Passwords](SECURITY.md#passwords) |
+| Login | throttled per address, with the delays of the [section login](#section-login) | [Login throttling](SECURITY.md#login-throttling) |
 | Pages | strict CSP with Trusted Types | [Pages](SECURITY.md#pages) |
 | Logs | no secret in the logs ([Never logged](#never-logged)) | [Logs](SECURITY.md#logs) |
 
 ## LIMITS
 
-| Limit | Value | When exceeded | Section |
-| --- | --- | --- | --- |
-| Request body | 256 KiB | 400 | [Refusals](#refusals) |
-| URL | 2048 bytes | 414 | [Refusals](#refusals) |
-| Request headers | 8 KiB configured; the standard library accepts up to about 12 KiB | 431, plain text | [Refusals](#refusals) |
-| Server timeouts | reading the headers 5 s, reading the request 15 s, writing the answer 30 s, idle connection 60 s | the connection is closed | [`timesheet run`](#timesheet-run) |
-| Stop of the server | 10 s for the requests in progress | they are cut | [`timesheet run`](#timesheet-run) |
-| Accounts | 200 | 422 « Le nombre maximal de comptes est atteint. »; a database with more is refused at load | [Accounts page](#accounts-page) |
-| Data of one account | 1 MiB of compact JSON, 1000 adjustments | 413, only for a save that grows the account | [Size of an account](#size-of-an-account) |
-| Database file | 64 MiB | every write is refused (500), so the effective number of accounts depends on their size | [Writing](#writing) |
-| Session file | 8 MiB | the sessions are not restored at start | [Session file](#session-file) |
-| Sessions per account | 64 | the oldest session is closed | [SECURITY.md](SECURITY.md#sessions) |
-| Session expiry | 8 h without activity, 24 h at most | the session is closed | [SECURITY.md](SECURITY.md#sessions) |
-| Login form | 1 hour from its last display in the browser | 403 | [Refusals](#refusals) |
-| Login throttle | delay of 1 s doubling up to 5 min per address; 4096 addresses; 100 new addresses a minute | 429 | [SECURITY.md](SECURITY.md#login-throttling) |
-| Import file | 8 MiB | exit 1 | [Import](#import) |
-| Configuration template | 1 MiB | exit 1 | [Configuration template](#configuration-template) |
-| Server configuration file | 1 MiB | exit 1 | [Server configuration](#server-configuration) |
-| Password line on the standard input | 4096 bytes | the rest is not read | [Passwords](#passwords) |
-| Password | 12 characters at least, 6 distinct, 256 bytes at most | 422, exit 1 | [SECURITY.md](SECURITY.md#passwords) |
-| Login | 2 to 32 characters | 422, exit 1 | [Logins](#logins) |
-| Name | 60 characters | 422 | [Free-text rule](#free-text-rule) |
-| Comment | 500 characters, one line | 422 | [Comments](#comments) |
-| Adjustment reason, reopening reason | 200 characters, one line | 422, 409 | [Free-text rule](#free-text-rule) |
-| Label of a code or a counter | 60 characters | 422 | [Fields of a code](#fields-of-a-code) |
-| Short label of a counter | 6 characters | 422 | [Fields of a counter](#fields-of-a-counter) |
-| Identifier of a code or a counter | 16 characters | 422 | [Fields of a code](#fields-of-a-code) |
-| Label of a ledger entry | 1000 characters | the database is refused at load | [Validation at load](#validation-at-load) |
-| Activity codes | 1 to 100 | 422 | [Configuration page](#configuration-page) |
-| Counters | 20 | 422 | [Configuration page](#configuration-page) |
-| Adjustment, initial balance | -366 to 366 | 422 | [Adjustments](#adjustments) |
-| Default and own amounts | 0 to 366 | 422 | [Fields of a counter](#fields-of-a-counter) |
-| Quantity | six decimals, a denominator dividing 63 000 000, magnitude 1 000 000 | refused as invalid | [Quantities](#quantities) |
-| Planning horizon | 24 months after the current one | 409 | [Supported years and planning horizon](#supported-years-and-planning-horizon) |
-| Years | 2000 to 2099 | 404 | [Supported years and planning horizon](#supported-years-and-planning-horizon) |
-| `User-Agent` in the access log | 200 bytes | cut | [Access log](#access-log) |
+The column « Setting » names the key of the [server configuration](#server-configuration) that sets a limit; its value is then the default. « fixed » marks a limit of the code.
+
+| Limit | Value | Setting | When exceeded | Section |
+| --- | --- | --- | --- | --- |
+| Request body | 256 KiB | `server.max_body_bytes` | 400 | [Refusals](#refusals) |
+| URL | 2048 bytes | `server.max_url_bytes` | 414 | [Refusals](#refusals) |
+| Request headers | 8 KiB configured; the standard library accepts about 4 KiB more | `server.max_header_bytes` | 431, plain text | [Refusals](#refusals) |
+| Server timeouts | reading the headers 5 s, reading the request 15 s, writing the answer 30 s, idle connection 1 min | `server.read_header_timeout`, `server.read_timeout`, `server.write_timeout`, `server.keep_alive_timeout` | the connection is closed | [`timesheet run`](#timesheet-run) |
+| Stop of the server | 10 s for the requests in progress | `server.shutdown_timeout` | they are cut | [`timesheet run`](#timesheet-run) |
+| Accounts | 200 | `limits.accounts` | 422 « Le nombre maximal de comptes est atteint. », only for a new account; a database with more still loads | [Accounts page](#accounts-page) |
+| Data of one account | 1 MiB of compact JSON, 1000 adjustments | `limits.account_bytes`, `limits.adjustments` | 413, only for a save that grows the account | [Size of an account](#size-of-an-account) |
+| Database file | 64 MiB | `database.max_bytes` | every write is refused (500), and a larger file is refused at load, so the effective number of accounts depends on their size | [Writing](#writing) |
+| Session file | 8 MiB | fixed; `limits.accounts` × `sessions.per_account` is at most 16 384 | the sessions are not restored at start | [Session file](#session-file) |
+| Sessions per account | 64 | `sessions.per_account` | the oldest session is closed | [SECURITY.md](SECURITY.md#sessions) |
+| Session expiry | 8 h without activity, 24 h at most | `sessions.idle_timeout`, `sessions.max_lifetime` | the session is closed | [SECURITY.md](SECURITY.md#sessions) |
+| Login form | 1 hour from its last display in the browser | `login.form_lifetime` | 403 | [Refusals](#refusals) |
+| Login throttle | delay of 1 s doubling up to 5 min per address; 4096 addresses; 100 new addresses a minute; an address forgotten after 1 h without failure | `login.initial_delay`, `login.max_delay`, `login.tracked_addresses`, `login.new_addresses_per_window`, `login.budget_window`, `login.forget_after` | 429 | [SECURITY.md](SECURITY.md#login-throttling) |
+| Import file | 8 MiB | fixed | exit 1 | [Import](#import) |
+| Configuration template | 1 MiB | fixed | exit 1 | [Configuration template](#configuration-template) |
+| Server configuration file | 1 MiB | fixed | exit 1 | [Server configuration](#server-configuration) |
+| Password line on the standard input | 4096 bytes | fixed | the rest is not read | [Passwords](#passwords) |
+| Password | 12 characters at least, 6 distinct, 256 bytes at most | fixed | 422, exit 1 | [SECURITY.md](SECURITY.md#passwords) |
+| Login | 2 to 32 characters | fixed | 422, exit 1 | [Logins](#logins) |
+| Name | 60 characters | fixed | 422 | [Free-text rule](#free-text-rule) |
+| Comment | 500 characters, one line | fixed | 422 | [Comments](#comments) |
+| Adjustment reason, reopening reason | 200 characters, one line | fixed | 422, 409 | [Free-text rule](#free-text-rule) |
+| Label of a code or a counter | 60 characters | fixed | 422 | [Fields of a code](#fields-of-a-code) |
+| Short label of a counter | 6 characters | fixed | 422 | [Fields of a counter](#fields-of-a-counter) |
+| Identifier of a code or a counter | 16 characters | fixed | 422 | [Fields of a code](#fields-of-a-code) |
+| Label of a ledger entry | 1000 characters | fixed | the database is refused at load | [Validation at load](#validation-at-load) |
+| Activity codes | 1 to 100 | fixed | 422 | [Configuration page](#configuration-page) |
+| Counters | 20 | fixed | 422 | [Configuration page](#configuration-page) |
+| Adjustment, initial balance | -366 to 366 | fixed | 422 | [Adjustments](#adjustments) |
+| Default and own amounts | 0 to 366 | fixed | 422 | [Fields of a counter](#fields-of-a-counter) |
+| Quantity | six decimals, a denominator dividing 63 000 000, magnitude 1 000 000 | fixed | refused as invalid | [Quantities](#quantities) |
+| Planning horizon | 24 months after the current one | fixed | 409 | [Supported years and planning horizon](#supported-years-and-planning-horizon) |
+| Years | 2000 to 2099 | fixed | 404 | [Supported years and planning horizon](#supported-years-and-planning-horizon) |
+| `User-Agent` in the access log | 200 bytes | fixed | cut | [Access log](#access-log) |
 
 ## NON-FUNCTIONAL REQUIREMENTS
 

@@ -57,7 +57,8 @@ The tests named below live in `src/internal/web/` unless another package is give
 | Notice codes have a message and are documented | `TestNoticesMatchTheSpecifications` (`specifications_test.go`) | [Tests of the documentation](#tests-of-the-documentation) |
 | Commands of the specifications equal a fixed list and appear in the usage | `TestCommandsMatchTheSpecifications` (`src/internal/app/specifications_test.go`) | [Tests of the documentation](#tests-of-the-documentation) |
 | The configuration template equals `NewDefaultConfiguration` | `TestTemplateMirrorsTheDefaultConfiguration` (`src/internal/activity/configuration_test.go`) | [Changing the schema](#changing-the-schema) |
-| `etc/timesheet/timesheet.json` equals `NewDefaultServerSettings` | `TestServerFileMirrorsTheDefaultServerSettings` (`src/internal/activity/server_settings_test.go`) | [Changing the schema](#changing-the-schema) |
+| `etc/timesheet/timesheet.json` is, byte for byte, the encoding of `NewDefaultServerConfiguration` | `TestShippedServerFileIsTheDefaultConfiguration` (`src/internal/app/server_file_test.go`) | [Changing the schema](#changing-the-schema) |
+| The keys of the server configuration equal the keys of the tables of [Server configuration](SPECIFICATIONS.md#server-configuration) | `TestServerKeysMatchTheSpecifications` (`src/internal/app/specifications_test.go`) | [Tests of the documentation](#tests-of-the-documentation) |
 | The import template is a valid import file | `TestImportTemplateIsValid` (`src/internal/app/application_test.go`) | [Changing the schema](#changing-the-schema) |
 | `ReleaseVersion` equals the first entry of `debian/changelog` | `TestVersionIsTheReleaseOfTheChangelog` (`src/internal/app/application_test.go`) | [Release](#release) |
 | Constant format strings | `go vet` | [Tests](#tests) |
@@ -548,17 +549,19 @@ The look is sober and professional:
 
 - The clock is injected (`activity.ManualClock`).
 - Web tests use `httptest` and a database in `t.TempDir()`.
-- Password hashing uses `account.MinIterations` in tests.
+- Password hashing uses `account.MinIterations` in tests: `Application.WithIterations` and the field `Iterations` of `SiteDependencies` take precedence over `passwords.iterations`, whose floor is 600 000.
+- A test that opens a database always gives its path (`--database` or `store.NewDatabase`): the default database is `/var/lib/timesheet/timesheet-database.json`.
 - `go vet` rejects non-constant format strings: always use a constant format.
 
 ### Tests of the documentation
 
-Three tests read [SPECIFICATIONS.md](SPECIFICATIONS.md); update the code, the specifications and these lists together.
+Four tests read [SPECIFICATIONS.md](SPECIFICATIONS.md); update the code, the specifications and these lists together.
 
 | Test | File | Compares | What to update |
 | --- | --- | --- | --- |
 | `TestRoutesMatchTheSpecifications` | `src/internal/web/specifications_test.go` | The method and pattern of every registered route with the rows of [Routes](SPECIFICATIONS.md#routes) | The specifications only: the routes come from the code |
 | `TestNoticesMatchTheSpecifications` | `src/internal/web/specifications_test.go` | A fixed list of notice codes: each must have a message in `Notices` and appear as `` `code` `` in the specifications | Add a new notice code to the list |
+| `TestServerKeysMatchTheSpecifications` | `src/internal/app/specifications_test.go` | The keys of `ServerConfiguration` with the first column of the tables `### Section <name>` of [Server configuration](SPECIFICATIONS.md#server-configuration), prefixed with the section | The specifications only: the keys come from the code |
 | `TestCommandsMatchTheSpecifications` | `src/internal/app/specifications_test.go` | The `known` list of commands with the `timesheet ` lines of [Command line](SPECIFICATIONS.md#command-line), and checks that the usage lists each | Add a new command to `known`; a new family of subcommands also needs the `switch` of the test (today `config`, `user`, `session`) |
 
 The command list is compared with the specifications and the usage, not with the dispatcher of `Application`: a command added to the code and forgotten in both still passes.
@@ -652,7 +655,7 @@ Steps of a change:
 1. Update [SPECIFICATIONS.md, Database](SPECIFICATIONS.md#database) and write how existing databases are handled in [Migration notes](SPECIFICATIONS.md#migration-notes).
 2. Change the records in `internal/activity`, `internal/account` or `internal/store` and their validation.
 3. When the configuration changes, update `share/timesheet/timesheet-database-template.json` and `NewDefaultConfiguration` together (`TestTemplateMirrorsTheDefaultConfiguration`).
-4. When the server configuration changes, update `etc/timesheet/timesheet.json` and `NewDefaultServerSettings` together (`TestServerFileMirrorsTheDefaultServerSettings`).
+4. When the server configuration changes, update the settings of `internal/activity` (defaults, bounds, `ServerConfiguration.keys`), regenerate `etc/timesheet/timesheet.json` with `bin/timesheet config show --config=<missing file>` (`TestShippedServerFileIsTheDefaultConfiguration`), and add the key to its table in [Server configuration](SPECIFICATIONS.md#server-configuration) (`TestServerKeysMatchTheSpecifications`). A new key has a default and bounds; a key renamed, removed or made mandatory needs a migration note, since the file is decoded strictly.
 5. When the import format changes, update the import code, `share/timesheet/timesheet-import-template.json` (`TestImportTemplateIsValid`) and [SPECIFICATIONS.md, Import](SPECIFICATIONS.md#import).
 
 ## MAKEFILE
@@ -693,7 +696,9 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 
 - The packaging lives in `debian/`.
 - `debian/rules` only calls `dh`, and skips `dh_dwz`, which fails on a Go binary.
-- The package takes its files from `make install`: the binary, the configuration template, the import template and the server configuration `/etc/timesheet/timesheet.json`, which debhelper registers as a configuration file.
+- The package takes its files from `make install`: the binary, the configuration template, the import template and the server configuration `/etc/timesheet/timesheet.json`, the file of the repository as is, which debhelper registers as a configuration file.
+- `debian/postinst` reads the database path with `timesheet config show database.path`; it never fails on an unreadable configuration, and creates the database only inside `/var/lib/timesheet`.
+- The unit runs `timesheet run --config=/etc/timesheet/timesheet.json`: the database comes from that file.
 - How to build the package is described in [BUILD.md](BUILD.md#build-the-debian-package), how to install and run it in [OPERATIONS.md](OPERATIONS.md#debian-package).
 
 ### Building the package

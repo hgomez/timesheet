@@ -39,7 +39,7 @@ import (
 func newTestDatabase(t *testing.T) (*Database, string) {
     t.Helper()
     path := filepath.Join(t.TempDir(), "timesheet.json")
-    database := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
+    database := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings())
     if err := database.Create(activity.NewDefaultConfiguration()); err != nil {
         t.Fatal(err)
     }
@@ -76,7 +76,7 @@ func TestDatabaseRoundTrip(t *testing.T) {
     if err := database.SaveCalendar("olivier", 1, calendar); !errors.Is(err, activity.ErrStaleRevision) {
         t.Fatalf("stale revision: %v", err)
     }
-    reloaded := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
+    reloaded := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings())
     if err := reloaded.Load(); err != nil {
         t.Fatal(err)
     }
@@ -114,7 +114,7 @@ func TestDatabaseWritesUnsetFieldsAsNull(t *testing.T) {
             t.Errorf("missing %s in the file", field)
         }
     }
-    reloaded := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
+    reloaded := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings())
     if err := reloaded.Load(); err != nil {
         t.Fatal(err)
     }
@@ -195,11 +195,11 @@ func TestDatabaseRefusesInvalidFiles(t *testing.T) {
     }
     for content, want := range cases {
         os.WriteFile(path, []byte(content), 0o600)
-        if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))).Load(); !errors.Is(err, want) {
+        if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings()).Load(); !errors.Is(err, want) {
             t.Errorf("got %v, want %v", err, want)
         }
     }
-    missing := NewDatabase(filepath.Join(t.TempDir(), "none.json"), slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
+    missing := NewDatabase(filepath.Join(t.TempDir(), "none.json"), slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings())
     if err := missing.Load(); !errors.Is(err, ErrDatabaseMissing) {
         t.Fatalf("missing: %v", err)
     }
@@ -214,7 +214,7 @@ func TestDatabaseRefusesUnreadableData(t *testing.T) {
     database.CreateAccount(newTestAccount(t, "bob", account.ProfileAdmin), activity.NewCalendar(start))
     orphan := filepath.Join(filepath.Dir(path), "." + filepath.Base(path) + ".4242.tmp")
     os.WriteFile(orphan, []byte("x"), 0o600)
-    if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))).Load(); err != nil {
+    if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings()).Load(); err != nil {
         t.Fatal(err)
     }
     if _, err := os.Stat(orphan); err != nil {
@@ -223,13 +223,13 @@ func TestDatabaseRefusesUnreadableData(t *testing.T) {
     data, _ := os.ReadFile(path)
     for name, state := range map[string]string{"missing state": ``, "unknown state": `"state": "removed",`} {
         os.WriteFile(path, []byte(strings.Replace(string(data), `"state": "enabled",`, state, 1)), 0o600)
-        if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))).Load(); !errors.Is(err, ErrMalformedDatabase) || ((state == ``) && !strings.Contains(err.Error(), "accounts[0]: invalid profile, state")) {
+        if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings()).Load(); !errors.Is(err, ErrMalformedDatabase) || ((state == ``) && !strings.Contains(err.Error(), "accounts[0]: invalid profile, state")) {
             t.Errorf("%s: %v", name, err)
         }
     }
     broken := strings.Replace(string(data), `"adjustments": []`, `"adjustments": [{"id": "x1", "counter": "CP", "amount": "1", "reason": "r"}]`, 1)
     os.WriteFile(path, []byte(broken), 0o600)
-    if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))).Load(); !errors.Is(err, ErrMalformedDatabase) {
+    if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings()).Load(); !errors.Is(err, ErrMalformedDatabase) {
         t.Fatalf("adjustment without date: %v", err)
     }
     first := start.String()
@@ -239,7 +239,7 @@ func TestDatabaseRefusesUnreadableData(t *testing.T) {
         "empty reason": `[{"id": "x1", "date": "` + first + `", "counter": "CP", "amount": "1", "reason": ""}]`,
     } {
         os.WriteFile(path, []byte(strings.Replace(string(data), `"adjustments": []`, `"adjustments": ` + adjustments, 1)), 0o600)
-        if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))).Load(); !errors.Is(err, ErrMalformedDatabase) {
+        if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings()).Load(); !errors.Is(err, ErrMalformedDatabase) {
             t.Errorf("%s: %v", name, err)
         }
     }
@@ -249,11 +249,11 @@ func TestDatabaseRefusesUnreadableData(t *testing.T) {
     }
     earlier = strings.Replace(earlier, `"months": {}`, `"months": {"2000-01": {"status": "open"}}`, 1)
     os.WriteFile(path, []byte(earlier), 0o600)
-    if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))).Load(); err != nil {
+    if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings()).Load(); err != nil {
         t.Errorf("a month and an adjustment left before a later start must still load: %v", err)
     }
     os.WriteFile(path, []byte(strings.Replace(string(data), `"login": "bob",`, `"login": "bob", "name": "Bob\u000aMorane",`, 1)), 0o600)
-    if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))).Load(); !errors.Is(err, ErrMalformedDatabase) {
+    if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings()).Load(); !errors.Is(err, ErrMalformedDatabase) {
         t.Errorf("name on two lines: %v", err)
     }
     os.WriteFile(path, data, 0o600)

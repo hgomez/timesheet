@@ -23,6 +23,7 @@ import (
     "io"
     "log/slog"
 
+    "timesheet/internal/activity"
     "timesheet/internal/store"
 )
 
@@ -32,6 +33,7 @@ import (
 
 type SessionCommand struct {
     settings *Settings
+    server   activity.ServerConfiguration
     logger   *slog.Logger
 }
 
@@ -39,12 +41,12 @@ type SessionCommand struct {
 // SessionCommand implementation
 // ---------------------------------------------------------------------------
 
-func NewSessionCommand(settings *Settings, logger *slog.Logger) *SessionCommand {
-    return &SessionCommand{settings: settings, logger: logger}
+func NewSessionCommand(settings *Settings, server activity.ServerConfiguration, logger *slog.Logger) *SessionCommand {
+    return &SessionCommand{settings: settings, server: server, logger: logger}
 }
 
 func (c *SessionCommand) Run(out io.Writer) error {
-    database := store.NewDatabase(c.settings.Database(), c.logger)
+    database := store.NewDatabase(c.settings.Database(), c.logger, c.server.Database.MaxBytes, c.server.Limits)
     err := database.Lock()
     if errors.Is(err, store.ErrLocked) {
         return fmt.Errorf("%w (stop the server first)", err)

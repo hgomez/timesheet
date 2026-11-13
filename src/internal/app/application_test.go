@@ -284,7 +284,7 @@ func TestRunServesTheSite(t *testing.T) {
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database)
     stderr := &bytes.Buffer{}
-    application := NewApplication([]string{"run", "--addr=127.0.0.1:0", database}, testEnv(""), strings.NewReader(""), io.Discard, stderr, time.UTC).WithIterations(account.MinIterations).WithClock(activity.NewSystemClock())
+    application := NewApplication([]string{"run", "--listen=127.0.0.1:0", database}, testEnv(""), strings.NewReader(""), io.Discard, stderr, time.UTC).WithIterations(account.MinIterations).WithClock(activity.NewSystemClock())
     ctx, cancel := context.WithCancel(context.Background())
     done := make(chan int, 1)
     go func() {
@@ -295,7 +295,7 @@ func TestRunServesTheSite(t *testing.T) {
         case code := <-done:
             t.Fatalf("run stopped: %d %s", code, stderr.String())
     }
-    response, err := http.Get("http://" + application.Addr() + "/")
+    response, err := http.Get("http://" + application.Listen() + "/")
     if err != nil {
         t.Fatal(err)
     }
@@ -331,7 +331,7 @@ func TestCommandEdgeCases(t *testing.T) {
     if run := runCommand(t, "", "config", "set", "server.bogus", "x", database, config); run.code != ExitUsage {
         t.Fatalf("unknown key: %+v", run)
     }
-    for _, value := range [][]string{{"server.addr", "nonsense"}, {"server.origins", "javascript:alert(1)"}} {
+    for _, value := range [][]string{{"server.listen", "nonsense"}, {"server.origins", "javascript:alert(1)"}} {
         if run := runCommand(t, "", "config", "set", value[0], value[1], database, config); run.code != ExitError {
             t.Fatalf("config set %v: %+v", value, run)
         }
@@ -346,7 +346,7 @@ func TestCommandEdgeCases(t *testing.T) {
         t.Fatalf("empty TIMESHEET_PASSWORD: %d %s", code, stderr.String())
     }
     runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database)
-    if run := runCommand(t, "", "run", "--addr=127.0.0.1:0", "--origin=http://127.0.0.1:1", "--tls-cert=a.pem", "--tls-key=b.pem", database); (run.code != ExitError) || !strings.Contains(run.stderr, "https") {
+    if run := runCommand(t, "", "run", "--listen=127.0.0.1:0", "--origin=http://127.0.0.1:1", "--tls-cert=a.pem", "--tls-key=b.pem", database); (run.code != ExitError) || !strings.Contains(run.stderr, "https") {
         t.Fatalf("TLS with http origins: %+v", run)
     }
 }
@@ -404,13 +404,13 @@ func TestConfigSetChecksThePortOfTheAddress(t *testing.T) {
     config := "--config=" + filepath.Join(directory, "timesheet.json")
     template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
     runCommand(t, "", "init", template, database)
-    if run := runCommand(t, "", "config", "set", "server.addr", "127.0.0.1:99999", database, config); run.code != ExitError {
+    if run := runCommand(t, "", "config", "set", "server.listen", "127.0.0.1:99999", database, config); run.code != ExitError {
         t.Fatalf("port out of range: %+v", run)
     }
-    if run := runCommand(t, "", "config", "set", "server.addr", "127.0.0.1:http", database, config); run.code != ExitOK {
+    if run := runCommand(t, "", "config", "set", "server.listen", "127.0.0.1:http", database, config); run.code != ExitOK {
         t.Fatalf("service name: %+v", run)
     }
-    if run := runCommand(t, "", "config", "show", database, config); (run.code != ExitOK) || !strings.Contains(run.stdout, `"addr": "127.0.0.1:http"`) {
+    if run := runCommand(t, "", "config", "show", database, config); (run.code != ExitOK) || !strings.Contains(run.stdout, `"listen": "127.0.0.1:http"`) {
         t.Fatalf("database with a service name: %+v", run)
     }
 }
@@ -540,7 +540,7 @@ func TestServerConfigurationLivesInItsOwnFile(t *testing.T) {
     template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
     file := filepath.Join(directory, "etc", "timesheet.json")
     config := "--config=" + file
-    if run := runCommand(t, "", "config", "show", config); (run.code != ExitOK) || !strings.Contains(run.stdout, `"addr": "127.0.0.1:8080"`) || !strings.Contains(run.stdout, `"timezone": "Europe/Paris"`) {
+    if run := runCommand(t, "", "config", "show", config); (run.code != ExitOK) || !strings.Contains(run.stdout, `"listen": "127.0.0.1:8080"`) || !strings.Contains(run.stdout, `"timezone": "Europe/Paris"`) {
         t.Fatalf("defaults without file: %+v", run)
     }
     if _, err := os.Stat(file); err == nil {
@@ -563,7 +563,7 @@ func TestServerConfigurationLivesInItsOwnFile(t *testing.T) {
     if _, calendar, _ := openTestDatabase(t, database).Account("tokyo"); calendar.Settings.Start != activity.NewDate(2026, time.November, 1) {
         t.Fatalf("tracking start %s", calendar.Settings.Start)
     }
-    for content, message := range map[string]string{`{"server": {"addr": "127.0.0.1:8080"}}`: "server.origins", `{"server": {}, "extra": 1}`: "extra", `nonsense`: "invalid character"} {
+    for content, message := range map[string]string{`{"server": {"listen": "127.0.0.1:8080"}}`: "server.origins", `{"server": {"addr": "127.0.0.1:8080"}}`: "unknown field", `{"server": {}, "extra": 1}`: "extra", `nonsense`: "invalid character"} {
         writeTestFile(t, file, content)
         for _, command := range [][]string{{"config", "show"}, {"run"}, {"user", "add", "other"}} {
             if run := runCommand(t, "correct horse battery", append(command, database, config)...); (run.code != ExitError) || !strings.Contains(run.stderr, message) {
@@ -573,6 +573,105 @@ func TestServerConfigurationLivesInItsOwnFile(t *testing.T) {
     }
     if run := runCommand(t, "", "config", "show", "--config="); run.code != ExitUsage {
         t.Fatalf("empty --config: %+v", run)
+    }
+}
+
+func TestConfigShowAndSetHandleEveryKey(t *testing.T) {
+    directory, _ := newTestDirectory(t)
+    file := filepath.Join(directory, "timesheet.json")
+    config := "--config=" + file
+    if run := runCommand(t, "", "config", "show", "database.path", config); (run.code != ExitOK) || (run.stdout != activity.DefaultDatabasePath + "\n") {
+        t.Fatalf("raw value: %+v", run)
+    }
+    for _, args := range [][]string{{"config", "show", "server.addr"}, {"config", "show", "a", "b"}, {"config", "set", "server.tls_cert", "a.pem", "server.tls_key"}, {"config", "set", "server.addr", "x"}} {
+        if run := runCommand(t, "", append(args, config)...); run.code != ExitUsage {
+            t.Errorf("%v: %+v", args, run)
+        }
+    }
+    for _, args := range [][]string{{"server.tls_cert", "a.pem"}, {"sessions.idle_timeout", "1m"}, {"sessions.idle_timeout", "soon"}, {"limits.accounts", "many"}} {
+        if run := runCommand(t, "", append([]string{"config", "set"}, append(args, config)...)...); (run.code != ExitError) || !strings.Contains(run.stderr, args[0] + ":") {
+            t.Errorf("%v: %+v", args, run)
+        }
+    }
+    if run := runCommand(t, "", "config", "set", "server.tls_cert", "a.pem", "server.tls_key", "b.pem", "sessions.idle_timeout", "30m", config); (run.code != ExitOK) || !strings.Contains(run.stdout, "server.tls_cert, server.tls_key, sessions.idle_timeout mis à jour") {
+        t.Fatalf("linked keys set together: %+v", run)
+    }
+    for key, want := range map[string]string{"server.tls_key": "b.pem", "sessions.idle_timeout": "30m", "server.origins": "http://127.0.0.1:8080,http://localhost:8080"} {
+        if run := runCommand(t, "", "config", "show", key, config); (run.code != ExitOK) || (run.stdout != want + "\n") {
+            t.Errorf("%s: %+v", key, run)
+        }
+    }
+    data, err := os.ReadFile(file)
+    if (err != nil) || !strings.Contains(string(data), "\"origins\": [\n      \"http://127.0.0.1:8080\",\n") || !strings.Contains(string(data), "\"tls_cert\": \"a.pem\"") || !strings.Contains(string(data), "\"idle_timeout\": \"30m\"") {
+        t.Fatalf("the file keeps one entry per line: %s %v", data, err)
+    }
+    if run := runCommand(t, "", "config", "set", "server.tls_cert", "null", "server.tls_key", "null", config); run.code != ExitOK {
+        t.Fatalf("null removes the pair: %+v", run)
+    }
+}
+
+func TestDatabasePathComesFromTheConfiguration(t *testing.T) {
+    directory, _ := newTestDirectory(t)
+    config := "--config=" + filepath.Join(directory, "timesheet.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    path := filepath.Join(directory, "configured.json")
+    if run := runCommand(t, "", "config", "set", "database.path", path, config); run.code != ExitOK {
+        t.Fatalf("config set: %+v", run)
+    }
+    if run := runCommand(t, "", "init", template, config); (run.code != ExitOK) || !strings.Contains(run.stdout, path) {
+        t.Fatalf("init without --database: %+v", run)
+    }
+    runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", config)
+    if run := runCommand(t, "", "user", "list", config); (run.code != ExitOK) || !strings.Contains(run.stdout, "root") {
+        t.Fatalf("user list without --database: %+v", run)
+    }
+    explicit := filepath.Join(directory, "explicit.json")
+    if run := runCommand(t, "", "init", template, "--database=" + explicit, config); (run.code != ExitOK) || !strings.Contains(run.stdout, explicit) {
+        t.Fatalf("--database comes first: %+v", run)
+    }
+    if run := runCommand(t, "", "config", "set", "database.path", filepath.Join(directory, ".hidden.json"), config); (run.code != ExitError) || !strings.Contains(run.stderr, "database.path:") {
+        t.Fatalf("hidden database name: %+v", run)
+    }
+    settings, err := NewSettings([]string{"user", "list"})
+    if err != nil {
+        t.Fatal(err)
+    }
+    absolute, _ := filepath.Abs(filepath.Join("var", "base.json"))
+    if err := settings.ResolveDatabase(filepath.Join("var", "base.json")); (err != nil) || (settings.Database() != absolute) {
+        t.Fatalf("a relative path is made absolute: %s %v", settings.Database(), err)
+    }
+}
+
+func TestLimitsComeFromTheConfiguration(t *testing.T) {
+    directory, database := newTestDirectory(t)
+    config := "--config=" + filepath.Join(directory, "timesheet.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    runCommand(t, "", "init", template, database, config)
+    runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database, config)
+    runCommand(t, "correct horse battery", "user", "add", "second", database, config)
+    if run := runCommand(t, "", "config", "set", "limits.accounts", "1", config); run.code != ExitOK {
+        t.Fatalf("config set: %+v", run)
+    }
+    if run := runCommand(t, "", "user", "list", database, config); (run.code != ExitOK) || !strings.Contains(run.stdout, "second") {
+        t.Fatalf("a lowered limit never makes the database unreadable: %+v", run)
+    }
+    if run := runCommand(t, "correct horse battery", "user", "add", "third", database, config); (run.code != ExitError) || !strings.Contains(run.stderr, "too many accounts") {
+        t.Fatalf("a lowered limit refuses a new account: %+v", run)
+    }
+}
+
+func TestRunTakesTheTLSPairFromTheFile(t *testing.T) {
+    directory, database := newTestDirectory(t)
+    config := "--config=" + filepath.Join(directory, "timesheet.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    runCommand(t, "", "init", template, database, config)
+    runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database, config)
+    runCommand(t, "", "config", "set", "server.tls_cert", filepath.Join(directory, "a.pem"), "server.tls_key", filepath.Join(directory, "b.pem"), config)
+    if run := runCommand(t, "", "run", "--listen=127.0.0.1:0", "--origin=http://127.0.0.1:1", database, config); (run.code != ExitError) || !strings.Contains(run.stderr, "TLS needs https origins") {
+        t.Fatalf("a pair of the file with http origins: %+v", run)
+    }
+    if run := runCommand(t, "", "run", "--listen=127.0.0.1:0", "--origin=https://127.0.0.1:1", database, config); (run.code != ExitError) || !strings.Contains(run.stderr, "TLS setup failed") {
+        t.Fatalf("the https origins of the options pass the check before the pair is loaded: %+v", run)
     }
 }
 

@@ -95,7 +95,7 @@ func writeTestImport(t *testing.T, path string) {
 
 func openTestDatabase(t *testing.T, option string) *store.Database {
     t.Helper()
-    database := store.NewDatabase(strings.TrimPrefix(option, "--database="), slog.New(slog.NewTextHandler(io.Discard, nil)))
+    database := store.NewDatabase(strings.TrimPrefix(option, "--database="), slog.New(slog.NewTextHandler(io.Discard, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings())
     if err := database.Load(); err != nil {
         t.Fatal(err)
     }

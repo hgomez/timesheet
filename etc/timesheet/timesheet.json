@@ -1,6 +1,6 @@
 {
   "server": {
-    "addr": "127.0.0.1:8080",
+    "listen": "127.0.0.1:8080",
     "origins": [
       "http://127.0.0.1:8080",
       "http://localhost:8080"
@@ -10,6 +10,46 @@
       "172.16.0.0/12",
       "192.168.0.0/16"
     ],
-    "timezone": "Europe/Paris"
+    "timezone": "Europe/Paris",
+    "log_level": "info",
+    "tls_cert": null,
+    "tls_key": null,
+    "tls_min_version": "1.2",
+    "hsts_max_age": "8760h",
+    "read_header_timeout": "5s",
+    "read_timeout": "15s",
+    "write_timeout": "30s",
+    "keep_alive_timeout": "1m",
+    "shutdown_timeout": "10s",
+    "max_header_bytes": 8192,
+    "max_body_bytes": 262144,
+    "max_url_bytes": 2048
+  },
+  "database": {
+    "path": "/var/lib/timesheet/timesheet-database.json",
+    "max_bytes": 67108864
+  },
+  "sessions": {
+    "idle_timeout": "8h",
+    "max_lifetime": "24h",
+    "per_account": 64,
+    "save_interval": "1m"
+  },
+  "login": {
+    "form_lifetime": "1h",
+    "initial_delay": "1s",
+    "max_delay": "5m",
+    "budget_window": "1m",
+    "new_addresses_per_window": 100,
+    "tracked_addresses": 4096,
+    "forget_after": "1h"
+  },
+  "passwords": {
+    "iterations": 600000
+  },
+  "limits": {
+    "accounts": 200,
+    "account_bytes": 1048576,
+    "adjustments": 1000
   }
 }

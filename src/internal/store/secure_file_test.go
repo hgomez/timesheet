@@ -33,11 +33,13 @@ import (
 // SecureFile tests
 // ---------------------------------------------------------------------------
 
+const testMaxBytes = 64 << 20
+
 func TestSecureFileLiteralNamesAndLateChecks(t *testing.T) {
     directory := t.TempDir()
     unrelated := filepath.Join(directory, ".axb.json.keep.tmp")
     os.WriteFile(unrelated, []byte("x"), 0o600)
-    file := NewSecureFile(filepath.Join(directory, "a*b.json"), slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), DefaultMaxDatabaseSize)
+    file := NewSecureFile(filepath.Join(directory, "a*b.json"), slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), testMaxBytes)
     if err := file.Prepare(); err != nil {
         t.Fatal(err)
     }
@@ -46,7 +48,7 @@ func TestSecureFileLiteralNamesAndLateChecks(t *testing.T) {
     }
     os.Chmod(directory, 0o770)
     logs := &bytes.Buffer{}
-    shared := NewSecureFile(filepath.Join(directory, "shared.json"), slog.New(slog.NewTextHandler(logs, nil)), DefaultMaxDatabaseSize)
+    shared := NewSecureFile(filepath.Join(directory, "shared.json"), slog.New(slog.NewTextHandler(logs, nil)), testMaxBytes)
     shared.Prepare()
     for i := 0; i < 3; i++ {
         if err := shared.Write([]byte("{}")); err != nil {
@@ -66,8 +68,8 @@ func TestSecureFileLiteralNamesAndLateChecks(t *testing.T) {
 func TestSecureFileLock(t *testing.T) {
     directory := t.TempDir()
     logger := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
-    first := NewSecureFile(filepath.Join(directory, "data.json"), logger, DefaultMaxDatabaseSize)
-    second := NewSecureFile(filepath.Join(directory, "data.json"), logger, DefaultMaxDatabaseSize)
+    first := NewSecureFile(filepath.Join(directory, "data.json"), logger, testMaxBytes)
+    second := NewSecureFile(filepath.Join(directory, "data.json"), logger, testMaxBytes)
     if err := first.Lock(); err != nil {
         t.Fatal(err)
     }
@@ -92,7 +94,7 @@ func TestSecureFileRemovesOnlyItsOwnTemporaryFiles(t *testing.T) {
     for _, name := range append(foreign, orphan) {
         os.WriteFile(name, []byte("x"), 0o600)
     }
-    file := NewSecureFile(filepath.Join(directory, "db.json"), slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), DefaultMaxDatabaseSize)
+    file := NewSecureFile(filepath.Join(directory, "db.json"), slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), testMaxBytes)
     if err := file.Prepare(); err != nil {
         t.Fatal(err)
     }

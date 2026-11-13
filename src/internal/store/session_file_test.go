@@ -30,6 +30,7 @@ import (
     "time"
 
     "timesheet/internal/account"
+    "timesheet/internal/activity"
 )
 
 // ---------------------------------------------------------------------------
@@ -70,6 +71,23 @@ func TestSessionFileRoundTrip(t *testing.T) {
         if _, err := file.LoadSessions(); !errors.Is(err, ErrMalformedSessions) {
             t.Errorf("%s: %v", name, err)
         }
+    }
+}
+
+func TestSessionFileHoldsEveryRestorableSession(t *testing.T) {
+    directory := t.TempDir()
+    os.Chmod(directory, 0o700)
+    file := NewSessionFile(filepath.Join(directory, "ts.json"), slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
+    now := time.Date(2026, time.November, 11, 21, 0, 0, 123456789, time.FixedZone("CET", 3600))
+    records := make([]account.SessionRecord, activity.MaxRestorableSessions)
+    for i := range records {
+        records[i] = account.SessionRecord{Key: strings.Repeat("ab", 32), Login: account.Login(strings.Repeat("l", 32)), CSRF: strings.Repeat("c", 43), Created: now, Seen: now}
+    }
+    if err := file.SaveSessions(records); err != nil {
+        t.Fatalf("the largest set of sessions must fit in the session file: %v", err)
+    }
+    if loaded, err := file.LoadSessions(); (err != nil) || (len(loaded) != len(records)) {
+        t.Fatalf("got %d %v", len(loaded), err)
     }
 }
 

@@ -31,7 +31,7 @@ import (
 
 func TestThrottleBudgetNeverBlocksAFirstAttempt(t *testing.T) {
     clock := activity.NewManualClock(time.Date(2026, time.November, 8, 10, 0, 0, 0, time.UTC))
-    throttle := NewLoginThrottle(clock, 64, 3)
+    throttle := NewLoginThrottle(clock, testThrottleSettings(64, 3))
     for i := 1; i <= 5; i++ {
         key := netip.MustParsePrefix("10.0.0." + string(rune('0' + i)) + "/32")
         if allowed, _ := throttle.Begin(key); !allowed {
@@ -52,7 +52,7 @@ func TestThrottleBudgetNeverBlocksAFirstAttempt(t *testing.T) {
 
 func TestThrottleSuccessKeepsEarlierFailures(t *testing.T) {
     clock := activity.NewManualClock(time.Date(2026, time.November, 8, 10, 0, 0, 0, time.UTC))
-    throttle := NewLoginThrottle(clock, 64, 100)
+    throttle := NewLoginThrottle(clock, testThrottleSettings(64, 100))
     key := netip.MustParsePrefix("10.0.0.9/32")
     for range 3 {
         throttle.Begin(key)
@@ -79,7 +79,7 @@ func TestThrottleSuccessKeepsEarlierFailures(t *testing.T) {
 
 func TestThrottleTableFullEvictsInsteadOfRefusing(t *testing.T) {
     clock := activity.NewManualClock(time.Date(2026, time.November, 8, 10, 0, 0, 0, time.UTC))
-    throttle := NewLoginThrottle(clock, 4, 1)
+    throttle := NewLoginThrottle(clock, testThrottleSettings(4, 1))
     for i := 1; i <= 4; i++ {
         key := netip.MustParsePrefix("10.0.2." + string(rune('0' + i)) + "/32")
         throttle.Begin(key)
@@ -92,6 +92,34 @@ func TestThrottleTableFullEvictsInsteadOfRefusing(t *testing.T) {
     if allowed, _ := throttle.Begin(netip.MustParsePrefix("10.0.3.1/32")); !allowed {
         t.Fatal("once the blocks are over, a full table must evict an entry, not refuse a fresh address")
     }
+}
+
+func TestThrottleDelaysFollowTheirSettings(t *testing.T) {
+    clock := activity.NewManualClock(time.Date(2026, time.November, 8, 10, 0, 0, 0, time.UTC))
+    settings := testThrottleSettings(64, 100)
+    settings.InitialDelay, settings.MaxDelay, settings.ForgetAfter = activity.Duration(300 * time.Millisecond), activity.Duration(time.Hour), activity.Duration(2 * time.Hour)
+    throttle := NewLoginThrottle(clock, settings)
+    key := netip.MustParsePrefix("10.0.4.1/32")
+    waits := []time.Duration{}
+    for range 20 {
+        throttle.Begin(key)
+        if allowed, wait := throttle.Begin(key); allowed || (wait != time.Second) {
+            t.Fatalf("an attempt in flight must wait one second: %v %v", allowed, wait)
+        }
+        throttle.End(key, false)
+        _, wait := throttle.Begin(key)
+        waits = append(waits, wait)
+        clock.Advance(wait)
+    }
+    if (waits[0] != 300 * time.Millisecond) || (waits[1] != 600 * time.Millisecond) || (waits[len(waits) - 1] != time.Hour) {
+        t.Fatalf("the delay doubles from its first value up to its ceiling, without overflow: %v", waits)
+    }
+}
+
+func testThrottleSettings(tracked int64, budget int64) activity.LoginSettings {
+    settings := activity.NewDefaultLoginSettings()
+    settings.TrackedAddresses, settings.NewAddressesPerWindow = tracked, budget
+    return settings
 }
 
 // ---------------------------------------------------------------------------

@@ -95,11 +95,11 @@ Each row is a known limit that the application does not remove. The column "Boun
 | An administrator can take over an account. | An `ADMIN` resets the password of another account, then logs in with it. | Administrators are trusted. The reset is logged with its author, and the user can no longer log in with the old password. | Give `ADMIN` to as few people as possible; read the `password reset` events. |
 | No account is ever locked. | An attacker guesses the password of one login from many addresses. | The delay is per client address, not per account; only the [global budget](#global-budget) limits a spread guess. | Strong passwords (the policy); throttling. |
 | No second factor. | A password is known to an attacker. | Login takes a login and a password only. | Strong passwords; close the sessions of an exposed account. |
-| A legitimate user waits up to 5 min. | During an attack that exhausts the global budget, the user mistypes once. | The budget alone never refuses a login. | None in the application. |
-| New addresses are refused. | The throttle table holds 4096 blocked addresses at once. | The attacker needs more than 4096 addresses. | None in the application. |
+| A legitimate user waits up to `login.max_delay` (5 min by default). | During an attack that exhausts the global budget, the user mistypes once. | The budget alone never refuses a login. | None in the application. |
+| New addresses are refused. | The throttle table holds `login.tracked_addresses` blocked addresses at once (4096 by default). | The attacker needs more addresses than that. | None in the application. |
 | Processor load from parallel password checks. | An attacker holds many addresses. | One check at a time per address, no global limit; about half a second per check. Accepted for this deployment. | A reverse proxy that limits the request rate. |
 | Unbounded write load by a connected user. | A user saves again and again. | Writes are not rate-limited, and each one rewrites the whole database file, so the disk load grows with the database size. Accepted for a handful of accounts. | None in the application. |
-| Derived origins can be answered by another host. | `run --addr` without `--origin`. | `<host name>.local` is resolved by mDNS, and the bare host name may be resolved by LLMNR or a DNS search domain. | Give `--origin`. See [Host check](#host-check). |
+| Derived origins can be answered by another host. | `run --listen` without `--origin`. | `<host name>.local` is resolved by mDNS, and the bare host name may be resolved by LLMNR or a DNS search domain. | Give `--origin`. See [Host check](#host-check). |
 | A forged client address. | A machine inside a trusted proxy range, or a local user of the proxy host, reaches the server directly. | A trusted proxy is recognised by its source address only. | Trust the narrowest set; keep the listening port out of reach. See [Client address and trusted proxies](#client-address-and-trusted-proxies). |
 | One shared throttle entry. | A trusted proxy sends no readable `X-Forwarded-For`. | Every such request has no client address. One failure then delays every user. | Configure the proxy to append the header. |
 | Plain HTTP between a reverse proxy and the server. | The proxy runs on another machine. | Passwords and cookies cross that link in clear, and the server does not warn, because its origins are https. | A firewall that admits only the proxy, or TLS on that link too. See [Transport](#transport). |
@@ -109,7 +109,8 @@ Each row is a known limit that the application does not remove. The column "Boun
 | A permanent password known to the operator. | `user add` or `user passwd` set the password. | The operator typed it. | Ask the user to change it from the profile page (« Mon profil »). |
 | The session file gives the CSRF tokens. | Someone reads the session file. | It does not give the means to use a session. | Protect it like the database. |
 | The database and the backups are not encrypted. | root, the service account or a holder of a backup reads the file. | Every comment and absence reason is readable in clear. | File modes, protected backups. See [Data protection](#data-protection). |
-| Login timing differs for some accounts. | A stored hash has a number of iterations other than 600 000. | The decoy hash uses the default number. | Keep the default; a password change rewrites the hash with it. |
+| Login timing differs for some accounts. | A stored hash has a number of iterations other than `passwords.iterations`. | The decoy hash uses the configured number. | Change `passwords.iterations` rarely; a password change rewrites the hash with the configured number. |
+| The operator weakens a setting. | Whoever can write the server configuration lowers a duration, a delay or a limit. | Every setting is bounded by the program: at least 600 000 iterations, an initial login delay of at least 100 ms, sessions of at most 30 days, at most 16 384 sessions in all, HSTS of at least 24 h. The file is owned by root on a package. | Protect the file like the binary; read `config show` after a change. |
 | A security fix of Go needs a rebuild. | A vulnerability is fixed in the Go standard library. | The binary is statically linked. | Rebuild and reinstall the binary or the package. |
 
 Glossary of the terms of this table:
@@ -150,7 +151,7 @@ The pages and routes of each profile are in [Profiles and accounts](SPECIFICATIO
 ### Storage
 
 - Hash: PBKDF2-SHA256 (password-based key derivation, with SHA-256).
-- Iterations: 600 000 for every new hash.
+- Iterations: `passwords.iterations` of the [server configuration](SPECIFICATIONS.md#section-passwords) for every new hash, 600 000 by default and at least, 1 200 000 at most.
 - Salt: 16 random bytes per hash.
 - A stored hash is accepted with 1 000 to 1 200 000 iterations when the database is read.
 
@@ -209,15 +210,17 @@ Throttling delays the next login attempt of a client address after a failure.
 
 ### Parameters
 
-| Parameter | Value |
-| --- | --- |
-| First delay after a failure | 1 s |
-| Growth | Doubled at each further failure |
-| Longest delay | 5 min |
-| Global budget | 100 new addresses a minute |
-| Size of the table | 4096 addresses |
-| Failures forgotten after | 1 h without failure |
-| Password checks at once per address | 1 |
+The values are set in the [section login](SPECIFICATIONS.md#section-login) of the server configuration; the table gives the defaults and the bounds.
+
+| Parameter | Default | Setting and bounds |
+| --- | --- | --- |
+| First delay after a failure | 1 s | `login.initial_delay`, 100 ms to 10 s, at most the longest delay |
+| Growth | Doubled at each further failure | fixed |
+| Longest delay | 5 min | `login.max_delay`, 1 s to 1 h |
+| Global budget | 100 new addresses a minute | `login.new_addresses_per_window`, 1 to 10 000, in a window of `login.budget_window`, 10 s to 1 h |
+| Size of the table | 4096 addresses | `login.tracked_addresses`, 16 to 1 000 000 |
+| Failures forgotten after | 1 h without failure | `login.forget_after`, from the longest delay to 7 days |
+| Password checks at once per address | 1 | fixed; a second attempt during a check waits 1 s |
 
 ### Key
 
@@ -234,27 +237,27 @@ The events `login failed` and `login throttled` log this key in their `address` 
 
 ### Delay
 
-- After a failure, the key waits 1 s.
-- The delay doubles at each further failure, up to 5 min.
+- After a failure, the key waits the first delay, 1 s by default.
+- The delay doubles at each further failure, up to the longest delay, 5 min by default.
 - A login attempted during the delay is refused with status 429 and a `Retry-After` header.
 - A success does not erase the earlier failures of the key.
-- The failures are forgotten after one hour without failure.
+- The failures are forgotten after `login.forget_after` without failure, one hour by default.
 - They are forgotten sooner when the table is full, never before the end of a block.
 
 ### Global budget
 
-- At most 100 new keys a minute are admitted with the normal delay.
+- At most `login.new_addresses_per_window` new keys per `login.budget_window` are admitted with the normal delay, 100 a minute by default.
 - A key counts at its first attempt, failed or not; a success at the first attempt gives its place back.
-- Beyond the budget, a new key still gets one attempt, but waits the longest delay (5 min) after a failure.
+- Beyond the budget, a new key still gets one attempt, but waits the longest delay (5 min by default) after a failure.
 - The budget alone never refuses a login.
-- Consequence: during an attack, a legitimate user who mistypes once waits up to 5 min.
+- Consequence: during an attack, a legitimate user who mistypes once waits up to the longest delay.
 
 ### Table
 
-- The table holds 4096 keys.
+- The table holds `login.tracked_addresses` keys, 4096 by default.
 - When it is full, the oldest entry that is neither blocked nor being checked is evicted, over-budget entries first.
-- A new key is refused only while every entry is blocked or being checked. The answer is status 429 with `Retry-After: 61`.
-- This needs an attacker holding more than 4096 addresses; this residual lockout is accepted.
+- A new key is refused only while every entry is blocked or being checked. The answer is status 429 with a `Retry-After` of the budget window plus one second, `61` by default.
+- This needs an attacker holding more addresses than the table; this residual lockout is accepted.
 
 ### Password change form
 
@@ -319,12 +322,12 @@ The client address is the address that the throttling, the access log and the ev
 
 ### Expiry
 
-| Kind | Duration | Meaning |
-| --- | --- | --- |
-| Sliding | 8 h | A session unused for 8 h ends. |
-| Absolute | 24 h | A session ends 24 h after the login, used or not. |
+| Kind | Default | Setting and bounds | Meaning |
+| --- | --- | --- | --- |
+| Sliding | 8 h | `sessions.idle_timeout`, 5 min to 7 days | A session unused for this long ends. |
+| Absolute | 24 h | `sessions.max_lifetime`, from the sliding expiry to 30 days | A session ends this long after the login, used or not. |
 
-Both expiries hold across restarts.
+Both expiries hold across restarts, and the configured values apply to the restored sessions too ([Section sessions](SPECIFICATIONS.md#section-sessions)).
 
 ### Session file
 
@@ -350,7 +353,7 @@ The commands that act on the file are in [Command line](SPECIFICATIONS.md#comman
 - At each closing of sessions.
 - When an expired session is presented and dropped.
 - By `user profile`, `user passwd` and `user del`, which remove the sessions of their account before changing it. A change refused afterwards (for example the last administrator) has already closed them.
-- At most once a minute for the sliding expiry.
+- For the sliding expiry, at most once per `sessions.save_interval`, one minute by default.
 
 ### At start
 
@@ -380,7 +383,8 @@ The commands that act on the file are in [Command line](SPECIFICATIONS.md#comman
 
 ### Limit per account
 
-- At most 64 sessions per account.
+- At most `sessions.per_account` sessions per account, 64 by default.
+- `limits.accounts` × `sessions.per_account` is at most 16 384, so that every session fits in the session file and can be restored.
 - Beyond, the oldest session of the account is dropped.
 
 ## FORMS AND ORIGINS
@@ -389,7 +393,7 @@ The commands that act on the file are in [Command line](SPECIFICATIONS.md#comman
 
 - Every form carries the CSRF token of the session.
 - The login form, shown before any session, uses a double-submitted token: the same random value is sent in the cookie `ts_login` and in the form, and both must match.
-- The cookie `ts_login` has `Max-Age=3600` and is renewed each time the login form is shown. Its token is reused, so several tabs share it.
+- The cookie `ts_login` has a `Max-Age` of `login.form_lifetime` (3600 seconds by default, 1 min to 24 h) and is renewed each time the login form is shown. Its token is reused, so several tabs share it. Once the browser drops it, the login posted from the old form is refused (403).
 - A missing or wrong token is refused with status 403.
 
 ### Origin check
@@ -406,8 +410,8 @@ The host guard (`HostGuard`) refuses with status 421 a request whose `Host` is n
 | Case | Accepted origins |
 | --- | --- |
 | `--origin` given | The origins given with `--origin` |
-| Neither `--origin` nor `--addr` | The origins of `server.origins` in the server configuration file |
-| `--addr` given without `--origin` | Derived from the listener, `server.origins` being ignored |
+| Neither `--origin` nor `--listen` | The origins of `server.origins` in the server configuration file |
+| `--listen` given without `--origin` | Derived from the listener, `server.origins` being ignored |
 
 Derived origins are, on the listening port:
 
@@ -447,7 +451,7 @@ Every response that reaches the handlers carries these headers:
 | `Cache-Control` | `no-store` |
 | `Pragma` | `no-cache` |
 | `Expires` | `0` |
-| `Strict-Transport-Security` | `max-age=31536000`, only with https origins, without `includeSubDomains` |
+| `Strict-Transport-Security` | `max-age` of `server.hsts_max_age` (`31536000`, one year, by default; 24 h to 2 years), only with https origins, without `includeSubDomains` |
 
 The content security policy (CSP) tells the browser which sources a page may use:
 
@@ -457,7 +461,8 @@ default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect
 
 - `frame-ancestors 'none'` and `X-Frame-Options: DENY` forbid framing.
 - `require-trusted-types-for 'script'` with `trusted-types 'none'` (Trusted Types) makes the browser refuse a string in a script sink such as `innerHTML`.
-- HSTS (HTTP Strict Transport Security) tells the browser to use only https for this host for one year.
+- HSTS (HTTP Strict Transport Security) tells the browser to use only https for this host for `server.hsts_max_age`, one year by default.
+- The other headers and the CSP are fixed.
 
 Limit: requests refused by the HTTP parser of Go itself (headers over the limit, status 431; malformed request, status 400) are answered in plain text, without these headers.
 
@@ -465,19 +470,20 @@ Limit: requests refused by the HTTP parser of Go itself (headers over the limit,
 
 - The size limits (URL, body, headers, data of one account, adjustments, planning horizon, import file) are listed in [Limits](SPECIFICATIONS.md#limits).
 - Sessions, accounts, codes and counters are bounded.
-- The data of one account is limited to 1 MiB and 1000 adjustments.
+- The data of one account is limited to `limits.account_bytes` and `limits.adjustments`, 1 MiB and 1000 by default, and the accounts to `limits.accounts`, 200 by default.
+- The request sizes and the timeouts are set in the [section server](SPECIFICATIONS.md#section-server) of the server configuration, within bounds: the request body never goes below 256 KiB, the size of the largest legitimate form.
 - Months can be entered up to 24 months ahead.
 - The import file is bounded to 8 MiB and decoded strictly.
 
 ### Timeouts
 
-| Timeout | Value |
-| --- | --- |
-| Reading the request headers | 5 s |
-| Reading the whole request | 15 s |
-| Writing the answer | 30 s |
-| Idle connection | 60 s |
-| Graceful shutdown | 10 s |
+| Timeout | Default | Setting and bounds |
+| --- | --- | --- |
+| Reading the request headers | 5 s | `server.read_header_timeout`, 1 s to 10 min |
+| Reading the whole request | 15 s | `server.read_timeout`, 1 s to 10 min |
+| Writing the answer | 30 s | `server.write_timeout`, 1 s to 10 min |
+| Idle connection | 1 min | `server.keep_alive_timeout`, 1 s to 10 min |
+| Graceful shutdown | 10 s | `server.shutdown_timeout`, 1 s to 60 s |
 
 ### Write load
 
@@ -529,15 +535,15 @@ A database that fails a check is refused. A session file that fails any check is
 
 ### Built-in TLS
 
-- TLS (Transport Layer Security) 1.2 at least.
-- Six cipher suites, all with ECDHE key exchange and authenticated encryption (AES-GCM or ChaCha20-Poly1305).
+- TLS (Transport Layer Security) 1.2 at least, or 1.3 at least with `server.tls_min_version` set to `1.3`.
+- Six cipher suites for TLS 1.2, all with ECDHE key exchange and authenticated encryption (AES-GCM or ChaCha20-Poly1305); they are fixed. TLS 1.3 uses its own suites.
 - HTTP/1.1 only.
 
 ### On a network
 
 | Option | Settings | Effect |
 | --- | --- | --- |
-| Certificate pair | `--tls-cert`, `--tls-key`, https origins | The server serves TLS itself. |
+| Certificate pair | `server.tls_cert` and `server.tls_key` (or `--tls-cert`, `--tls-key`), https origins | The server serves TLS itself. |
 | TLS reverse proxy | `--origin=https://<public name>` (or `server.origins`), `--trusted-proxy=<proxy address>` (or `server.trusted_proxies`) | The proxy serves TLS and forwards to the server. |
 
 Both options give:

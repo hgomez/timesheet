@@ -36,7 +36,6 @@ import (
     "time"
     "unicode"
 
-    "timesheet/internal/account"
     "timesheet/internal/activity"
     "timesheet/internal/store"
     "timesheet/internal/web"
@@ -58,7 +57,7 @@ type Application struct {
     iterations int
     ready      chan struct{}
     mu         sync.Mutex
-    addr       string
+    listen     string
     signals    func()
 }
 
@@ -68,8 +67,6 @@ const (
     ExitUsage = 2
 
     ProgramName = "timesheet"
-
-    shutdownTimeout = 10 * time.Second
 )
 
 // ---------------------------------------------------------------------------
@@ -77,7 +74,7 @@ const (
 // ---------------------------------------------------------------------------
 
 func NewApplication(args []string, lookupEnv func(string) (string, bool), stdin io.Reader, stdout io.Writer, stderr io.Writer, location *time.Location) *Application {
-    return &Application{args: args, lookupEnv: lookupEnv, stdin: stdin, stdout: stdout, stderr: stderr, location: location, clock: activity.NewSystemClock(), random: rand.Reader, iterations: account.DefaultIterations, ready: make(chan struct{}), signals: func() {}}
+    return &Application{args: args, lookupEnv: lookupEnv, stdin: stdin, stdout: stdout, stderr: stderr, location: location, clock: activity.NewSystemClock(), random: rand.Reader, ready: make(chan struct{}), signals: func() {}}
 }
 
 func (a *Application) WithSignals(release func()) *Application {
@@ -99,10 +96,10 @@ func (a *Application) Ready() <-chan struct{} {
     return a.ready
 }
 
-func (a *Application) Addr() string {
+func (a *Application) Listen() string {
     a.mu.Lock()
     defer a.mu.Unlock()
-    return a.addr
+    return a.listen
 }
 
 func (a *Application) Run(ctx context.Context) int {
@@ -126,18 +123,49 @@ func (a *Application) Run(ctx context.Context) int {
         case "version":
             fmt.Fprintln(a.stdout, NewBuildInfo().String())
             return ExitOK
-        case "init":
-            return a.report(NewInitCommand(settings, logger).Run(a.stdout))
         case "config show", "config set":
             return a.report(NewConfigCommand(settings, logger).Run(a.stdout))
-        case "session clear":
-            return a.report(NewSessionCommand(settings, logger).Run(a.stdout))
-        case "import":
-            return a.report(NewImportCommand(settings, a.clock, a.random, logger).Run(a.stdout))
-        case "run":
-            return a.serve(ctx, settings, logger)
     }
-    return a.report(NewUserCommand(settings, NewPasswordReader(a.stdin, a.stderr, a.lookupEnv), a.clock, a.random, a.iterations, logger).Run(a.stdout))
+    configuration := NewServerFile(settings.Config())
+    server, err := configuration.Load()
+    if err == nil {
+        err = settings.ResolveDatabase(server.Database.Path)
+    }
+    if (err != nil) && (settings.Command() == "run") {
+        return a.fail(logger, "cannot load " + configuration.Path(), err)
+    }
+    if err != nil {
+        return a.report(err)
+    }
+    switch settings.Command() {
+        case "init":
+            return a.report(NewInitCommand(settings, server, logger).Run(a.stdout))
+        case "session clear":
+            return a.report(NewSessionCommand(settings, server, logger).Run(a.stdout))
+        case "import":
+            return a.report(NewImportCommand(settings, server, a.clock, a.random, logger).Run(a.stdout))
+        case "run":
+            return a.serve(ctx, settings, server, a.journal(settings, server, logger))
+    }
+    return a.report(NewUserCommand(settings, server, NewPasswordReader(a.stdin, a.stderr, a.lookupEnv), a.clock, a.random, a.passwordIterations(server), logger).Run(a.stdout))
+}
+
+func (a *Application) journal(settings *Settings, server activity.ServerConfiguration, logger *slog.Logger) *slog.Logger {
+    if settings.ExplicitLogLevel() {
+        return logger
+    }
+    level, err := server.Server.Level()
+    if err != nil {
+        return logger
+    }
+    return slog.New(slog.NewTextHandler(a.stderr, &slog.HandlerOptions{Level: level}))
+}
+
+func (a *Application) passwordIterations(server activity.ServerConfiguration) int {
+    if a.iterations > 0 {
+        return a.iterations
+    }
+    return int(server.Passwords.Iterations)
 }
 
 func (a *Application) report(err error) int {
@@ -151,14 +179,10 @@ func (a *Application) report(err error) int {
     return ExitError
 }
 
-func (a *Application) serve(ctx context.Context, settings *Settings, logger *slog.Logger) int {
+func (a *Application) serve(ctx context.Context, settings *Settings, server activity.ServerConfiguration, logger *slog.Logger) int {
     logger.Info("starting", "version", NewBuildInfo().String())
-    configuration := NewServerFile(settings.Config())
-    config, err := configuration.Load()
-    if err != nil {
-        return a.fail(logger, "cannot load " + configuration.Path(), err)
-    }
-    database := store.NewDatabase(settings.Database(), logger)
+    config := server.Server
+    database := store.NewDatabase(settings.Database(), logger, server.Database.MaxBytes, server.Limits)
     if err := database.Lock(); err != nil {
         return a.fail(logger, "cannot lock " + database.Path(), err)
     }
@@ -170,9 +194,9 @@ func (a *Application) serve(ctx context.Context, settings *Settings, logger *slo
         fmt.Fprintf(a.stderr, "%s: no administrator account: run '%s user add <login> --profile=ADMIN --database=%s' first\n", ProgramName, ProgramName, settings.Database())
         return ExitError
     }
-    addr := config.Addr
-    if settings.Addr() != "" {
-        addr = settings.Addr()
+    listen := config.Listen
+    if settings.Listen() != "" {
+        listen = settings.Listen()
     }
     proxies := config.TrustedProxies
     if len(settings.TrustedProxies()) > 0 {
@@ -182,22 +206,27 @@ func (a *Application) serve(ctx context.Context, settings *Settings, logger *slo
     if err != nil {
         return a.fail(logger, "invalid trusted proxies", err)
     }
-    listener, err := net.Listen("tcp", addr)
+    certificate, key := string(config.TLSCert), string(config.TLSKey)
+    if settings.TLS() {
+        certificate, key = settings.TLSPair()
+    }
+    secure := certificate != ""
+    listener, err := net.Listen("tcp", listen)
     if err != nil {
-        return a.fail(logger, "cannot listen on " + addr, err)
+        return a.fail(logger, "cannot listen on " + listen, err)
     }
     addresses, prefixes := a.interfaces()
-    origins, err := a.origins(settings, config, listener, addresses)
+    origins, err := a.origins(settings, config, secure, listener, addresses)
     if err != nil {
         listener.Close()
         return a.fail(logger, "invalid origins", err)
     }
-    if settings.TLS() && !origins.Secure() {
+    if secure && !origins.Secure() {
         listener.Close()
-        return a.fail(logger, "TLS needs https origins", errors.New("give --origin=https://... or run config set server.origins with https origins"))
+        return a.fail(logger, "TLS needs https origins", errors.New("give --origin=https://... or run config set server.origins with https origins, or remove the pair with config set server.tls_cert null server.tls_key null"))
     }
-    if settings.TLS() {
-        tlsConfig, err := NewTLSProvider(settings.TLSPair()).Config()
+    if secure {
+        tlsConfig, err := NewTLSProvider(certificate, key, config.TLSMinVersion).Config()
         if err != nil {
             listener.Close()
             return a.fail(logger, "TLS setup failed", err)
@@ -211,27 +240,27 @@ func (a *Application) serve(ctx context.Context, settings *Settings, logger *slo
         listener.Close()
         return a.fail(logger, "cannot prepare " + sessions.Path(), err)
     }
-    site, err := web.NewSite(web.SiteDependencies{Repository: database, Sessions: sessions, Clock: a.clock, Random: a.random, Logger: logger, Origins: origins, Server: config, TrustedProxies: trusted, LocalPrefixes: prefixes, Iterations: a.iterations, Version: NewBuildInfo().Version()})
+    site, err := web.NewSite(web.SiteDependencies{Repository: database, Sessions: sessions, Clock: a.clock, Random: a.random, Logger: logger, Origins: origins, Server: server, TrustedProxies: trusted, LocalPrefixes: prefixes, Iterations: a.passwordIterations(server), Version: NewBuildInfo().Version()})
     if err != nil {
         listener.Close()
         return a.fail(logger, "cannot build the site", err)
     }
-    server := &http.Server{
+    httpServer := &http.Server{
         Handler:           site.Handler(),
-        ReadHeaderTimeout: 5 * time.Second,
-        ReadTimeout:       15 * time.Second,
-        WriteTimeout:      30 * time.Second,
-        IdleTimeout:       60 * time.Second,
-        MaxHeaderBytes:    8 << 10,
+        ReadHeaderTimeout: config.ReadHeaderTimeout.Std(),
+        ReadTimeout:       config.ReadTimeout.Std(),
+        WriteTimeout:      config.WriteTimeout.Std(),
+        IdleTimeout:       config.KeepAliveTimeout.Std(),
+        MaxHeaderBytes:    int(config.MaxHeaderBytes),
         ErrorLog:          log.New(NewServerErrorLog(logger), "", 0),
     }
     a.mu.Lock()
-    a.addr = listener.Addr().String()
+    a.listen = listener.Addr().String()
     a.mu.Unlock()
     close(a.ready)
     logger.Info("listening", "address", listener.Addr().String(), "origins", strings.Join(origins.List(), " "), "database", database.Path())
     served := make(chan error, 1)
-    go a.run(server, listener, served)
+    go a.run(httpServer, listener, served)
     code := ExitOK
     select {
         case <-ctx.Done():
@@ -241,10 +270,10 @@ func (a *Application) serve(ctx context.Context, settings *Settings, logger *slo
                 code = ExitError
             }
     }
-    shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
+    shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), config.ShutdownTimeout.Std())
     defer cancel()
-    if err := server.Shutdown(shutdown); err != nil {
-        server.Close()
+    if err := httpServer.Shutdown(shutdown); err != nil {
+        httpServer.Close()
     }
     logger.Info("stopped")
     return code
@@ -254,11 +283,11 @@ func (a *Application) run(server *http.Server, listener net.Listener, served cha
     served <- server.Serve(listener)
 }
 
-func (a *Application) origins(settings *Settings, config activity.ServerSettings, listener net.Listener, addresses []netip.Addr) (*web.Origins, error) {
+func (a *Application) origins(settings *Settings, config activity.ServerSettings, secure bool, listener net.Listener, addresses []netip.Addr) (*web.Origins, error) {
     if public := settings.Origins(); len(public) > 0 {
         return web.NewPublicOrigins(public)
     }
-    if settings.Addr() == "" {
+    if settings.Listen() == "" {
         return web.NewPublicOrigins(config.Origins)
     }
     port := 0
@@ -266,7 +295,7 @@ func (a *Application) origins(settings *Settings, config activity.ServerSettings
         port = tcp.Port
     }
     hostname, _ := os.Hostname()
-    return web.NewLocalOrigins(addresses, hostname, port, settings.TLS()), nil
+    return web.NewLocalOrigins(addresses, hostname, port, secure), nil
 }
 
 func (a *Application) interfaces() ([]netip.Addr, []netip.Prefix) {

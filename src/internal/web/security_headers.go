@@ -17,7 +17,11 @@
 
 package web
 
-import "net/http"
+import (
+    "net/http"
+    "strconv"
+    "time"
+)
 
 // ---------------------------------------------------------------------------
 // SecurityHeaders declaration
@@ -26,6 +30,7 @@ import "net/http"
 type SecurityHeaders struct {
     next   http.Handler
     secure bool
+    maxAge string
 }
 
 const contentSecurityPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'"
@@ -34,8 +39,8 @@ const contentSecurityPolicy = "default-src 'none'; script-src 'self'; style-src 
 // SecurityHeaders implementation
 // ---------------------------------------------------------------------------
 
-func NewSecurityHeaders(next http.Handler, secure bool) *SecurityHeaders {
-    return &SecurityHeaders{next: next, secure: secure}
+func NewSecurityHeaders(next http.Handler, secure bool, maxAge time.Duration) *SecurityHeaders {
+    return &SecurityHeaders{next: next, secure: secure, maxAge: strconv.FormatInt(int64(maxAge / time.Second), 10)}
 }
 
 func (s *SecurityHeaders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +56,7 @@ func (s *SecurityHeaders) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     header.Set("Pragma", "no-cache")
     header.Set("Expires", "0")
     if s.secure {
-        header.Set("Strict-Transport-Security", "max-age=31536000")
+        header.Set("Strict-Transport-Security", "max-age=" + s.maxAge)
     }
     s.next.ServeHTTP(w, r)
 }

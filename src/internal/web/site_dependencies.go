@@ -30,17 +30,17 @@ import (
 // ---------------------------------------------------------------------------
 
 type SiteDependencies struct {
-    Repository    Repository
-    Sessions      SessionArchive
-    Clock         activity.Clock
-    Random        io.Reader
-    Logger        *slog.Logger
-    Origins       *Origins
-    Server         activity.ServerSettings
+    Repository     Repository
+    Sessions       SessionArchive
+    Clock          activity.Clock
+    Random         io.Reader
+    Logger         *slog.Logger
+    Origins        *Origins
+    Server         activity.ServerConfiguration
     TrustedProxies activity.TrustedProxies
-    LocalPrefixes []netip.Prefix
-    Iterations    int
-    Version       string
+    LocalPrefixes  []netip.Prefix
+    Iterations     int
+    Version        string
 }
 
 // ---------------------------------------------------------------------------

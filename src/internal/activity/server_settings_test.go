@@ -18,48 +18,34 @@
 package activity
 
 import (
-    "bytes"
     "encoding/json"
     "errors"
-    "os"
-    "path/filepath"
-    "reflect"
     "strings"
     "testing"
+    "time"
 )
 
 // ---------------------------------------------------------------------------
 // ServerSettings tests
 // ---------------------------------------------------------------------------
 
-func TestServerFileMirrorsTheDefaultServerSettings(t *testing.T) {
-    if err := NewDefaultServerSettings().Validate(); err != nil {
-        t.Fatal(err)
-    }
-    data, err := os.ReadFile(filepath.Join("..", "..", "..", "etc", "timesheet", "timesheet.json"))
-    if err != nil {
-        t.Fatal(err)
-    }
-    file := struct {
-        Server ServerSettings `json:"server"`
-    }{}
-    decoder := json.NewDecoder(bytes.NewReader(data))
-    decoder.DisallowUnknownFields()
-    if err := decoder.Decode(&file); err != nil {
-        t.Fatal(err)
-    }
-    if !reflect.DeepEqual(file.Server, NewDefaultServerSettings()) {
-        t.Fatalf("etc/timesheet/timesheet.json differs from NewDefaultServerSettings:\n%+v\n%+v", file.Server, NewDefaultServerSettings())
-    }
-}
-
 func TestServerSettingsValidationNamesTheField(t *testing.T) {
     cases := map[string]func(*ServerSettings){
-        "server.timezone":        func(s *ServerSettings) { s.Timezone = "Mars/Olympus" },
-        "server.addr":            func(s *ServerSettings) { s.Addr = "nonsense" },
-        "server.origins":         func(s *ServerSettings) { s.Origins = nil },
-        "server.origins[1]":      func(s *ServerSettings) { s.Origins = []string{"http://a.test:1", "https://b.test"} },
-        "server.trusted_proxies": func(s *ServerSettings) { s.TrustedProxies = []string{"10.0.0.0/8", "proxy.example"} },
+        "server.timezone":            func(s *ServerSettings) { s.Timezone = "Mars/Olympus" },
+        "server.listen":              func(s *ServerSettings) { s.Listen = "nonsense" },
+        "server.origins":             func(s *ServerSettings) { s.Origins = nil },
+        "server.origins[1]":          func(s *ServerSettings) { s.Origins = []string{"http://a.test:1", "https://b.test"} },
+        "server.trusted_proxies":     func(s *ServerSettings) { s.TrustedProxies = []string{"10.0.0.0/8", "proxy.example"} },
+        "server.log_level":           func(s *ServerSettings) { s.LogLevel = "loud" },
+        "server.tls_cert":            func(s *ServerSettings) { s.TLSCert = "cert.pem" },
+        "server.tls_min_version":     func(s *ServerSettings) { s.TLSMinVersion = "1.1" },
+        "server.hsts_max_age":        func(s *ServerSettings) { s.HSTSMaxAge = Duration(time.Hour) },
+        "server.read_header_timeout": func(s *ServerSettings) { s.ReadHeaderTimeout = Duration(500 * time.Millisecond) },
+        "server.keep_alive_timeout":  func(s *ServerSettings) { s.KeepAliveTimeout = Duration(11 * time.Minute) },
+        "server.shutdown_timeout":    func(s *ServerSettings) { s.ShutdownTimeout = Duration(2 * time.Minute) },
+        "server.max_header_bytes":    func(s *ServerSettings) { s.MaxHeaderBytes = 1024 },
+        "server.max_body_bytes":      func(s *ServerSettings) { s.MaxBodyBytes = 16 << 20 },
+        "server.max_url_bytes":       func(s *ServerSettings) { s.MaxURLBytes = 100 },
     }
     for path, mutate := range cases {
         server := NewDefaultServerSettings().Clone()
@@ -71,8 +57,19 @@ func TestServerSettingsValidationNamesTheField(t *testing.T) {
     }
     emptied := NewDefaultServerSettings().Clone()
     emptied.TrustedProxies = nil
-    if data, err := json.Marshal(emptied); (err != nil) || !strings.Contains(string(data), `"trusted_proxies":[]`) {
-        t.Fatalf("an empty list is written as a list: %s %v", data, err)
+    if data, err := json.Marshal(emptied); (err != nil) || !strings.Contains(string(data), `"trusted_proxies":[]`) || !strings.Contains(string(data), `"tls_cert":null`) || !strings.Contains(string(data), `"keep_alive_timeout":"1m"`) {
+        t.Fatalf("an empty list is written as a list, an absent path as null, a duration in its short form: %s %v", data, err)
+    }
+}
+
+func TestServerSettingsAcceptATLSPairAndALogOffset(t *testing.T) {
+    server := NewDefaultServerSettings().Clone()
+    server.TLSCert, server.TLSKey, server.LogLevel, server.TLSMinVersion = "cert.pem", "key.pem", "INFO+2", TLSVersion13
+    if err := server.Validate(); err != nil {
+        t.Fatal(err)
+    }
+    if level, err := server.Level(); (err != nil) || (level != 2) || !server.TLS() {
+        t.Fatalf("got %v %v %v", level, err, server.TLS())
     }
 }
 

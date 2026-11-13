@@ -67,7 +67,7 @@ func newTestSite(t *testing.T) *testSite {
     t.Helper()
     logs := &testJournal{}
     logger := slog.New(slog.NewTextHandler(logs, nil))
-    database := store.NewDatabase(filepath.Join(t.TempDir(), "timesheet.json"), logger)
+    database := store.NewDatabase(filepath.Join(t.TempDir(), "timesheet.json"), logger, activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings())
     if err := database.Create(activity.NewDefaultConfiguration()); err != nil {
         t.Fatal(err)
     }
@@ -85,7 +85,7 @@ func newTestSite(t *testing.T) *testSite {
     if err != nil {
         t.Fatal(err)
     }
-    s.site, err = NewSite(SiteDependencies{Repository: database, Server: activity.NewDefaultServerSettings(), Clock: clock, Random: rand.Reader, Logger: logger, Origins: origins, Iterations: account.MinIterations, Version: "test"})
+    s.site, err = NewSite(SiteDependencies{Repository: database, Server: activity.NewDefaultServerConfiguration(), Clock: clock, Random: rand.Reader, Logger: logger, Origins: origins, Iterations: account.MinIterations, Version: "test"})
     if err != nil {
         t.Fatal(err)
     }

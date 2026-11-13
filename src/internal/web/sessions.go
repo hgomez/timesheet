@@ -45,6 +45,7 @@ type Sessions struct {
     sliding  time.Duration
     absolute time.Duration
     max      int
+    interval time.Duration
     sessions map[string]*Session
     archive  SessionArchive
     logger   *slog.Logger
@@ -52,12 +53,8 @@ type Sessions struct {
 }
 
 const (
-    SessionCookie          = "ts_session"
-    DefaultSessionSliding  = 8 * time.Hour
-    DefaultSessionAbsolute = 24 * time.Hour
-    DefaultSessionsPerUser = 64
-    sessionBytes           = 32
-    sessionSaveInterval    = time.Minute
+    SessionCookie = "ts_session"
+    sessionBytes  = 32
 )
 
 var ErrRandomFailure = errors.New("web: random source failed")
@@ -66,8 +63,8 @@ var ErrRandomFailure = errors.New("web: random source failed")
 // Sessions implementation
 // ---------------------------------------------------------------------------
 
-func NewSessions(clock activity.Clock, random io.Reader, secure bool, sliding time.Duration, absolute time.Duration, max int) *Sessions {
-    return &Sessions{clock: clock, random: random, secure: secure, sliding: sliding, absolute: absolute, max: max, sessions: map[string]*Session{}}
+func NewSessions(clock activity.Clock, random io.Reader, secure bool, settings activity.SessionSettings) *Sessions {
+    return &Sessions{clock: clock, random: random, secure: secure, sliding: settings.IdleTimeout.Std(), absolute: settings.MaxLifetime.Std(), max: int(settings.PerAccount), interval: settings.SaveInterval.Std(), sessions: map[string]*Session{}}
 }
 
 func (s *Sessions) Restore(archive SessionArchive, logger *slog.Logger) {
@@ -171,7 +168,7 @@ func (s *Sessions) Lookup(id string) (account.Login, string, string, bool) {
         return "", "", "", false
     }
     session.seen = now
-    if now.Sub(s.saved) >= sessionSaveInterval {
+    if now.Sub(s.saved) >= s.interval {
         s.save(now)
     }
     return session.login, session.csrf, key, true

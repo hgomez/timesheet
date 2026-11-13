@@ -24,6 +24,7 @@ import (
     "fmt"
     "io"
     "log/slog"
+    "math"
     "slices"
     "strings"
     "sync"
@@ -40,15 +41,13 @@ import (
 type Database struct {
     mu     sync.RWMutex
     file   *SecureFile
+    limits activity.LimitSettings
     record DatabaseRecord
 }
 
 const (
-    DefaultMaxDatabaseSize = 64 << 20
-    MaxAccountSize         = 1 << 20
-    MaxAdjustments         = 1000
-    maxQuantity            = 366
-    maxLabelLength         = 1000
+    maxQuantity    = 366
+    maxLabelLength = 1000
 )
 
 var (
@@ -62,8 +61,8 @@ var (
 // Database implementation
 // ---------------------------------------------------------------------------
 
-func NewDatabase(path string, logger *slog.Logger) *Database {
-    return &Database{file: NewSecureFile(path, logger, DefaultMaxDatabaseSize)}
+func NewDatabase(path string, logger *slog.Logger, maxBytes int64, limits activity.LimitSettings) *Database {
+    return &Database{file: NewSecureFile(path, logger, maxBytes), limits: limits}
 }
 
 func (d *Database) Path() string {
@@ -158,9 +157,6 @@ func (d *Database) Load() error {
 func (d *Database) validate(record DatabaseRecord) error {
     if err := record.Configuration.Validate(); err != nil {
         return fmt.Errorf("%w: configuration: %v", ErrMalformedDatabase, err)
-    }
-    if len(record.Accounts) > account.MaxAccounts {
-        return fmt.Errorf("%w: too many accounts", ErrMalformedDatabase)
     }
     seen := map[account.Login]bool{}
     for i, item := range record.Accounts {
@@ -301,7 +297,7 @@ func (d *Database) size(item AccountRecord) int {
     encoder := json.NewEncoder(&data)
     encoder.SetEscapeHTML(false)
     if encoder.Encode(item) != nil {
-        return MaxAccountSize + 1
+        return math.MaxInt
     }
     return data.Len()
 }
@@ -443,7 +439,7 @@ func (d *Database) CreateAccount(created account.Account, calendar activity.Cale
     if d.find(next, created.Login) >= 0 {
         return account.ErrDuplicateLogin
     }
-    if len(next.Accounts) >= account.MaxAccounts {
+    if int64(len(next.Accounts)) >= d.limits.Accounts {
         return account.ErrTooManyAccounts
     }
     calendar.Revision = 1
@@ -585,10 +581,10 @@ func (d *Database) place(next DatabaseRecord, login account.Login, revision int6
     calendar = calendar.Clone()
     calendar.Revision = revision + 1
     next.Accounts[index].Calendar = calendar
-    if (len(calendar.Adjustments) > MaxAdjustments) && (len(calendar.Adjustments) > len(previous.Calendar.Adjustments)) {
+    if (int64(len(calendar.Adjustments)) > d.limits.Adjustments) && (len(calendar.Adjustments) > len(previous.Calendar.Adjustments)) {
         return activity.ErrCalendarTooLarge
     }
-    if after := d.size(next.Accounts[index]); (after > MaxAccountSize) && (after > d.size(previous)) {
+    if after := d.size(next.Accounts[index]); (int64(after) > d.limits.AccountBytes) && (after > d.size(previous)) {
         return activity.ErrCalendarTooLarge
     }
     return nil

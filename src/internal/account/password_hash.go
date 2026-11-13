@@ -35,12 +35,11 @@ import (
 type PasswordHash string
 
 const (
-    DefaultIterations = 600000
-    MinIterations     = 1000
-    MaxIterations     = 2 * DefaultIterations
-    passwordScheme    = "pbkdf2-sha256"
-    saltSize          = 16
-    keySize           = 32
+    MinIterations  = 1000
+    MaxIterations  = 1200000
+    passwordScheme = "pbkdf2-sha256"
+    saltSize       = 16
+    keySize        = 32
 )
 
 var ErrInvalidPasswordHash = errors.New("account: invalid password hash")

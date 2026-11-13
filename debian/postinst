@@ -8,8 +8,9 @@ set -e
 
 arg_user='timesheet'
 arg_home='/var/lib/timesheet'
-arg_database='/var/lib/timesheet/timesheet-database.json'
+arg_config='/etc/timesheet/timesheet.json'
 arg_template='/usr/share/timesheet/timesheet-database-template.json'
+arg_database=''
 arg_create_user='not-set'
 arg_create_home='not-set'
 arg_create_database='not-set'
@@ -58,9 +59,24 @@ fi
 # create the database
 # ----------------------------------------------------------------------------
 
-if [ "${arg_create_database}" = 'yes' ] && [ ! -e "${arg_database}" ]
+if [ "${arg_create_database}" = 'yes' ]
 then
-    runuser -u "${arg_user}" -- /usr/bin/timesheet init --database="${arg_database}" --template="${arg_template}"
+    arg_database="$(/usr/bin/timesheet config show database.path --config="${arg_config}")" || arg_database=''
+fi
+
+if [ "${arg_create_database}" = 'yes' ] && [ -z "${arg_database}" ]
+then
+    echo "timesheet: ${arg_config} cannot be read, no database created (see the migration notes of the specifications)" >&2
+elif [ "${arg_create_database}" = 'yes' ] && [ ! -e "${arg_database}" ]
+then
+    case "${arg_database}" in
+        "${arg_home}"/*)
+            runuser -u "${arg_user}" -- /usr/bin/timesheet init --config="${arg_config}" --template="${arg_template}"
+            ;;
+        *)
+            echo "timesheet: ${arg_database} is outside ${arg_home}, create it with timesheet init" >&2
+            ;;
+    esac
 fi
 
 # ----------------------------------------------------------------------------

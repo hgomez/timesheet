@@ -26,7 +26,7 @@ Group=timesheet
 StateDirectory=timesheet
 StateDirectoryMode=0700
 WorkingDirectory=/var/lib/timesheet
-ExecStart=/usr/bin/timesheet run --config=/etc/timesheet/timesheet.json --database=/var/lib/timesheet/timesheet-database.json
+ExecStart=/usr/bin/timesheet run --config=/etc/timesheet/timesheet.json
 Restart=on-failure
 UMask=0077
 NoNewPrivileges=yes

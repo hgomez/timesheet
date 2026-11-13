@@ -39,29 +39,27 @@ type notFoundHandler struct {
     errors *ErrorPages
 }
 
-const MaxRequestBody = 256 << 10
-
 // ---------------------------------------------------------------------------
 // Site implementation
 // ---------------------------------------------------------------------------
 
 func NewSite(deps SiteDependencies) (*Site, error) {
     assets := NewEmbeddedAssets()
-    today := NewToday(deps.Clock, deps.Server.Location())
+    today := NewToday(deps.Clock, deps.Server.Server.Location())
     renderer, err := NewRenderer(assets.Templates(), deps.Version, today, deps.Logger)
     if err != nil {
         return nil, err
     }
     errors := NewErrorPages(renderer)
-    sessions := NewSessions(deps.Clock, deps.Random, deps.Origins.Secure(), DefaultSessionSliding, DefaultSessionAbsolute, DefaultSessionsPerUser)
+    sessions := NewSessions(deps.Clock, deps.Random, deps.Origins.Secure(), deps.Server.Sessions)
     if deps.Sessions != nil {
         sessions.Restore(deps.Sessions, deps.Logger)
     }
     guard := NewAuthGuard(sessions, deps.Repository, errors)
     loader := NewWorkspaceLoader(deps.Repository, today, activity.NewHolidayCalendar())
     address := NewClientAddress(deps.TrustedProxies, deps.LocalPrefixes)
-    throttle := NewLoginThrottle(deps.Clock, DefaultThrottleKeys, DefaultThrottleBudget)
-    login, err := NewLoginController(guard, sessions, deps.Repository, throttle, address, renderer, errors, deps.Clock, deps.Random, deps.Iterations, deps.Logger)
+    throttle := NewLoginThrottle(deps.Clock, deps.Server.Login)
+    login, err := NewLoginController(guard, sessions, deps.Repository, throttle, address, renderer, errors, deps.Clock, deps.Random, deps.Iterations, deps.Server.Login.FormLifetime.Std(), deps.Logger)
     if err != nil {
         return nil, err
     }
@@ -108,10 +106,10 @@ func NewSite(deps SiteDependencies) (*Site, error) {
 
     var handler http.Handler = router
     handler = NewOriginGuard(handler, deps.Origins, errors)
-    handler = NewRequestLimits(handler, errors, DefaultMaxURL, MaxRequestBody)
+    handler = NewRequestLimits(handler, errors, int(deps.Server.Server.MaxURLBytes), deps.Server.Server.MaxBodyBytes)
     handler = NewHostGuard(handler, deps.Origins, errors)
     handler = NewRecoveryHandler(handler, errors, deps.Logger)
-    handler = NewSecurityHeaders(handler, deps.Origins.Secure())
+    handler = NewSecurityHeaders(handler, deps.Origins.Secure(), deps.Server.Server.HSTSMaxAge.Std())
     handler = NewAccessLog(handler, address, deps.Clock, deps.Logger)
     return &Site{handler: handler, router: router, sessions: sessions}, nil
 }

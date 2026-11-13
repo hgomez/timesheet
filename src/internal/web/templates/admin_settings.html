@@ -21,17 +21,16 @@
             </header>
             <section>
                 <h2>Serveur</h2>
+{{- range .Groups}}
+                <h3>{{.Title}}</h3>
                 <dl class="facts">
-                    <dt>Adresse d'écoute</dt>
-                    <dd><code>{{.Server.Addr}}</code></dd>
-                    <dt>Origines publiques</dt>
-                    <dd><code>{{.Origins}}</code></dd>
-                    <dt>Proxys de confiance</dt>
-                    <dd><code>{{if .Proxies}}{{.Proxies}}{{else}}aucun{{end}}</code></dd>
-                    <dt>Fuseau horaire</dt>
-                    <dd><code>{{.Server.Timezone}}</code></dd>
+{{- range .Facts}}
+                    <dt>{{.Label}}</dt>
+                    <dd><code>{{.Value}}</code></dd>
+{{- end}}
                 </dl>
-                <p>Ces réglages viennent du fichier de configuration du serveur et s'appliquent au démarrage : modifiez ce fichier, ou utilisez <code>timesheet config set</code>, puis relancez le serveur. Les options de <code>timesheet run</code> passent avant eux.</p>
+{{- end}}
+                <p>Ces réglages viennent du fichier de configuration du serveur et s'appliquent au démarrage : modifiez ce fichier, ou utilisez <code>timesheet config set</code>, puis relancez le serveur. Les options de <code>timesheet run</code>, <code>--database</code> comprise, passent avant eux.</p>
             </section>
             <section>
                 <h2>Codes d'activité</h2>

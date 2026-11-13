@@ -39,7 +39,7 @@ type Settings struct {
     template       string
     config         string
     logLevel       slog.Level
-    addr           string
+    listen         string
     origins        *OptionList
     trustedProxies *OptionList
     tlsCert        string
@@ -54,7 +54,6 @@ type Settings struct {
 }
 
 const (
-    DefaultDatabase = "var/lib/timesheet/timesheet-database.json"
     DefaultTemplate = "share/timesheet/timesheet-database-template.json"
     DefaultConfig   = "etc/timesheet/timesheet.json"
 )
@@ -78,10 +77,10 @@ func NewSettings(args []string) (*Settings, error) {
     flags := flag.NewFlagSet("timesheet", flag.ContinueOnError)
     flags.SetOutput(io.Discard)
     level := flags.String("log-level", "info", "")
-    flags.StringVar(&s.database, "database", DefaultDatabase, "")
+    flags.StringVar(&s.database, "database", "", "")
     flags.StringVar(&s.template, "template", DefaultTemplate, "")
     flags.StringVar(&s.config, "config", DefaultConfig, "")
-    flags.StringVar(&s.addr, "addr", "", "")
+    flags.StringVar(&s.listen, "listen", "", "")
     flags.Var(s.origins, "origin", "")
     flags.Var(s.trustedProxies, "trusted-proxy", "")
     flags.StringVar(&s.tlsCert, "tls-cert", "", "")
@@ -130,10 +129,21 @@ func (s *Settings) check() error {
     if !known {
         return NewUsageError("unknown command " + s.command)
     }
-    if len(s.arguments) != count {
-        return NewUsageError(s.command + ": wrong number of arguments")
+    switch s.command {
+        case "config show":
+            if len(s.arguments) > 1 {
+                return NewUsageError(s.command + ": wrong number of arguments")
+            }
+        case "config set":
+            if (len(s.arguments) < count) || ((len(s.arguments) % 2) != 0) {
+                return NewUsageError(s.command + ": pairs KEY VALUE expected")
+            }
+        default:
+            if len(s.arguments) != count {
+                return NewUsageError(s.command + ": wrong number of arguments")
+            }
     }
-    allowed := map[string][]string{"init": {"template"}, "run": {"addr", "origin", "trusted-proxy", "tls-cert", "tls-key"}, "user add": {"profile"}, "import": {"from", "to", "dry-run", "replace", "validate"}}
+    allowed := map[string][]string{"init": {"template"}, "run": {"listen", "origin", "trusted-proxy", "tls-cert", "tls-key"}, "user add": {"profile"}, "import": {"from", "to", "dry-run", "replace", "validate"}}
     for name := range s.explicit {
         if (name == "database") || (name == "config") || (name == "log-level") {
             continue
@@ -146,7 +156,7 @@ func (s *Settings) check() error {
             return NewUsageError("--" + name + " does not apply to " + s.command)
         }
     }
-    if (s.database == "") || strings.HasSuffix(s.database, "/") || strings.HasPrefix(filepath.Base(s.database), ".") {
+    if s.explicit["database"] && !activity.ValidDatabasePath(s.database) {
         return NewUsageError("--database names a file whose name does not start with a dot")
     }
     if (s.config == "") || strings.HasSuffix(s.config, "/") {
@@ -169,8 +179,28 @@ func (s *Settings) Argument(i int) string {
     return s.arguments[i]
 }
 
+func (s *Settings) Arguments() []string {
+    return s.arguments
+}
+
 func (s *Settings) Database() string {
     return s.database
+}
+
+func (s *Settings) ResolveDatabase(configured string) error {
+    if !s.explicit["database"] {
+        s.database = configured
+    }
+    absolute, err := filepath.Abs(s.database)
+    if err != nil {
+        return err
+    }
+    s.database = absolute
+    return nil
+}
+
+func (s *Settings) ExplicitLogLevel() bool {
+    return s.explicit["log-level"]
 }
 
 func (s *Settings) Template() string {
@@ -181,8 +211,8 @@ func (s *Settings) LogLevel() slog.Level {
     return s.logLevel
 }
 
-func (s *Settings) Addr() string {
-    return s.addr
+func (s *Settings) Listen() string {
+    return s.listen
 }
 
 func (s *Settings) Origins() []string {

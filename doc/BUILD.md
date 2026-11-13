@@ -36,6 +36,7 @@ make
 - It ends with `=== build ok ===`.
 - The build cache is kept in `.cache/`, at the root of the repository. The first build, and the first build after `make clean`, take a few seconds more.
 - Rebuild after every change of the sources, templates and styles included.
+- The binary reads the server configuration `etc/timesheet/timesheet.json` under the current directory by default; `--config` gives another one.
 
 ## RUN THE TESTS
 
@@ -60,13 +61,14 @@ make install DESTDIR=/tmp/stage
 | `bin/timesheet` | `$(DESTDIR)/usr/bin/timesheet` | 755 |
 | `share/timesheet/timesheet-database-template.json` (configuration template) | `$(DESTDIR)/usr/share/timesheet/` | 644 |
 | `share/timesheet/timesheet-import-template.json` (import template) | `$(DESTDIR)/usr/share/timesheet/` | 644 |
-| `etc/timesheet/timesheet.json` (server configuration) | `$(DESTDIR)/etc/timesheet/` | 644 |
+| `etc/timesheet/timesheet.json` (server configuration, as is: the database at `/var/lib/timesheet/timesheet-database.json`) | `$(DESTDIR)/etc/timesheet/` | 644 |
 
 - Without `DESTDIR`, the files go under `/usr` and `/etc`: run `sudo make install`.
 - It fails when `bin/timesheet` is missing.
 - It replaces an `/etc/timesheet/timesheet.json` already there: save your own first.
 - It creates neither the service account, nor the database directory, nor the service. The [Debian package](#build-the-debian-package) does.
-- The installed binary still takes its default paths from the current directory: give it `--config=/etc/timesheet/timesheet.json`, `--database=…` and, for `init`, `--template=/usr/share/timesheet/timesheet-database-template.json`.
+- The server configuration names the database `/var/lib/timesheet/timesheet-database.json` (`database.path`): the installed binary finds it through the configuration, without `--database`.
+- The installed binary still reads `etc/timesheet/timesheet.json` under the current directory by default: give it `--config=/etc/timesheet/timesheet.json` and, for `init`, `--template=/usr/share/timesheet/timesheet-database-template.json`.
 
 ## CLEAN
 
@@ -94,6 +96,7 @@ Never run `make mrproper` without a backup of the database and a commit of your 
    ```
 
 - The package is built from the working tree, uncommitted changes included.
+- The package installs the server configuration of the repository as is: its `database.path` is the database of the package.
 - `<version>` is the first entry of `debian/changelog`.
 - Installing and running the package is described in [OPERATIONS.md](OPERATIONS.md#debian-package).
 

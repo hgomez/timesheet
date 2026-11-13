@@ -18,6 +18,7 @@
 package app
 
 import (
+    "errors"
     "fmt"
     "io"
     "log/slog"
@@ -46,51 +47,66 @@ func NewConfigCommand(settings *Settings, logger *slog.Logger) *ConfigCommand {
 
 func (c *ConfigCommand) Run(out io.Writer) error {
     file := NewServerFile(c.settings.Config())
-    server, err := file.Load()
+    configuration, err := file.Load()
     if err != nil {
         return err
     }
+    arguments := c.settings.Arguments()
     if c.settings.Command() == "config show" {
-        data, err := file.Encode(server)
-        if err != nil {
+        return c.show(out, file, configuration, arguments)
+    }
+    keys := []string{}
+    for i := 0; i < len(arguments); i += 2 {
+        key, value := arguments[i], arguments[i + 1]
+        if err := c.check(key, value); err != nil {
             return err
         }
-        _, err = out.Write(data)
+        if err := configuration.Set(key, value); err != nil {
+            return c.unknown(err, key)
+        }
+        keys = append(keys, key)
+    }
+    if err := file.Save(configuration); err != nil {
         return err
     }
-    value := c.settings.Argument(1)
-    switch c.settings.Argument(0) {
-        case "server.addr":
-            if _, port, err := net.SplitHostPort(value); err == nil {
-                if _, err := net.LookupPort("tcp", port); err != nil {
-                    return fmt.Errorf("%w: server.addr: a port from 0 to 65535 or a service name is expected", activity.ErrInvalidConfiguration)
-                }
-            }
-            server.Addr = value
-        case "server.origins":
-            server.Origins = c.list(value)
-        case "server.trusted_proxies":
-            server.TrustedProxies = c.list(value)
-        case "server.timezone":
-            server.Timezone = value
-        default:
-            return NewUsageError("unknown key " + c.settings.Argument(0) + " (server.addr, server.origins, server.trusted_proxies, server.timezone)")
-    }
-    if err := file.Save(server); err != nil {
-        return err
-    }
-    fmt.Fprintf(out, "%s mis à jour dans %s ; relancez le serveur pour l'appliquer.\n", c.settings.Argument(0), file.Path())
+    fmt.Fprintf(out, "%s mis à jour dans %s ; relancez le serveur pour l'appliquer.\n", strings.Join(keys, ", "), file.Path())
     return nil
 }
 
-func (c *ConfigCommand) list(value string) []string {
-    values := []string{}
-    for _, element := range strings.Split(value, ",") {
-        if element = strings.TrimSpace(element); element != "" {
-            values = append(values, element)
+func (c *ConfigCommand) show(out io.Writer, file *ServerFile, configuration activity.ServerConfiguration, arguments []string) error {
+    if len(arguments) == 1 {
+        value, err := configuration.Value(arguments[0])
+        if err != nil {
+            return c.unknown(err, arguments[0])
+        }
+        _, err = fmt.Fprintln(out, value)
+        return err
+    }
+    data, err := file.Encode(configuration)
+    if err != nil {
+        return err
+    }
+    _, err = out.Write(data)
+    return err
+}
+
+func (c *ConfigCommand) check(key string, value string) error {
+    if key != "server.listen" {
+        return nil
+    }
+    if _, port, err := net.SplitHostPort(value); err == nil {
+        if _, err := net.LookupPort("tcp", port); err != nil {
+            return fmt.Errorf("%w: server.listen: a port from 0 to 65535 or a service name is expected", activity.ErrInvalidConfiguration)
         }
     }
-    return values
+    return nil
+}
+
+func (c *ConfigCommand) unknown(err error, key string) error {
+    if errors.Is(err, activity.ErrUnknownSetting) {
+        return NewUsageError("unknown key " + key + " (the keys are those printed by config show)")
+    }
+    return err
 }
 
 // ---------------------------------------------------------------------------

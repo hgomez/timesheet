@@ -36,6 +36,7 @@ import (
 
 type UserCommand struct {
     settings   *Settings
+    server     activity.ServerConfiguration
     passwords  *PasswordReader
     clock      activity.Clock
     random     io.Reader
@@ -47,12 +48,12 @@ type UserCommand struct {
 // UserCommand implementation
 // ---------------------------------------------------------------------------
 
-func NewUserCommand(settings *Settings, passwords *PasswordReader, clock activity.Clock, random io.Reader, iterations int, logger *slog.Logger) *UserCommand {
-    return &UserCommand{settings: settings, passwords: passwords, clock: clock, random: random, iterations: iterations, logger: logger}
+func NewUserCommand(settings *Settings, server activity.ServerConfiguration, passwords *PasswordReader, clock activity.Clock, random io.Reader, iterations int, logger *slog.Logger) *UserCommand {
+    return &UserCommand{settings: settings, server: server, passwords: passwords, clock: clock, random: random, iterations: iterations, logger: logger}
 }
 
 func (c *UserCommand) Run(out io.Writer) error {
-    database := store.NewDatabase(c.settings.Database(), c.logger)
+    database := store.NewDatabase(c.settings.Database(), c.logger, c.server.Database.MaxBytes, c.server.Limits)
     if c.settings.Command() != "user list" {
         err := database.Lock()
         if errors.Is(err, store.ErrLocked) {
@@ -128,12 +129,8 @@ func (c *UserCommand) add(out io.Writer, database *store.Database, login account
     if err != nil {
         return err
     }
-    server, err := NewServerFile(c.settings.Config()).Load()
-    if err != nil {
-        return err
-    }
     now := c.clock.Now()
-    today := activity.NewDateOf(now.In(server.Location()))
+    today := activity.NewDateOf(now.In(c.server.Server.Location()))
     created := account.Account{Login: login, Profile: profile, State: account.StateEnabled, Password: hash, Created: now.UTC().Truncate(time.Second)}
     if err := database.CreateAccount(created, activity.NewCalendar(today.Month().First())); err != nil {
         return err

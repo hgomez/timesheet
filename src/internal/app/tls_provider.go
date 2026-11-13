@@ -21,6 +21,8 @@ import (
     "crypto/tls"
     "errors"
     "fmt"
+
+    "timesheet/internal/activity"
 )
 
 // ---------------------------------------------------------------------------
@@ -28,8 +30,9 @@ import (
 // ---------------------------------------------------------------------------
 
 type TLSProvider struct {
-    certPath string
-    keyPath  string
+    certPath   string
+    keyPath    string
+    minVersion uint16
 }
 
 var ErrInvalidCertificate = errors.New("app: invalid TLS certificate pair")
@@ -38,8 +41,12 @@ var ErrInvalidCertificate = errors.New("app: invalid TLS certificate pair")
 // TLSProvider implementation
 // ---------------------------------------------------------------------------
 
-func NewTLSProvider(certPath string, keyPath string) *TLSProvider {
-    return &TLSProvider{certPath: certPath, keyPath: keyPath}
+func NewTLSProvider(certPath string, keyPath string, minVersion string) *TLSProvider {
+    provider := &TLSProvider{certPath: certPath, keyPath: keyPath, minVersion: tls.VersionTLS12}
+    if minVersion == activity.TLSVersion13 {
+        provider.minVersion = tls.VersionTLS13
+    }
+    return provider
 }
 
 func (p *TLSProvider) Config() (*tls.Config, error) {
@@ -47,7 +54,7 @@ func (p *TLSProvider) Config() (*tls.Config, error) {
     if err != nil {
         return nil, fmt.Errorf("%w: %v", ErrInvalidCertificate, err)
     }
-    return &tls.Config{Certificates: []tls.Certificate{certificate}, MinVersion: tls.VersionTLS12, CipherSuites: p.cipherSuites(), NextProtos: []string{"http/1.1"}}, nil
+    return &tls.Config{Certificates: []tls.Certificate{certificate}, MinVersion: p.minVersion, CipherSuites: p.cipherSuites(), NextProtos: []string{"http/1.1"}}, nil
 }
 
 func (p *TLSProvider) cipherSuites() []uint16 {

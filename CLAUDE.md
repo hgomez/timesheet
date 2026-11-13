@@ -40,12 +40,13 @@ GOCACHE="$PWD/.cache" GOTOOLCHAIN=local go -C src vet ./...   # not part of make
 grep -rlP '^\t' --include='*.go' src                       # files indented with tabs: must print nothing
 bin/timesheet init --database=<tmp>/ts.json                # manual check on a scratch database
 TIMESHEET_PASSWORD='<12+ chars, 6+ distinct>' bin/timesheet user add root --profile=ADMIN --database=<tmp>/ts.json
-bin/timesheet run --addr=127.0.0.1:9000 --database=<tmp>/ts.json
+bin/timesheet run --listen=127.0.0.1:9000 --database=<tmp>/ts.json
 ```
 
 - `make check`, `go vet`, the tab grep and the comment grep must pass before every commit ([Checks before a commit](doc/CODING.md#checks-before-a-commit)).
 - Rebuild before a manual check: templates and assets are embedded.
 - Keep manual checks away from `var/lib/timesheet/timesheet-database.json`, which holds real data.
+- Always give `--database` to a command that opens a database: without it, the path comes from `database.path` of `etc/timesheet/timesheet.json`, which is `/var/lib/timesheet/timesheet-database.json`, the database of the Debian package.
 - The directory of a scratch database must belong to you and not be writable by others.
 
 ## DOCUMENTATION

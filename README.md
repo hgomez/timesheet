@@ -45,7 +45,7 @@ This README is the entry point: what the application does, how to try it from th
 | Bring an existing history in | [Importing](doc/OPERATIONS.md#importing) |
 | Build it, run the tests, build the package | [doc/BUILD.md](doc/BUILD.md) |
 | Install it as a service | [Debian package](doc/OPERATIONS.md#debian-package) |
-| Change the address, the host names or the time zone | [Server configuration](doc/OPERATIONS.md#server-configuration) |
+| Change the address, the host names, the time zone, the sessions or the limits | [Server configuration](doc/OPERATIONS.md#server-configuration) |
 | Put it behind a reverse proxy | [Network and security](doc/OPERATIONS.md#network-and-security) |
 | Upgrade an installation | [Upgrade](doc/OPERATIONS.md#upgrade) |
 | Fix a refusal or an error message | [Troubleshooting](doc/OPERATIONS.md#troubleshooting) |
@@ -56,7 +56,7 @@ This README is the entry point: what the application does, how to try it from th
 - One static Go binary, standard library only.
 - Hand-written HTML, CSS and JavaScript. The pages work without JavaScript.
 - The activity codes, the counters, the accounts and the data live in one JSON file, the database, rewritten atomically at each change.
-- The server configuration (address, origins, trusted proxies, time zone) is a second JSON file.
+- The server configuration (address, origins, database path, timeouts, sessions, login throttle, limits) is a second JSON file.
 - The open sessions are saved in a third file, next to the database.
 
 ```text
@@ -64,10 +64,10 @@ This README is the entry point: what the application does, how to try it from th
 bin/    timesheet (built), timesheet.sh (runs the server on the configuration and the database of the repository)
 debian/ Debian packaging (package, systemd unit, post-installation script)
 doc/    ARCHITECTURE.md  BUILD.md  CODING.md  OPERATIONS.md  SECURITY.md  SPECIFICATIONS.md  USER-GUIDE.md  timesheet.png
-etc/    timesheet/timesheet.json (the server configuration)
+etc/    timesheet/timesheet.json (the server configuration, installed as is by the package)
 share/  timesheet/ (configuration template read by init, import template)
 src/    Go sources
-var/    lib/timesheet/ (default location of the database, its lock and its session file)
+var/    lib/timesheet/ (database of the repository, given with --database, its lock and its session file)
 ```
 
 ### Documentation
@@ -123,22 +123,23 @@ This section goes from the sources to a running server on your workstation. To i
 4. Create the database:
 
    ```sh
-   bin/timesheet init
+   bin/timesheet init --database=var/lib/timesheet/timesheet-database.json
    ```
 
    It answers:
 
    ```text
    Base créée : …/var/lib/timesheet/timesheet-database.json
-   Créez maintenant un administrateur : timesheet user add <login> --profile=ADMIN --database=var/lib/timesheet/timesheet-database.json
+   Créez maintenant un administrateur : timesheet user add <login> --profile=ADMIN --database=…/var/lib/timesheet/timesheet-database.json
    ```
 
-   The command it prints is the next step; from the repository root, prefix it with `bin/`. The database starts with the activity codes and counters of the configuration template and no account.
+   - The command it prints is the next step; from the repository root, prefix it with `bin/`. The database starts with the activity codes and counters of the configuration template and no account.
+   - `--database` is needed from the sources: the server configuration of the repository names the database of the Debian package, `/var/lib/timesheet/timesheet-database.json` ([Server configuration](doc/OPERATIONS.md#server-configuration)).
 
 5. Create your account, as an administrator:
 
    ```sh
-   bin/timesheet user add <login> --profile=ADMIN
+   bin/timesheet user add <login> --profile=ADMIN --database=var/lib/timesheet/timesheet-database.json
    ```
 
    - On a Linux terminal, the password is asked twice, without echo.
@@ -149,12 +150,14 @@ This section goes from the sources to a running server on your workstation. To i
 6. Start the server:
 
    ```sh
-   bin/timesheet run
+   bin/timesheet.sh
    ```
+
+   The script runs `bin/timesheet run` with the server configuration and the database of the repository, from any directory.
 
    - It stays in the foreground and logs on the standard error: one line per request and one per event, such as a login or a saved month. See [Logs](doc/OPERATIONS.md#logs).
    - The warning `serving plain HTTP` is expected on a workstation. Read [Network and security](doc/OPERATIONS.md#network-and-security) before exposing the server on a network.
-   - Ctrl-C or SIGTERM stops it after the requests in progress (10 s at most).
+   - Ctrl-C or SIGTERM stops it after the requests in progress (`server.shutdown_timeout`, 10 s by default).
 
 7. Open `http://127.0.0.1:8080` or `http://localhost:8080`, choose « Se connecter » and log in. You arrive on « Tableau de bord ».
 
@@ -162,7 +165,7 @@ Then follow the [User guide](doc/USER-GUIDE.md).
 
 ### Next starts
 
-- Run `bin/timesheet run` from the repository root, or `bin/timesheet.sh` from any directory.
+- Run `bin/timesheet.sh` from any directory, or `bin/timesheet run --database=var/lib/timesheet/timesheet-database.json` from the repository root.
 - The sessions survive a restart.
 
 ## BUILD
@@ -171,7 +174,7 @@ Then follow the [User guide](doc/USER-GUIDE.md).
 
 ## RUN
 
-- From the repository: `bin/timesheet run` from the root, or `bin/timesheet.sh` from any directory (see [Getting started](#getting-started)).
+- From the repository: `bin/timesheet.sh` from any directory, or `bin/timesheet run --database=var/lib/timesheet/timesheet-database.json` from the root (see [Getting started](#getting-started)).
 - As a service: build the Debian package, install it, then create the first administrator (see [Debian package](doc/OPERATIONS.md#debian-package)).
 
 Everything else about running the server is in [doc/OPERATIONS.md](doc/OPERATIONS.md): server configuration, network and reverse proxy, logs, import, backup and restore, recovery, upgrade and troubleshooting.

@@ -39,6 +39,7 @@ import (
 
 type ImportCommand struct {
     settings *Settings
+    server   activity.ServerConfiguration
     clock    activity.Clock
     random   io.Reader
     logger   *slog.Logger
@@ -52,8 +53,8 @@ var ErrImportRefused = errors.New("app: import refused")
 // ImportCommand implementation
 // ---------------------------------------------------------------------------
 
-func NewImportCommand(settings *Settings, clock activity.Clock, random io.Reader, logger *slog.Logger) *ImportCommand {
-    return &ImportCommand{settings: settings, clock: clock, random: random, logger: logger}
+func NewImportCommand(settings *Settings, server activity.ServerConfiguration, clock activity.Clock, random io.Reader, logger *slog.Logger) *ImportCommand {
+    return &ImportCommand{settings: settings, server: server, clock: clock, random: random, logger: logger}
 }
 
 func (c *ImportCommand) Run(out io.Writer) error {
@@ -61,7 +62,7 @@ func (c *ImportCommand) Run(out io.Writer) error {
     if err != nil {
         return err
     }
-    database := store.NewDatabase(c.settings.Database(), c.logger)
+    database := store.NewDatabase(c.settings.Database(), c.logger, c.server.Database.MaxBytes, c.server.Limits)
     err = database.Lock()
     if errors.Is(err, store.ErrLocked) {
         return fmt.Errorf("%w (stop the server first)", err)
@@ -86,11 +87,7 @@ func (c *ImportCommand) Run(out io.Writer) error {
     if err != nil {
         return err
     }
-    server, err := NewServerFile(c.settings.Config()).Load()
-    if err != nil {
-        return err
-    }
-    today := activity.NewDateOf(c.clock.Now().In(server.Location()))
+    today := activity.NewDateOf(c.clock.Now().In(c.server.Server.Location()))
     holidays := activity.NewHolidayCalendar()
     next := calendar.Clone()
     problems := c.apply(config, &next, imported.Settings)
@@ -188,7 +185,7 @@ func (c *ImportCommand) Run(out io.Writer) error {
         fmt.Fprintf(out, "%d ajustement(s) lu(s).\n", len(adjustments))
     }
     if c.settings.Validate() && (len(dates) > 0) {
-        next = c.validate(out, config, server.Location(), next, holidays, dates, today)
+        next = c.validate(out, config, c.server.Server.Location(), next, holidays, dates, today)
     }
     if c.settings.DryRun() {
         if err := database.CheckCalendar(login, calendar.Revision, next); err != nil {
