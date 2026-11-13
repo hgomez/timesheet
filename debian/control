@@ -1,0 +1,27 @@
+Source: timesheet
+Section: web
+Priority: optional
+Maintainer: Olivier Poncet <ponceto@free.fr>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+ golang-go (>= 2:1.24~),
+ git,
+Standards-Version: 4.7.0
+
+Package: timesheet
+Architecture: any
+Depends:
+ adduser,
+ tzdata,
+ ${misc:Depends},
+Description: half-day activity tracking with leave counters
+ Timesheet is a web application tracking a professional activity
+ half-day by half-day, with leave counters kept like bank accounts,
+ monthly closing and a yearly summary.
+ .
+ It is designed for employees working in France: French legal holidays,
+ paid leave, RTT and part-time counters, and an interface in French.
+ .
+ It is a single statically linked binary storing its configuration,
+ accounts and data in one JSON database, served by a systemd unit.

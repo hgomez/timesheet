@@ -1,0 +1,76 @@
+#!/bin/sh
+
+set -e
+
+# ----------------------------------------------------------------------------
+# arguments
+# ----------------------------------------------------------------------------
+
+arg_user='timesheet'
+arg_home='/var/lib/timesheet'
+arg_database='/var/lib/timesheet/timesheet-database.json'
+arg_template='/usr/share/timesheet/timesheet-database-template.json'
+arg_create_user='not-set'
+arg_create_home='not-set'
+arg_create_database='not-set'
+
+# ----------------------------------------------------------------------------
+# parse arguments
+# ----------------------------------------------------------------------------
+
+case "${1}" in
+    configure)
+        arg_create_user='yes'
+        arg_create_home='yes'
+        arg_create_database='yes'
+        ;;
+    abort-upgrade)
+        ;;
+    abort-remove)
+        ;;
+    abort-deconfigure)
+        ;;
+    *)
+        echo "postinst called with unknown argument '$1'" >&2
+        exit 1
+        ;;
+esac
+
+# ----------------------------------------------------------------------------
+# create the system account
+# ----------------------------------------------------------------------------
+
+if [ "${arg_create_user}" = 'yes' ] && ! getent passwd "${arg_user}" > /dev/null
+then
+    adduser --system --group --quiet --home "${arg_home}" --no-create-home "${arg_user}"
+fi
+
+# ----------------------------------------------------------------------------
+# create the directory of the database
+# ----------------------------------------------------------------------------
+
+if [ "${arg_create_home}" = 'yes' ] && [ ! -d "${arg_home}" ]
+then
+    install -d -o "${arg_user}" -g "${arg_user}" -m 0700 "${arg_home}"
+fi
+
+# ----------------------------------------------------------------------------
+# create the database
+# ----------------------------------------------------------------------------
+
+if [ "${arg_create_database}" = 'yes' ] && [ ! -e "${arg_database}" ]
+then
+    runuser -u "${arg_user}" -- /usr/bin/timesheet init --database="${arg_database}" --template="${arg_template}"
+fi
+
+# ----------------------------------------------------------------------------
+# debian helper
+# ----------------------------------------------------------------------------
+
+#DEBHELPER#
+
+exit 0
+
+# ----------------------------------------------------------------------------
+# End-Of-File
+# ----------------------------------------------------------------------------
