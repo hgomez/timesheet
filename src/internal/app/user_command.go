@@ -57,7 +57,7 @@ func (c *UserCommand) Run(out io.Writer) error {
     if c.settings.Command() != "user list" {
         err := database.Lock()
         if errors.Is(err, store.ErrLocked) {
-            return fmt.Errorf("%w (stop the server or use /admin/)", err)
+            return fmt.Errorf("%w (stop the server or use /admin/accounts)", err)
         }
         if err != nil {
             return err

@@ -111,7 +111,7 @@ To change settings:
 
 2. Change linked settings in the same command: `server.listen` with `server.origins`, `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` or `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. One after the other, the first may be refused.
 
-3. Restart the server: a change applies at the next start. On a package: `systemctl restart timesheet`. The page « Configuration » of the administration shows the values read at the start.
+3. Restart the server: a change applies at the next start. On a package: `systemctl restart timesheet`. The page « Serveur » of the administration shows the values read at the start.
 
 Common changes:
 
@@ -445,7 +445,7 @@ The errors of the commands are prefixed with `timesheet:`. Those of `run` are lo
 | `no administrator account: run 'timesheet user add …' first` | `run` finds no enabled administrator. | Create one with `user add <login> --profile=ADMIN`. |
 | `cannot lock …` with `the file is used by another process` | Another instance already serves this database. | Use that instance, or stop it. |
 | `cannot listen on 127.0.0.1:8080` with `address already in use` | Another program, or an instance serving another database, uses the port. | Stop it, or start with `--listen=127.0.0.1:8081`: the accepted origins then follow that address. |
-| `the file is used by another process … (stop the server or use /admin/)`, or `(stop the server first)` | A command that needs the server stopped is run while the server holds the database. | Stop the server first, or act from « Administration ». |
+| `the file is used by another process … (stop the server or use /admin/accounts)`, or `(stop the server first)` | A command that needs the server stopped is run while the server holds the database. | Stop the server first, or act from « Administration ». |
 | « Hôte inconnu » (421) | The page is opened under a host name that is not an accepted origin. | Use `127.0.0.1` or `localhost`, or declare the name in `server.origins` (`config set server.origins`) or with `--origin`. |
 | « Identifiant ou mot de passe incorrect. » | Wrong login or password, or disabled account. | Try again. Each failure makes the address wait, from `login.initial_delay` up to `login.max_delay`, 1 s and 5 min by default (« Trop de tentatives », 429). |
 | « Le formulaire a expiré ou n'est pas valide. Rechargez la page et recommencez. » (403) | The page was open too long (the login form lives `login.form_lifetime`, 1 h by default), or the session was replaced. | Reload the page and submit again. |

@@ -366,7 +366,8 @@ A write runs these steps under one `sync.RWMutex`:
 | `DashboardController` | `/dashboard/`, `/dashboard/activity…`, `/dashboard/month…`, `/dashboard/year/…`, `/dashboard/adjustments`, `/dashboard/colors.css`, and the read-only pages `/admin/accounts/{login}/dashboard`, `…/month/…`, `…/year/…` |
 | `SettingsController` | `/dashboard/settings` |
 | `ProfileController` | `/dashboard/profile` (name, password, sessions) |
-| `AdminController` | `/admin/`, `/admin/accounts`, `/admin/accounts/{login}` |
+| `AdminServerController` | `/admin/` |
+| `AdminController` | `/admin/accounts`, `/admin/accounts/{login}` |
 | `AdminSettingsController` | `/admin/settings` |
 
 ### internal/app
@@ -428,7 +429,8 @@ The routes and their answers are specified in [SPECIFICATIONS.md, Routes](SPECIF
 | Settings page (« Réglages ») | `/dashboard/settings` | `SettingsController` | none (the controller builds its record) | `settings.html` | `chrome_page.js` |
 | Profile page (« Mon profil ») | `/dashboard/profile` | `ProfileController` | none (the controller builds its record) | `profile.html` | `chrome_page.js` |
 | Colours of the codes | `/dashboard/colors.css` | `DashboardController` | none | none (generated style sheet) | none |
-| Accounts (« Comptes ») | `/admin/`, `/admin/accounts` | `AdminController` | none (the controller builds its records) | `admin_accounts.html` | `chrome_page.js` |
+| Server page (« Serveur ») | `/admin/` | `AdminServerController` | none (the controller builds its record from the server configuration read at start) | `admin_server.html` | `chrome_page.js` |
+| Accounts (« Comptes ») | `/admin/accounts` | `AdminController` | none (the controller builds its records) | `admin_accounts.html` | `chrome_page.js` |
 | Account (« Compte … ») | `/admin/accounts/{login}` | `AdminController` | none (the controller builds its record) | `admin_account.html` | `chrome_page.js` |
 | Read-only pages of an account | `/admin/accounts/{login}/dashboard`, `…/month/{year}/{month}`, `…/year/{year}` | `DashboardController` | `DashboardView`, `MonthView`, `YearView` | `dashboard.html`, `month.html`, `year.html` | `chrome_page.js` |
 | Configuration page (« Configuration ») | `/admin/settings` | `AdminSettingsController` | none (the controller builds its record) | `admin_settings.html` | `chrome_page.js` |
@@ -454,7 +456,7 @@ Two ES modules are loaded with `<script type="module">`:
 
 | Script | Class | Loaded on | Behaviour |
 | --- | --- | --- | --- |
-| `chrome_page.js` | `ChromePage` | Every page | Shows the theme button; applies and switches the light or dark theme, kept in `localStorage` only; closes the burger menu, the user menu and the deletion box of `/admin/` on a click outside or on `Échap`; gives the focus to the confirmation field of that box |
+| `chrome_page.js` | `ChromePage` | Every page | Shows the theme button; applies and switches the light or dark theme, kept in `localStorage` only; closes the burger menu, the user menu and the deletion box of `/admin/accounts` on a click outside or on `Échap`; gives the focus to the confirmation field of that box |
 | `month_sheet_page.js` | `MonthSheetPage` | Activity page (editable grid) | Reads the code-to-class table of the `<script type="application/json">` block; copies the « Journée » choice into the selects of the half-days; empties « Journée » when a half-day is changed by hand; repaints the cells |
 
 ### Style sheets

@@ -174,6 +174,7 @@ The number of extra days comes from the employment contract: the application doe
 | reversal | An entry of opposite amount that cancels an earlier entry, labelled « Contre-passation : \<motif> ». |
 | revision | A number raised by each write, used to refuse a form shown before another write. |
 | rounding | The adjustment that rounds a carried balance up to the next whole day. |
+| server page | The page `/admin/` that shows the server configuration read-only ([Server page](#server-page)). |
 | server configuration | The file `etc/timesheet/timesheet.json` (`/etc/timesheet/timesheet.json` in the Debian package) holding the settings of the server and of its operation: address, origins, database path, timeouts, sessions, login throttle, password hashing and capacity ([Server configuration](#server-configuration)). |
 | statement | The table of the entries of one counter for one month, with opening and closing balances. |
 | summary | The yearly table of the movements of every counter ([Yearly summary](#yearly-summary)). |
@@ -221,6 +222,7 @@ Rights of an `ADMIN` over the other accounts and the configuration:
 - change the name and the profile of an account;
 - reset the password of an account;
 - read, never write, the balances, months and years of any account ([Read-only views of another account](#read-only-views-of-another-account));
+- read the server configuration ([Server page](#server-page));
 - edit the configuration ([Configuration page](#configuration-page)).
 
 Rules:
@@ -256,7 +258,7 @@ Rules:
 | Disable | refused (409) | refused (422) |
 | Enable | not applicable | refused (422) |
 | Reset the password | allowed on another account | refused (422): one's own password changes in the [profile page](#profile-page) |
-| Close the sessions | allowed | allowed, from the profile page or the table of `/admin/`; the current session closes too |
+| Close the sessions | allowed | allowed, from the profile page or the table of `/admin/accounts`; the current session closes too |
 | Change the name | allowed | allowed, from the profile page or the account page |
 
 The messages are in [Account page](#account-page).
@@ -880,7 +882,8 @@ When the tracking started before the month, the number of tracked days is the nu
 | Year page | « Année \<année> » | `/dashboard/year/{year}` | connected | [Year page](#year-page) |
 | Profile page | « Mon profil » | `/dashboard/profile` | connected | [Profile page](#profile-page) |
 | Settings page | « Réglages » | `/dashboard/settings` | connected | [Settings page](#settings-page) |
-| Accounts page | « Comptes » | `/admin/` | `ADMIN` | [Accounts page](#accounts-page) |
+| Server page | « Serveur » | `/admin/` | `ADMIN` | [Server page](#server-page) |
+| Accounts page | « Comptes » | `/admin/accounts` | `ADMIN` | [Accounts page](#accounts-page) |
 | Account page | « Compte \<login> » | `/admin/accounts/{login}` | `ADMIN` | [Account page](#account-page) |
 | Read-only views | « Soldes de \<login> », « \<Mois> \<année> de \<login> », « Année \<année> de \<login> » | `/admin/accounts/{login}/...` | `ADMIN` | [Read-only views of another account](#read-only-views-of-another-account) |
 | Configuration page | « Configuration » | `/admin/settings` | `ADMIN` | [Configuration page](#configuration-page) |
@@ -910,7 +913,7 @@ When the tracking started before the month, the number of tracked days is the nu
 | --- | --- | --- | --- |
 | public | home, login, logout, error pages for a guest | for a guest, a link to `/login` shown as an icon only, an arrow entering a door drawn in the text colour, with `title` and `aria-label` « Se connecter »; for a connected browser, a « Tableau de bord » button; nothing on the login page | « Navigation principale » |
 | dashboard | dashboard, activity, month, year, profile and settings pages | « Tableau de bord », « Activité », « Mois », « Année » | « Navigation principale » |
-| admin | accounts, account, configuration pages and read-only views | « Comptes », « Configuration » | « Navigation de l'administration » |
+| admin | server, accounts, account, configuration pages and read-only views | « Serveur », « Comptes », « Configuration » | « Navigation de l'administration » |
 
 - The current entry carries `aria-current="page"` and is highlighted.
 - Every entry of a menu is shown on every page of its family.
@@ -929,9 +932,10 @@ When the tracking started before the month, the number of tracked days is the nu
 
 | Window width | Change |
 | --- | --- |
-| any | the name of the user beside its badge is cut with an ellipsis beyond 12 rem |
+| any | the name of the user beside its badge is cut with an ellipsis beyond 12 rem; a long value of a list of facts (an address, a path, a list of origins) wraps at any character instead of overflowing its card |
 | up to 1024 px | the dashboard and admin families replace their `<nav>` by a burger menu |
 | up to 720 px | the name of the user beside its badge is hidden |
+| up to 600 px | the lists of facts (server page, profile page, account page) put each value under its label |
 | up to 480 px | the text of the brand is visually hidden; it stays the name of the link and the logo alone remains |
 
 The burger menu:
@@ -1020,7 +1024,7 @@ The site works without JavaScript.
 
 | Script | Pages | What it does |
 | --- | --- | --- |
-| `chrome_page.js` | every page | shows the theme button and switches the theme; closes the burger menu, the user menu and the deletion box of `/admin/` on a click outside or `Échap`; gives the focus to the confirmation field of the deletion box |
+| `chrome_page.js` | every page | shows the theme button and switches the theme; closes the burger menu, the user menu and the deletion box of `/admin/accounts` on a click outside or `Échap`; gives the focus to the confirmation field of the deletion box |
 | `month_sheet_page.js` | the activity page of an editable month | copies the « Journée » choice into the half-days, empties it when a half-day of the row is changed by hand, repaints the cells |
 
 ## PUBLIC PAGES
@@ -1411,9 +1415,33 @@ The problems listed under « Réglages non enregistrés. » are:
 
 ## ADMINISTRATION
 
+### Server page
+
+Route `/admin/`, first entry « Serveur » of the administration navigation, and target of the entry « Administration » of the user menu; `h1` « Serveur ».
+
+#### Server settings shown
+
+- The page shows, read-only, every setting of the [server configuration](#server-configuration), one section with its `h2` and its list of facts per group:
+
+| Group | Facts |
+| --- | --- |
+| « Réseau » | « Adresse d'écoute », « Origines publiques », « Proxys de confiance », « Fuseau horaire », « Niveau du journal », « Certificat TLS », « Clé TLS », « Version TLS minimale », « Durée HSTS » |
+| « Requêtes » | « Lecture des en-têtes », « Lecture de la requête », « Écriture de la réponse », « Connexion inactive », « Arrêt du serveur », « Taille des en-têtes », « Taille du corps », « Longueur de l'adresse » |
+| « Base de données » | « Fichier », « Taille maximale » |
+| « Sessions » | « Expiration sans activité », « Durée maximale », « Sessions par compte », « Enregistrement des sessions » |
+| « Connexion » | « Validité du formulaire », « Premier délai », « Délai maximal », « Fenêtre du budget », « Nouvelles adresses par fenêtre », « Adresses suivies », « Oubli d'une adresse » |
+| « Mots de passe » | « Itérations PBKDF2 » |
+| « Limites » | « Comptes », « Taille d'un compte », « Ajustements par compte » |
+
+- A duration is shown with its French unit: `8 h`, `1 min`, `30 s`, `500 ms`, in the shortest form of the file. A size is shown in `Mio` or `Kio` when it is a whole number of them, otherwise in `octets`; the length of the address is always in `octets`.
+- A list (« Origines publiques », « Proxys de confiance ») shows one entry per line, each in its own `dd` under the same `dt`.
+- An empty list of proxies and a missing certificate pair are shown « aucun ».
+- They come from the [server configuration](#server-configuration) read at the start of the server, not from the options of `run`.
+- The line under the `h1` explains how to change them: edit the file or use `timesheet config set`, then restart the server; the options of `timesheet run`, `--database` included, take precedence.
+
 ### Accounts page
 
-Route `/admin/`, entry « Comptes » of the administration navigation; `h1` « Comptes ».
+Route `/admin/accounts`, entry « Comptes » of the administration navigation; `h1` « Comptes ».
 
 #### Table of the accounts
 
@@ -1435,7 +1463,7 @@ The section « Comptes existants » holds one table, one row per account, with:
 | Delete | « Supprimer » | « Supprimer \<login> » | a bin | one's own row | opens the deletion box |
 
 - The icons are inline SVG drawn in the text colour.
-- The actions come back to `/admin/` (field `return=list`), with the notice on success and the alert on the same page when they fail.
+- The actions come back to `/admin/accounts` (field `return=list`), with the notice on success and the alert on the same page when they fail.
 
 #### Deletion box
 
@@ -1445,7 +1473,7 @@ The section « Comptes existants » holds one table, one row per account, with:
 4. It recalls the account: « Supprimer le compte \<login> et toutes ses données ? ».
 5. It asks to retype the login in the field « Retapez « \<login> » », which receives the focus.
 6. It offers, side by side, « Supprimer » and, at its right, « Annuler ».
-7. « Annuler » is a link back to `/admin/`, so that it works without JavaScript.
+7. « Annuler » is a link back to `/admin/accounts`, so that it works without JavaScript.
 8. A click on the backdrop or `Échap` closes the box too.
 
 #### Form « Nouveau compte »
@@ -1458,7 +1486,7 @@ The section « Créer un compte » holds the form « Nouveau compte », posted t
 | « Profil » | « Administrateur » then « Utilisateur », the latter selected by default |
 | « Mot de passe provisoire » | follows the password policy; the account must change it at its first login |
 
-The button « Créer le compte » creates the account, `enabled`, with its tracking start on the first day of the current month, and comes back to `/admin/` with the notice `created`.
+The button « Créer le compte » creates the account, `enabled`, with its tracking start on the first day of the current month, and comes back to `/admin/accounts` with the notice `created`.
 
 #### Refusals of the accounts page
 
@@ -1471,7 +1499,7 @@ The button « Créer le compte » creates the account, `enabled`, with its track
 | `limits.accounts` accounts reached, 200 by default | 422 | « Le nombre maximal de comptes est atteint. » |
 | other failure | 422 | « Création impossible. » |
 
-The refusals of the row actions are those of the [account page](#refusals-of-the-account-page), shown on `/admin/`.
+The refusals of the row actions are those of the [account page](#refusals-of-the-account-page), shown on `/admin/accounts`.
 
 ### Account page
 
@@ -1486,7 +1514,7 @@ The section « Informations » gives the name (or « non renseigné »), the pro
 | « Accès » | « Désactiver le compte » or « Activer le compte » | none | `disable` or `enable` | disabling closes every session of the account; notice `disabled` or `enabled` | hidden |
 | « Accès » | « Fermer les sessions », button « Fermer toutes ses sessions », disabled without open session | none | `sessions` | closes every session of the account without preventing a new login; notice `sessions` | hidden |
 | « Mot de passe » | « Réinitialiser le mot de passe » | « Mot de passe provisoire » | `reset` | closes every session; the account must change the password; notice `reset` | hidden |
-| « Suppression » | « Supprimer le compte et toutes ses données », button « Supprimer définitivement » | « Retapez l'identifiant pour confirmer » | `delete` | deletes the account and its data, closes its sessions; 303 to `/admin/` with the notice `deleted` | hidden |
+| « Suppression » | « Supprimer le compte et toutes ses données », button « Supprimer définitivement » | « Retapez l'identifiant pour confirmer » | `delete` | deletes the account and its data, closes its sessions; 303 to `/admin/accounts` with the notice `deleted` | hidden |
 
 #### Refusals of the account page
 
@@ -1523,25 +1551,6 @@ The section « Informations » gives the name (or « non renseigné »), the pro
 ### Configuration page
 
 Route `/admin/settings`, entry « Configuration » of the administration navigation; `h1` « Configuration ».
-
-#### Server settings shown
-
-- The section « Serveur » shows, read-only, every setting of the [server configuration](#server-configuration), one `h3` and one list of facts per group:
-
-| Group | Facts |
-| --- | --- |
-| « Réseau » | « Adresse d'écoute », « Origines publiques », « Proxys de confiance », « Fuseau horaire », « Niveau du journal », « Certificat TLS », « Clé TLS », « Version TLS minimale », « Durée HSTS » |
-| « Requêtes » | « Lecture des en-têtes », « Lecture de la requête », « Écriture de la réponse », « Connexion inactive », « Arrêt du serveur », « Taille des en-têtes », « Taille du corps », « Longueur de l'adresse » |
-| « Base de données » | « Fichier », « Taille maximale » |
-| « Sessions » | « Expiration sans activité », « Durée maximale », « Sessions par compte », « Enregistrement des sessions » |
-| « Connexion » | « Validité du formulaire », « Premier délai », « Délai maximal », « Fenêtre du budget », « Nouvelles adresses par fenêtre », « Adresses suivies », « Oubli d'une adresse » |
-| « Mots de passe » | « Itérations PBKDF2 » |
-| « Limites » | « Comptes », « Taille d'un compte », « Ajustements par compte » |
-
-- A duration is shown with its French unit: `8 h`, `1 min`, `30 s`, `500 ms`, in the shortest form of the file. A size is shown in `Mio` or `Kio` when it is a whole number of them, otherwise in `octets`; the length of the address is always in `octets`.
-- An empty list of proxies and a missing certificate pair are shown « aucun ».
-- They come from the [server configuration](#server-configuration) read at the start of the server, not from the options of `run`.
-- A line explains how to change them: edit the file or use `timesheet config set`, then restart the server; the options of `timesheet run`, `--database` included, take precedence.
 
 #### Forms
 
@@ -1675,10 +1684,11 @@ The label of the code (grid) or its identifier (year calendar) is always written
 | `/dashboard/settings` | GET | connected | [settings page](#settings-page) |
 | `/dashboard/settings` | POST | connected | saves the user settings |
 | `/dashboard/colors.css` | GET | connected | [colour sheet](#colour-sheet) of the viewer |
-| `/admin/` | GET | ADMIN | [accounts page](#accounts-page) |
+| `/admin/` | GET | ADMIN | [server page](#server-page) |
+| `/admin/accounts` | GET | ADMIN | [accounts page](#accounts-page) |
 | `/admin/accounts` | POST | ADMIN | creates an account |
 | `/admin/accounts/{login}` | GET | ADMIN | [account page](#account-page) |
-| `/admin/accounts/{login}` | POST | ADMIN | `action=name`, `profile`, `reset`, `disable`, `enable`, `sessions` or `delete`; any other `action` gets 400; with `return=list` the answer comes back to `/admin/`; `sessions` on one's own account shows « Vous êtes déconnecté » |
+| `/admin/accounts/{login}` | POST | ADMIN | `action=name`, `profile`, `reset`, `disable`, `enable`, `sessions` or `delete`; any other `action` gets 400; with `return=list` the answer comes back to `/admin/accounts`; `sessions` on one's own account shows « Vous êtes déconnecté » |
 | `/admin/accounts/{login}/dashboard` | GET | ADMIN | read-only balances of the account |
 | `/admin/accounts/{login}/month/{year}/{month}` | GET | ADMIN | read-only month page of the account |
 | `/admin/accounts/{login}/year/{year}` | GET | ADMIN | read-only year page of the account |
@@ -1821,7 +1831,7 @@ Every form posts `application/x-www-form-urlencoded` data. Every form of a conne
 | « Nouveau compte » | same | `profile` | « Profil », list | `ADMIN` or `USER` |
 | « Nouveau compte » | same | `password` | « Mot de passe provisoire », password, 12 to 256 characters | the provisional password |
 | Every form of an account | `POST /admin/accounts/{login}` | `action` | hidden | `name`, `profile`, `disable`, `enable`, `sessions`, `reset` or `delete` |
-| Every form of a row of `/admin/` | same | `return` | hidden | `list`: the answer comes back to `/admin/` |
+| Every form of a row of `/admin/accounts` | same | `return` | hidden | `list`: the answer comes back to `/admin/accounts` |
 | « Changer le nom » | same | `name` | « Nom et prénom », text, 60 characters | the name |
 | « Changer le profil » | same | `profile` | « Profil », list | `USER` or `ADMIN` |
 | « Réinitialiser le mot de passe » | same | `password` | « Mot de passe provisoire », password, 12 to 256 characters | the provisional password |
@@ -1939,7 +1949,7 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 | `help`, `version` | no | no | no |
 
 - The lock is `.<file name>.lock` next to the database ([Database](#database)).
-- A command that needs the lock while the server runs fails with exit 1: `the file is used by another process`, followed by `(stop the server or use /admin/)` for the `user` commands and `(stop the server first)` for `session clear` and `import`.
+- A command that needs the lock while the server runs fails with exit 1: `the file is used by another process`, followed by `(stop the server or use /admin/accounts)` for the `user` commands and `(stop the server first)` for `session clear` and `import`.
 - A command that takes the lock checks the database file and its directory ([Files and directories](#files-and-directories)). `user list` checks only the file.
 
 ### `timesheet init`

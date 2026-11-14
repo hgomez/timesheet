@@ -17,21 +17,8 @@
 {{define "title"}}Configuration{{end}}
 {{define "content"}}{{with .Data}}            <header class="page-header">
                 <h1>Configuration</h1>
-                <p>Serveur, codes d'activité, compteurs et couleurs par défaut.</p>
+                <p>Codes d'activité, compteurs et couleurs par défaut.</p>
             </header>
-            <section>
-                <h2>Serveur</h2>
-{{- range .Groups}}
-                <h3>{{.Title}}</h3>
-                <dl class="facts">
-{{- range .Facts}}
-                    <dt>{{.Label}}</dt>
-                    <dd><code>{{.Value}}</code></dd>
-{{- end}}
-                </dl>
-{{- end}}
-                <p>Ces réglages viennent du fichier de configuration du serveur et s'appliquent au démarrage : modifiez ce fichier, ou utilisez <code>timesheet config set</code>, puis relancez le serveur. Les options de <code>timesheet run</code>, <code>--database</code> comprise, passent avant eux.</p>
-            </section>
             <section>
                 <h2>Codes d'activité</h2>
                 <p>Chaque code alimente ou décompte un compteur de 0,5 j par demi-journée : un code qui alimente compte tous les jours, un code qui décompte seulement les jours ouvrés. Chaque code a sa couleur. Un code utilisé ne peut plus changer d'effet ni de compteur, ni être supprimé : archivez-le pour le retirer des listes de saisie.</p>

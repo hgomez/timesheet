@@ -34,7 +34,6 @@ import (
 
 type AdminSettingsController struct {
     repository Repository
-    server     activity.ServerConfiguration
     renderer   *Renderer
     errors     *ErrorPages
     notices    *Notices
@@ -43,22 +42,11 @@ type AdminSettingsController struct {
 
 type configurationRecord struct {
     Revision   int64
-    Groups     []serverGroupRecord
     Activities []activityCodeRecord
     Counters   []counterRuleRecord
     Effects    []OptionRecord
     Counter    []OptionRecord
     Every      []OptionRecord
-}
-
-type serverGroupRecord struct {
-    Title string
-    Facts []serverFactRecord
-}
-
-type serverFactRecord struct {
-    Label string
-    Value string
 }
 
 type activityCodeRecord struct {
@@ -93,8 +81,8 @@ const (
 // AdminSettingsController implementation
 // ---------------------------------------------------------------------------
 
-func NewAdminSettingsController(repository Repository, server activity.ServerConfiguration, renderer *Renderer, errors *ErrorPages, logger *slog.Logger) *AdminSettingsController {
-    return &AdminSettingsController{repository: repository, server: server, renderer: renderer, errors: errors, notices: NewNotices(), logger: logger}
+func NewAdminSettingsController(repository Repository, renderer *Renderer, errors *ErrorPages, logger *slog.Logger) *AdminSettingsController {
+    return &AdminSettingsController{repository: repository, renderer: renderer, errors: errors, notices: NewNotices(), logger: logger}
 }
 
 func (c *AdminSettingsController) Show(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +91,7 @@ func (c *AdminSettingsController) Show(w http.ResponseWriter, r *http.Request) {
 
 func (c *AdminSettingsController) render(w http.ResponseWriter, r *http.Request, status int, alert string) {
     config := c.repository.Configuration()
-    record := configurationRecord{Revision: config.Revision, Groups: c.groups()}
+    record := configurationRecord{Revision: config.Revision}
     record.Effects = c.effects(true)
     record.Counter = c.counters(config, "")
     record.Every = c.every("")
@@ -114,77 +102,6 @@ func (c *AdminSettingsController) render(w http.ResponseWriter, r *http.Request,
         record.Counters = append(record.Counters, counterRuleRecord{ID: rule.ID, Label: rule.Label, ShortLabel: rule.ShortLabel, Enabled: rule.EnabledByDefault, Amount: rule.Accrual.Amount.String(), Every: c.every(rule.Accrual.Every), Period: rule.PeriodStart.String(), CarryOver: rule.CarryOver, Archived: rule.Archived, Used: c.repository.CounterUsed(rule.ID)})
     }
     c.renderer.Render(w, r, status, "admin_settings", PageModel{Section: "settings-admin", Notice: c.notices.Message(r.URL.Query().Get("notice")), Alert: alert, Data: record})
-}
-
-func (c *AdminSettingsController) groups() []serverGroupRecord {
-    server, database, sessions, login, limits := c.server.Server, c.server.Database, c.server.Sessions, c.server.Login, c.server.Limits
-    return []serverGroupRecord{
-        {Title: "Réseau", Facts: []serverFactRecord{
-            {"Adresse d'écoute", server.Listen},
-            {"Origines publiques", strings.Join(server.Origins, ", ")},
-            {"Proxys de confiance", c.optional(strings.Join(server.TrustedProxies, ", "))},
-            {"Fuseau horaire", server.Timezone},
-            {"Niveau du journal", server.LogLevel},
-            {"Certificat TLS", c.optional(string(server.TLSCert))},
-            {"Clé TLS", c.optional(string(server.TLSKey))},
-            {"Version TLS minimale", server.TLSMinVersion},
-            {"Durée HSTS", server.HSTSMaxAge.Label()},
-        }},
-        {Title: "Requêtes", Facts: []serverFactRecord{
-            {"Lecture des en-têtes", server.ReadHeaderTimeout.Label()},
-            {"Lecture de la requête", server.ReadTimeout.Label()},
-            {"Écriture de la réponse", server.WriteTimeout.Label()},
-            {"Connexion inactive", server.KeepAliveTimeout.Label()},
-            {"Arrêt du serveur", server.ShutdownTimeout.Label()},
-            {"Taille des en-têtes", c.size(server.MaxHeaderBytes)},
-            {"Taille du corps", c.size(server.MaxBodyBytes)},
-            {"Longueur de l'adresse", strconv.FormatInt(server.MaxURLBytes, 10) + " octets"},
-        }},
-        {Title: "Base de données", Facts: []serverFactRecord{
-            {"Fichier", database.Path},
-            {"Taille maximale", c.size(database.MaxBytes)},
-        }},
-        {Title: "Sessions", Facts: []serverFactRecord{
-            {"Expiration sans activité", sessions.IdleTimeout.Label()},
-            {"Durée maximale", sessions.MaxLifetime.Label()},
-            {"Sessions par compte", strconv.FormatInt(sessions.PerAccount, 10)},
-            {"Enregistrement des sessions", sessions.SaveInterval.Label()},
-        }},
-        {Title: "Connexion", Facts: []serverFactRecord{
-            {"Validité du formulaire", login.FormLifetime.Label()},
-            {"Premier délai", login.InitialDelay.Label()},
-            {"Délai maximal", login.MaxDelay.Label()},
-            {"Fenêtre du budget", login.BudgetWindow.Label()},
-            {"Nouvelles adresses par fenêtre", strconv.FormatInt(login.NewAddressesPerWindow, 10)},
-            {"Adresses suivies", strconv.FormatInt(login.TrackedAddresses, 10)},
-            {"Oubli d'une adresse", login.ForgetAfter.Label()},
-        }},
-        {Title: "Mots de passe", Facts: []serverFactRecord{
-            {"Itérations PBKDF2", strconv.FormatInt(c.server.Passwords.Iterations, 10)},
-        }},
-        {Title: "Limites", Facts: []serverFactRecord{
-            {"Comptes", strconv.FormatInt(limits.Accounts, 10)},
-            {"Taille d'un compte", c.size(limits.AccountBytes)},
-            {"Ajustements par compte", strconv.FormatInt(limits.Adjustments, 10)},
-        }},
-    }
-}
-
-func (c *AdminSettingsController) optional(value string) string {
-    if value == "" {
-        return "aucun"
-    }
-    return value
-}
-
-func (c *AdminSettingsController) size(bytes int64) string {
-    switch {
-        case (bytes % (1 << 20)) == 0:
-            return strconv.FormatInt(bytes >> 20, 10) + " Mio"
-        case (bytes % (1 << 10)) == 0:
-            return strconv.FormatInt(bytes >> 10, 10) + " Kio"
-    }
-    return strconv.FormatInt(bytes, 10) + " octets"
 }
 
 func (c *AdminSettingsController) counters(config activity.Configuration, selected string) []OptionRecord {

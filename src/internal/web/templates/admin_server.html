@@ -1,0 +1,35 @@
+{{- /*
+ * admin_server.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "title"}}Serveur{{end}}
+{{define "content"}}{{with .Data}}            <header class="page-header">
+                <h1>Serveur</h1>
+                <p>Réglages du fichier de configuration du serveur, en lecture seule. Ils s'appliquent au démarrage : modifiez ce fichier, ou utilisez <code>timesheet config set</code>, puis relancez le serveur. Les options de <code>timesheet run</code>, <code>--database</code> comprise, passent avant eux.</p>
+            </header>
+{{- range .Groups}}
+            <section>
+                <h2>{{.Title}}</h2>
+                <dl class="facts">
+{{- range .Facts}}
+                    <dt>{{.Label}}</dt>
+{{- range .Values}}
+                    <dd><code>{{.}}</code></dd>
+{{- end}}
+{{- end}}
+                </dl>
+            </section>
+{{- end}}
+{{end}}{{end}}

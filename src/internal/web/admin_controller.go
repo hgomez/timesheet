@@ -143,7 +143,7 @@ func (c *AdminController) Create(w http.ResponseWriter, r *http.Request) {
         return
     }
     c.logger.Info("account created", "login", string(login), "profile", string(profile), "by", string((&Viewer{}).From(r).Login))
-    http.Redirect(w, r, "/admin/?notice=created", http.StatusSeeOther)
+    http.Redirect(w, r, "/admin/accounts?notice=created", http.StatusSeeOther)
 }
 
 func (c *AdminController) Show(w http.ResponseWriter, r *http.Request) {
@@ -254,7 +254,7 @@ func (c *AdminController) Update(w http.ResponseWriter, r *http.Request) {
             }
             c.sessions.CloseAccount(login, "")
             c.logger.Info("account deleted", "login", string(login), "by", string(viewer.Login))
-            http.Redirect(w, r, "/admin/?notice=deleted", http.StatusSeeOther)
+            http.Redirect(w, r, "/admin/accounts?notice=deleted", http.StatusSeeOther)
         default:
             c.errors.BadRequest(w, r)
     }
@@ -262,7 +262,7 @@ func (c *AdminController) Update(w http.ResponseWriter, r *http.Request) {
 
 func (c *AdminController) target(r *http.Request, login account.Login, notice string) string {
     if r.PostFormValue("return") == "list" {
-        return "/admin/?notice=" + notice
+        return "/admin/accounts?notice=" + notice
     }
     return "/admin/accounts/" + string(login) + "?notice=" + notice
 }

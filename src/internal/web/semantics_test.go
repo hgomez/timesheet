@@ -39,7 +39,7 @@ func TestRenderedPagesHaveASemanticSkeleton(t *testing.T) {
     pages := map[*testClient][]string{
         guest: {"/", "/login", "/nope"},
         user:  {"/dashboard/", "/dashboard/activity/2026/9", "/dashboard/month/2026/9", "/dashboard/month/2026/11", "/dashboard/year/2026", "/dashboard/settings", "/dashboard/profile", "/logout", "/admin/"},
-        admin: {"/admin/", "/admin/accounts/demo", "/admin/settings", "/admin/accounts/demo/month/2026/10", "/admin/accounts/demo/year/2026"},
+        admin: {"/admin/", "/admin/accounts", "/admin/accounts/demo", "/admin/settings", "/admin/accounts/demo/month/2026/10", "/admin/accounts/demo/year/2026"},
     }
     headings := regexp.MustCompile(`<h([1-6])[ >]`)
     for client, paths := range pages {

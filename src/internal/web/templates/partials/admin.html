@@ -28,6 +28,7 @@
             </details>
         </header>
 {{end}}
-{{define "main-links"}}                    <li><a href="/admin/"{{if eq .Section "accounts"}} aria-current="page"{{end}}>Comptes</a></li>
+{{define "main-links"}}                    <li><a href="/admin/"{{if eq .Section "server"}} aria-current="page"{{end}}>Serveur</a></li>
+                    <li><a href="/admin/accounts"{{if eq .Section "accounts"}} aria-current="page"{{end}}>Comptes</a></li>
                     <li><a href="/admin/settings"{{if eq .Section "settings-admin"}} aria-current="page"{{end}}>Configuration</a></li>
 {{end}}

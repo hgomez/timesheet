@@ -535,7 +535,7 @@ The look is sober and professional:
 
 - Icons are hand-made SVG.
 - Icon files live under `static/img/icons/`: logo, favicon, theme icons, burger menu.
-- An icon that takes the text colour is inline `<svg aria-hidden="true">` in a template (the action buttons of `/admin/` and the login link of the public header).
+- An icon that takes the text colour is inline `<svg aria-hidden="true">` in a template (the action buttons of `/admin/accounts` and the login link of the public header).
 - Never a `data:` URI.
 
 ## TESTS

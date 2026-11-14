@@ -835,6 +835,19 @@ body > footer .brand small {
     .positions ul, .features ul {
         grid-template-columns: minmax(0, 1fr);
     }
+
+    .facts {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-1);
+    }
+
+    .facts dt, .facts dd {
+        grid-column: 1;
+    }
+
+    .facts dd + dt {
+        margin-top: var(--space-2);
+    }
 }
 
 @media (max-width: 480px) {
@@ -1019,16 +1032,19 @@ body > footer .brand small {
 
 .facts {
     display: grid;
-    grid-template-columns: max-content 1fr;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
     gap: var(--space-2) var(--space-5);
 }
 
 .facts dt {
+    grid-column: 1;
     color: var(--ink-soft);
 }
 
 .facts dd {
+    grid-column: 2;
     margin: 0;
+    overflow-wrap: anywhere;
 }
 
 .accounts tr.is-disabled > :not(:last-child) {

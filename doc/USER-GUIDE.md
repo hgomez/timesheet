@@ -58,7 +58,7 @@ The legal holidays are built in. They name the rows of the grid, refuse leave (a
 | « Année » | Consultation only: the totals of the year, the calendar, the summary of the calendar year and one section per counter. The summary is modelled on a spreadsheet: a carry-forward row « Report N-1 », one row per month and totals. |
 | « Mon profil » | Identity, name shown in the menu, password, open sessions. |
 | « Réglages » | Tracking start, counters enabled, own accrual amounts, initial balances, colours of the codes. Its menu entry is « Mes réglages ». |
-| « Administration » | For administrators: the accounts (« Comptes ») and the configuration of the activity codes and counters (« Configuration »). |
+| « Administration » | For administrators: the server settings, read-only (« Serveur »), the accounts (« Comptes ») and the configuration of the activity codes and counters (« Configuration »). |
 
 - The menu under the user's name leads to « Mon profil », « Mes réglages » and, for an administrator, « Administration ». It also logs out (« Se déconnecter »).
 - On the public pages, the arrow entering a door at the right of the header (« Se connecter » on hover) opens the login page « Connexion ».
@@ -146,7 +146,14 @@ An adjustment can be deleted while its month is open.
 
 ## FOR THE ADMINISTRATOR
 
-The entry « Administration » of the menu adds two pages: « Comptes » and « Configuration ».
+The entry « Administration » of the menu adds three pages: « Serveur », « Comptes » and « Configuration ». It opens on « Serveur ».
+
+### Read the server settings
+
+1. Open « Administration »: the page « Serveur » comes first.
+2. It shows, read-only, the settings of the server configuration read at its start: network, requests, database, sessions, login, passwords and limits.
+
+To change them, see [Server configuration](OPERATIONS.md#server-configuration).
 
 ### Create an account
 
@@ -185,7 +192,6 @@ The page of an account (its login in the table) also has:
 - An archived code is no longer offered in the grid.
 - An archived counter is disabled for every user: no more credits, no new adjustment, its consuming codes are no longer offered. Existing days keep debiting it and its history stays.
 - A change of rule applies only to the months that are not validated.
-- The section « Serveur » shows the server configuration read-only: see [Server configuration](OPERATIONS.md#server-configuration).
 
 The full rules are in [Administration](SPECIFICATIONS.md#administration).
 

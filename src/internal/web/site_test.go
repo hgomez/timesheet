@@ -73,6 +73,9 @@ func TestProfilesGuardTheAdministration(t *testing.T) {
     if status, _, body := user.get("/admin/"); (status != http.StatusForbidden) || !strings.Contains(body, "réservée aux administrateurs") {
         t.Fatalf("user on /admin/: %d", status)
     }
+    if status, _, _ := user.get("/admin/accounts"); status != http.StatusForbidden {
+        t.Fatalf("user on /admin/accounts: %d", status)
+    }
     if status, _, body := user.get("/dashboard/"); (status != http.StatusOK) || !strings.Contains(body, `Soldes au <time datetime="2026-11-08">08/11/2026</time>`) || !strings.Contains(body, "<h3>Total</h3>") || !strings.Contains(body, "<small>jour saisi</small>") || !strings.Contains(body, "<dt>Dont à venir</dt>") || strings.Contains(body, "<select") || strings.Contains(body, "Synthèse") {
         t.Fatalf("dashboard: %d", status)
     }
@@ -102,7 +105,7 @@ func TestProfilesGuardTheAdministration(t *testing.T) {
     if main := body[strings.Index(body, "<main>"):strings.Index(body, "</main>")]; strings.Contains(main, `<form method="post"`) {
         t.Fatal("a read-only view must not contain a post form")
     }
-    _, _, list := admin.get("/admin/")
+    _, _, list := admin.get("/admin/accounts")
     if status, _, _ := admin.post("/admin/accounts/demo/month/2026/10", url.Values{"csrf": {admin.token(list)}}); status != http.StatusMethodNotAllowed {
         t.Fatalf("write on a read-only view: %d", status)
     }
@@ -228,9 +231,9 @@ func TestMonthLifecycle(t *testing.T) {
 func TestAdministratorCreatesAnAccount(t *testing.T) {
     site := newTestSite(t)
     admin := site.client().login("root")
-    _, _, body := admin.get("/admin/")
+    _, _, body := admin.get("/admin/accounts")
     form := url.Values{"csrf": {admin.token(body)}, "login": {"marie"}, "profile": {"USER"}, "password": {"provisoire 2026!"}}
-    if status, location, _ := admin.post("/admin/accounts", form); (status != http.StatusSeeOther) || (location != "/admin/?notice=created") {
+    if status, location, _ := admin.post("/admin/accounts", form); (status != http.StatusSeeOther) || (location != "/admin/accounts?notice=created") {
         t.Fatalf("create: %d %s", status, location)
     }
     marie := site.client()
@@ -253,7 +256,7 @@ func TestAdministratorCreatesAnAccount(t *testing.T) {
     if status, _, _ := marie.get("/dashboard/"); status != http.StatusOK {
         t.Fatalf("dashboard after the change: %d", status)
     }
-    _, _, page = admin.get("/admin/")
+    _, _, page = admin.get("/admin/accounts")
     if status, _, _ := admin.post("/admin/accounts/marie", url.Values{"csrf": {admin.token(page)}, "action": {"profile"}, "profile": {"ADMIN"}}); status != http.StatusSeeOther {
         t.Fatalf("promote: %d", status)
     }
@@ -282,7 +285,7 @@ func TestAccountDatesFollowTheServerTimeZone(t *testing.T) {
     site := newTestSite(t)
     site.clock.Advance((13 * time.Hour) + (30 * time.Minute))
     admin := site.client().login("root")
-    list := admin.page("/admin/")
+    list := admin.page("/admin/accounts")
     form := url.Values{"csrf": {admin.token(list)}, "login": {"carol"}, "profile": {"USER"}, "password": {"provisional horse 2026"}}
     if status, _, _ := admin.post("/admin/accounts", form); status != http.StatusSeeOther {
         t.Fatalf("create: %d", status)
@@ -296,7 +299,7 @@ func TestAdministratorDisablesAndDeletesAnAccount(t *testing.T) {
     site := newTestSite(t)
     user := site.client().login("demo")
     admin := site.client().login("root")
-    list := admin.page("/admin/")
+    list := admin.page("/admin/accounts")
     for _, expected := range []string{`<th scope="col">Nom</th>`, `<th scope="col">État</th>`, `aria-label="Désactiver demo" title="Désactiver"`, `aria-label="Supprimer demo" title="Supprimer"`} {
         if !strings.Contains(list, expected) {
             t.Errorf("accounts list without %s", expected)
@@ -309,7 +312,7 @@ func TestAdministratorDisablesAndDeletesAnAccount(t *testing.T) {
     if status, location, _ := admin.post("/admin/accounts/demo", form); (status != http.StatusSeeOther) || (location != "/admin/accounts/demo?notice=name") {
         t.Fatalf("name: %d %s", status, location)
     }
-    if page := admin.page("/admin/accounts/demo"); !strings.Contains(page, `name="name" value="Jean Démo"`) || !strings.Contains(admin.page("/admin/"), `<td>Jean Démo</td>`) {
+    if page := admin.page("/admin/accounts/demo"); !strings.Contains(page, `name="name" value="Jean Démo"`) || !strings.Contains(admin.page("/admin/accounts"), `<td>Jean Démo</td>`) {
         t.Fatal("the name must be saved with its spaces collapsed")
     }
     form = url.Values{"csrf": {admin.token(list)}, "action": {"name"}, "name": {strings.Repeat("x", 61)}}
@@ -320,7 +323,7 @@ func TestAdministratorDisablesAndDeletesAnAccount(t *testing.T) {
     if !strings.Contains(list, `aria-label="Fermer les sessions de demo" title="Fermer les sessions">`) {
         t.Error("accounts list without the closing of the sessions of demo")
     }
-    if status, location, _ := admin.post("/admin/accounts/demo", form); (status != http.StatusSeeOther) || (location != "/admin/?notice=sessions") {
+    if status, location, _ := admin.post("/admin/accounts/demo", form); (status != http.StatusSeeOther) || (location != "/admin/accounts?notice=sessions") {
         t.Fatalf("close sessions: %d %s", status, location)
     }
     if status, location, _ := user.get("/dashboard/"); (status != http.StatusSeeOther) || (location != "/login") {
@@ -328,7 +331,7 @@ func TestAdministratorDisablesAndDeletesAnAccount(t *testing.T) {
     }
     user = site.client().login("demo")
     form = url.Values{"csrf": {admin.token(list)}, "action": {"disable"}, "return": {"list"}}
-    if status, location, _ := admin.post("/admin/accounts/demo", form); (status != http.StatusSeeOther) || (location != "/admin/?notice=disabled") {
+    if status, location, _ := admin.post("/admin/accounts/demo", form); (status != http.StatusSeeOther) || (location != "/admin/accounts?notice=disabled") {
         t.Fatalf("disable: %d %s", status, location)
     }
     if status, location, _ := user.get("/dashboard/"); (status != http.StatusSeeOther) || (location != "/login") {
@@ -339,11 +342,11 @@ func TestAdministratorDisablesAndDeletesAnAccount(t *testing.T) {
     if status, _, _ := guest.post("/login", url.Values{"csrf": {guest.token(body)}, "login": {"demo"}, "password": {testPassword}}); status != http.StatusUnauthorized {
         t.Fatalf("a disabled account logs in: %d", status)
     }
-    if page := admin.page("/admin/"); !strings.Contains(page, `<td>désactivé</td>`) || !strings.Contains(page, `aria-label="Activer demo" title="Activer"`) {
+    if page := admin.page("/admin/accounts"); !strings.Contains(page, `<td>désactivé</td>`) || !strings.Contains(page, `aria-label="Activer demo" title="Activer"`) {
         t.Fatal("the list must show the disabled account")
     }
     form.Set("action", "enable")
-    if status, location, _ := admin.post("/admin/accounts/demo", form); (status != http.StatusSeeOther) || (location != "/admin/?notice=enabled") {
+    if status, location, _ := admin.post("/admin/accounts/demo", form); (status != http.StatusSeeOther) || (location != "/admin/accounts?notice=enabled") {
         t.Fatalf("enable: %d %s", status, location)
     }
     site.clock.Advance(10 * time.Minute)
@@ -357,7 +360,7 @@ func TestAdministratorDisablesAndDeletesAnAccount(t *testing.T) {
         t.Fatalf("a failed deletion from the list must stay on the list: %d", status)
     }
     form = url.Values{"csrf": {admin.token(list)}, "action": {"delete"}, "confirm": {"demo"}}
-    if status, location, _ := admin.post("/admin/accounts/demo", form); (status != http.StatusSeeOther) || (location != "/admin/?notice=deleted") {
+    if status, location, _ := admin.post("/admin/accounts/demo", form); (status != http.StatusSeeOther) || (location != "/admin/accounts?notice=deleted") {
         t.Fatalf("delete from the list: %d %s", status, location)
     }
     form = url.Values{"csrf": {admin.token(list)}, "action": {"sessions"}, "return": {"list"}}
@@ -512,14 +515,17 @@ func TestNegativeBalancesAreMarkedInTheStatements(t *testing.T) {
     }
 }
 
-func TestConfigurationPageShowsEveryServerSetting(t *testing.T) {
+func TestServerPageShowsEveryServerSetting(t *testing.T) {
     site := newTestSite(t)
     admin := site.client().login("root")
-    _, _, body := admin.get("/admin/settings")
-    for _, text := range []string{"<h3>Sessions</h3>", "<dt>Expiration sans activité</dt>", "<dd><code>8 h</code></dd>", "<dd><code>1 min</code></dd>", "<dt>Taille maximale</dt>", "<dd><code>64 Mio</code></dd>", "<dd><code>256 Kio</code></dd>", "<dd><code>2048 octets</code></dd>", "<dt>Certificat TLS</dt>", "<dd><code>aucun</code></dd>", "<dd><code>/var/lib/timesheet/timesheet-database.json</code></dd>"} {
+    _, _, body := admin.get("/admin/")
+    for _, text := range []string{"<h1>Serveur</h1>", `<a href="/admin/" aria-current="page">Serveur</a>`, "<h2>Sessions</h2>", "<dt>Origines publiques</dt>", "<dd><code>http://127.0.0.1:8080</code></dd>\n                    <dd><code>http://localhost:8080</code></dd>", "<dd><code>10.0.0.0/8</code></dd>\n                    <dd><code>172.16.0.0/12</code></dd>", "<dt>Expiration sans activité</dt>", "<dd><code>8 h</code></dd>", "<dd><code>1 min</code></dd>", "<dt>Taille maximale</dt>", "<dd><code>64 Mio</code></dd>", "<dd><code>256 Kio</code></dd>", "<dd><code>2048 octets</code></dd>", "<dt>Certificat TLS</dt>", "<dd><code>aucun</code></dd>", "<dd><code>/var/lib/timesheet/timesheet-database.json</code></dd>"} {
         if !strings.Contains(body, text) {
             t.Errorf("missing %q", text)
         }
+    }
+    if _, _, page := admin.get("/admin/settings"); strings.Contains(page, "Réseau") || strings.Contains(page, "<dt>Origines publiques</dt>") {
+        t.Error("the configuration page must no longer show the server settings")
     }
 }
 

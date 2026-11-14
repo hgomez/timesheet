@@ -68,7 +68,8 @@ func NewSite(deps SiteDependencies) (*Site, error) {
     settings := NewSettingsController(loader, deps.Repository, renderer, errors, deps.Logger)
     profile := NewProfileController(throttle, address, loader, deps.Repository, sessions, renderer, errors, deps.Random, deps.Iterations, deps.Logger)
     admin := NewAdminController(deps.Repository, sessions, today, renderer, errors, deps.Clock, deps.Random, deps.Iterations, deps.Logger)
-    configuration := NewAdminSettingsController(deps.Repository, deps.Server, renderer, errors, deps.Logger)
+    server := NewAdminServerController(deps.Server, renderer)
+    configuration := NewAdminSettingsController(deps.Repository, renderer, errors, deps.Logger)
     user := account.ProfileUser
     root := account.ProfileAdmin
 
@@ -93,7 +94,8 @@ func NewSite(deps SiteDependencies) (*Site, error) {
     router.Handle(http.MethodGet, "/dashboard/settings", guard.Require(user, settings.Show))
     router.Handle(http.MethodPost, "/dashboard/settings", guard.Require(user, settings.Submit))
     router.Handle(http.MethodGet, "/dashboard/colors.css", guard.Require(user, dashboard.Colors))
-    router.Handle(http.MethodGet, "/admin/{$}", guard.Require(root, admin.List))
+    router.Handle(http.MethodGet, "/admin/{$}", guard.Require(root, server.Show))
+    router.Handle(http.MethodGet, "/admin/accounts", guard.Require(root, admin.List))
     router.Handle(http.MethodPost, "/admin/accounts", guard.Require(root, admin.Create))
     router.Handle(http.MethodGet, "/admin/accounts/{login}", guard.Require(root, admin.Show))
     router.Handle(http.MethodPost, "/admin/accounts/{login}", guard.Require(root, admin.Update))
