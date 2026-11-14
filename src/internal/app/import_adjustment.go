@@ -40,21 +40,21 @@ type ImportAdjustment struct {
 // ---------------------------------------------------------------------------
 
 func (a ImportAdjustment) Problems(config activity.Configuration, calendar activity.Calendar, horizon activity.Month) []string {
-    prefix := "ajustement du " + a.Date.String() + " : "
+    prefix := "adjustment of " + a.Date.String() + ": "
     m := a.Date.Month()
     if a.Date.IsZero() || !calendar.Tracks(a.Date) || calendar.IsValidated(m) || m.After(horizon) {
-        return []string{prefix + "la date doit tomber dans un mois ouvert, à partir du début du suivi"}
+        return []string{prefix + "the date must fall in an open month, from the tracking start"}
     }
     rule, known := config.Counter(a.Counter)
     if !known || rule.Archived {
-        return []string{prefix + "compteur " + strconv.QuoteToASCII(a.Counter) + " inconnu ou archivé"}
+        return []string{prefix + "counter " + strconv.QuoteToASCII(a.Counter) + " unknown or archived"}
     }
     problems := []string{}
     if a.Amount.IsZero() || (a.Amount.Abs().Cmp(activity.NewQuantity(maxImportedDays, 1)) > 0) {
-        problems = append(problems, prefix + "quantité non nulle entre -366 et 366 attendue")
+        problems = append(problems, prefix + "a non-zero quantity between -366 and 366 is expected")
     }
     if (a.Reason == "") || (a.Reason != strings.TrimSpace(a.Reason)) || !activity.NewTextPolicy().Accepts(a.Reason, activity.MaxReasonLength) {
-        problems = append(problems, prefix + "motif obligatoire, une ligne de 200 caractères au plus")
+        problems = append(problems, prefix + "a reason is required, one line of 200 characters at most")
     }
     return problems
 }

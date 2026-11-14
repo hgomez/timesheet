@@ -107,7 +107,7 @@ To change settings:
    timesheet config set server.listen 0.0.0.0:8080 server.origins http://timesheet.example:8080 --config=/etc/timesheet/timesheet.json
    ```
 
-   It answers `server.listen, server.origins mis à jour dans <file> ; relancez le serveur pour l'appliquer.`, and refuses an invalid or out-of-bounds value without writing anything. You can also edit the file by hand (as root on a package); the next `config set` rewrites it in its layout, one entry per line.
+   It answers `server.listen, server.origins updated in <file>; restart the server to apply it.`, and refuses an invalid or out-of-bounds value without writing anything. You can also edit the file by hand (as root on a package); the next `config set` rewrites it in its layout, one entry per line.
 
 2. Change linked settings in the same command: `server.listen` with `server.origins`, `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` or `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. One after the other, the first may be refused.
 
@@ -223,10 +223,10 @@ To import:
    Try it first on the shipped template, `bin/timesheet import <login> share/timesheet/timesheet-import-template.json --dry-run --database=var/lib/timesheet/timesheet-database.json`, which answers:
 
    ```text
-   Réglages lus : début du suivi 2026-01-01, 3 compteur(s).
-   31 journée(s) lue(s), de 2026-01 à 2026-01.
-   1 ajustement(s) lu(s).
-   Simulation : rien n'a été écrit.
+   Settings read: tracking start 2026-01-01, 3 counter(s).
+   31 day(s) read, from 2026-01 to 2026-01.
+   1 adjustment(s) read.
+   Dry run: nothing was written.
    ```
 
    - Every day is checked like an entry of the grid, every adjustment like one of « Activité ». Any problem is listed with its date and nothing is written.

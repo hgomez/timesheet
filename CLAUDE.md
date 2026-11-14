@@ -22,7 +22,7 @@ Timesheet: a web application for employees working in France, tracking a profess
 - Quantities of days are exact rationals (`activity.Quantity`), never floats.
 - A validated month is never rewritten: corrections are reversals (reopening of the last validated month, then of the one before if needed) or adjustments.
 - Never log a password, a login typed at a failed login, a session identifier or a CSRF token, nor `r.URL` or `r.RequestURI`; `secrets_test.go` checks the log output after a failed and a successful login, the rest is checked by review.
-- Interface texts are in French and never use the em dash; code, identifiers and documentation are in English ([Writing rules](doc/CODING.md#documentation)).
+- Texts of the web pages are in French and never use the em dash; the command line (help, prompts, messages, import report), logs, errors, code, identifiers and documentation are in English ([Writing rules](doc/CODING.md#documentation)).
 - Never mention another project in any file of this repository; state every rule as the project's own.
 - The personal spreadsheet (`.ods`) the summary is modelled on and the JSON import file made from it are personal data: never copy them into the repository; tests build synthetic import files.
 - Never run `make mrproper` without the user's explicit request: `git clean -f -d -x` deletes untracked and ignored files, including new sources and `var/lib/timesheet/` (the database).

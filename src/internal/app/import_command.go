@@ -109,16 +109,16 @@ func (c *ImportCommand) Run(out io.Writer) error {
         }
     }
     if (len(dates) == 0) && (len(adjustments) == 0) && (imported.Settings == nil) {
-        problems = append(problems, "aucune journée à importer")
+        problems = append(problems, "no day to import")
     }
     first, last := to, from
     if len(dates) > 0 {
         first, last = dates[0].Month(), dates[len(dates) - 1].Month()
         if !next.Tracks(dates[0]) {
             if next.HasHistory() {
-                problems = append(problems, "le fichier commence avant le début du suivi, déjà validé")
+                problems = append(problems, "the file starts before the tracking start, already validated")
             } else {
-                warnings = append(warnings, "début du suivi avancé du " + next.Settings.Start.String() + " au " + dates[0].String())
+                warnings = append(warnings, "tracking start moved from " + next.Settings.Start.String() + " to " + dates[0].String())
                 next.Settings.Start = dates[0]
             }
         }
@@ -133,17 +133,17 @@ func (c *ImportCommand) Run(out io.Writer) error {
         existing := calendar.Days[d]
         switch {
             case d.Month().After(horizon):
-                problems = append(problems, d.String() + " : au-delà de l'horizon de planification")
+                problems = append(problems, d.String() + ": beyond the planning horizon")
                 continue
             case next.IsValidated(d.Month()):
-                problems = append(problems, d.String() + " : le mois est validé")
+                problems = append(problems, d.String() + ": the month is validated")
                 continue
             case !existing.Empty() && !c.settings.Replace():
-                problems = append(problems, d.String() + " : une saisie existe déjà (utilisez --replace)")
+                problems = append(problems, d.String() + ": an entry already exists (use --replace)")
                 continue
         }
         for _, problem := range book.CheckEntry(d, existing, entry) {
-            problems = append(problems, d.String() + " : " + problem)
+            problems = append(problems, d.String() + ": " + problem)
         }
         next.Days[d] = entry
     }
@@ -156,7 +156,7 @@ func (c *ImportCommand) Run(out io.Writer) error {
         }
         rule, _ := config.Counter(adjustment.Counter)
         if adjustment.Exists(next, rule) {
-            warnings = append(warnings, "ajustement du " + adjustment.Date.String() + " déjà présent, ignoré")
+            warnings = append(warnings, "adjustment of " + adjustment.Date.String() + " already present, ignored")
             continue
         }
         id, err := identifiers.Next()
@@ -166,23 +166,23 @@ func (c *ImportCommand) Run(out io.Writer) error {
         next.Adjustments = append(next.Adjustments, adjustment.Adjustment(id, rule))
     }
     for _, warning := range warnings {
-        fmt.Fprintln(out, "avertissement : " + warning)
+        fmt.Fprintln(out, "warning: " + warning)
     }
     if len(problems) > 0 {
         for _, problem := range problems {
-            fmt.Fprintln(out, "erreur : " + problem)
+            fmt.Fprintln(out, "error: " + problem)
         }
         return fmt.Errorf("%w: %d error(s)", ErrImportRefused, len(problems))
     }
     if imported.Settings != nil {
-        fmt.Fprintf(out, "Réglages lus : début du suivi %s, %d compteur(s).\n", next.Settings.Start, len(imported.Settings.Counters))
+        fmt.Fprintf(out, "Settings read: tracking start %s, %d counter(s).\n", next.Settings.Start, len(imported.Settings.Counters))
     }
     if len(dates) > 0 {
-        fmt.Fprintf(out, "%d journée(s) lue(s), de %s à %s.\n", len(dates), first, last)
+        fmt.Fprintf(out, "%d day(s) read, from %s to %s.\n", len(dates), first, last)
         c.missing(out, config, next, holidays, first, last, today)
     }
     if len(adjustments) > 0 {
-        fmt.Fprintf(out, "%d ajustement(s) lu(s).\n", len(adjustments))
+        fmt.Fprintf(out, "%d adjustment(s) read.\n", len(adjustments))
     }
     if c.settings.Validate() && (len(dates) > 0) {
         next = c.validate(out, config, c.server.Server.Location(), next, holidays, dates, today)
@@ -191,13 +191,13 @@ func (c *ImportCommand) Run(out io.Writer) error {
         if err := database.CheckCalendar(login, calendar.Revision, next); err != nil {
             return err
         }
-        fmt.Fprintln(out, "Simulation : rien n'a été écrit.")
+        fmt.Fprintln(out, "Dry run: nothing was written.")
         return nil
     }
     if err := database.SaveCalendar(login, calendar.Revision, next); err != nil {
         return err
     }
-    fmt.Fprintln(out, "Import enregistré.")
+    fmt.Fprintln(out, "Import saved.")
     return nil
 }
 
@@ -210,9 +210,9 @@ func (c *ImportCommand) apply(config activity.Configuration, calendar *activity.
     if (settings.Start != nil) && (*settings.Start != calendar.Settings.Start) {
         switch {
             case locked:
-                problems = append(problems, "début du suivi : un mois est déjà validé, il n'est plus modifiable")
+                problems = append(problems, "tracking start: a month is already validated, it can no longer change")
             case calendar.AdjustedBefore(*settings.Start):
-                problems = append(problems, "début du suivi : des ajustements sont datés avant " + settings.Start.String())
+                problems = append(problems, "tracking start: adjustments are dated before " + settings.Start.String())
             default:
                 calendar.Settings.Start = *settings.Start
         }
@@ -230,7 +230,7 @@ func (c *ImportCommand) apply(config activity.Configuration, calendar *activity.
         given := settings.Counters[id]
         rule, known := config.Counter(id)
         if !known || rule.Archived {
-            problems = append(problems, "compteur " + strconv.QuoteToASCII(id) + " inconnu ou archivé")
+            problems = append(problems, "counter " + strconv.QuoteToASCII(id) + " unknown or archived")
             continue
         }
         current := calendar.Settings.Counters[id]
@@ -238,7 +238,7 @@ func (c *ImportCommand) apply(config activity.Configuration, calendar *activity.
             current.Enabled = given.Enabled
         }
         if (given.Amount != nil) && ((given.Amount.Sign() < 0) || (given.Amount.Cmp(limit) > 0)) {
-            problems = append(problems, rule.Label + " : montant d'acquisition invalide (entre 0 et 366)")
+            problems = append(problems, rule.Label + ": invalid accrual amount (between 0 and 366)")
         }
         current.Amount = given.Amount
         initial := current.Initial
@@ -246,11 +246,11 @@ func (c *ImportCommand) apply(config activity.Configuration, calendar *activity.
             initial = *given.Initial
         }
         if initial.Abs().Cmp(limit) > 0 {
-            problems = append(problems, rule.Label + " : solde initial invalide (entre -366 et 366)")
+            problems = append(problems, rule.Label + ": invalid initial balance (between -366 and 366)")
         }
         if !initial.Equal(current.Initial) {
             if locked {
-                problems = append(problems, rule.Label + " : un mois est déjà validé, les soldes initiaux ne sont plus modifiables")
+                problems = append(problems, rule.Label + ": a month is already validated, the initial balances can no longer change")
             } else {
                 current.Initial = initial
             }
@@ -290,7 +290,7 @@ func (c *ImportCommand) missing(out io.Writer, config activity.Configuration, ca
             }
         }
         if len(dates) > 0 {
-            fmt.Fprintf(out, "non renseigné(s) en %s : %s\n", m, strings.Join(dates, ", "))
+            fmt.Fprintf(out, "missing entries in %s: %s\n", m, strings.Join(dates, ", "))
         }
     }
 }
@@ -304,7 +304,7 @@ func (c *ImportCommand) validate(out io.Writer, config activity.Configuration, l
     last := dates[len(dates) - 1].Month()
     for m := calendar.FirstOpen(); m.Before(today.Month()) && !m.After(last); m = m.Next() {
         if !imported[m] {
-            fmt.Fprintf(out, "validation arrêtée à %s : ce mois n'a pas été importé\n", m)
+            fmt.Fprintf(out, "validation stopped at %s: this month was not imported\n", m)
             break
         }
         closing := activity.NewMonthClosing(activity.NewBookkeeper(config, calendar, holidays), identifiers)
@@ -315,11 +315,11 @@ func (c *ImportCommand) validate(out io.Writer, config activity.Configuration, l
         }
         next, err := closing.Validate(m, at, today)
         if err != nil {
-            fmt.Fprintf(out, "validation arrêtée à %s : %v\n", m, err)
+            fmt.Fprintf(out, "validation stopped at %s: %v\n", m, err)
             break
         }
         calendar = next
-        fmt.Fprintf(out, "%s validé.\n", m)
+        fmt.Fprintf(out, "%s validated.\n", m)
     }
     return calendar
 }

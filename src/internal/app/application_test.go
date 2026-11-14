@@ -74,7 +74,7 @@ func TestInitAndAccounts(t *testing.T) {
     if run := runCommand(t, "", "user", "profile", "root", "USER", database); (run.code != ExitError) || !strings.Contains(run.stderr, "last administrator") {
         t.Fatalf("demote the last admin: %+v", run)
     }
-    if run := runCommand(t, "", "user", "list", database); !strings.Contains(run.stdout, "root") || !strings.Contains(run.stdout, "ADMIN") || !strings.Contains(run.stdout, "ÉTAT") || !strings.Contains(run.stdout, "enabled") {
+    if run := runCommand(t, "", "user", "list", database); !strings.Contains(run.stdout, "root") || !strings.Contains(run.stdout, "ADMIN") || !strings.Contains(run.stdout, "STATE") || !strings.Contains(run.stdout, "enabled") {
         t.Fatalf("list: %+v", run)
     }
     if run := runCommand(t, "", "config", "set", "server.timezone", "Mars/Olympus", database, config); run.code != ExitError {
@@ -97,32 +97,32 @@ func TestImportReadsTheJSONFile(t *testing.T) {
     file := filepath.Join(directory, "activite.json")
     writeTestImport(t, file)
     run := runCommand(t, "", "import", "olivier", file, "--dry-run", database)
-    if (run.code != ExitOK) || !strings.Contains(run.stdout, "Réglages lus : début du suivi 2025-01-01, 2 compteur(s).") || !strings.Contains(run.stdout, "journée(s) lue(s), de 2025-01 à 2025-01") || !strings.Contains(run.stdout, "1 ajustement(s) lu(s).") || !strings.Contains(run.stdout, "Simulation") {
+    if (run.code != ExitOK) || !strings.Contains(run.stdout, "Settings read: tracking start 2025-01-01, 2 counter(s).") || !strings.Contains(run.stdout, "day(s) read, from 2025-01 to 2025-01") || !strings.Contains(run.stdout, "1 adjustment(s) read.") || !strings.Contains(run.stdout, "Dry run") {
         t.Fatalf("dry run: %+v", run)
     }
     if _, calendar, _ := openTestDatabase(t, database).Account("olivier"); len(calendar.Days) != 0 {
         t.Fatal("a dry run must not write")
     }
-    if run := runCommand(t, "", "import", "olivier", file, "--dry-run", "--validate", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "2025-01 validé") || !strings.Contains(run.stdout, "Simulation") {
+    if run := runCommand(t, "", "import", "olivier", file, "--dry-run", "--validate", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "2025-01 validated") || !strings.Contains(run.stdout, "Dry run") {
         t.Fatalf("dry run with validation: %+v", run)
     }
     if _, calendar, _ := openTestDatabase(t, database).Account("olivier"); len(calendar.Months) != 0 {
         t.Fatal("a dry run must not validate")
     }
     run = runCommand(t, "", "import", "olivier", file, "--validate", database)
-    if (run.code != ExitOK) || !strings.Contains(run.stdout, "2025-01 validé") || !strings.Contains(run.stdout, "Import enregistré") {
+    if (run.code != ExitOK) || !strings.Contains(run.stdout, "2025-01 validated") || !strings.Contains(run.stdout, "Import saved") {
         t.Fatalf("import: %+v", run)
     }
     _, calendar, _ := openTestDatabase(t, database).Account("olivier")
     if (calendar.Settings.Start.String() != "2025-01-01") || (calendar.Settings.Counters["CP"].Initial.String() != "2.29") || (calendar.Settings.Counters["TPC"].Amount.String() != "7/12") || (calendar.Days[activity.NewDate(2025, time.January, 7)].Comment != "Vacances") || (len(calendar.Adjustments) != 1) || (calendar.Adjustments[0].ID == "") || !calendar.IsValidated(activity.NewMonth(2025, time.January)) || (activity.NewDateOf(calendar.Months[activity.NewMonth(2025, time.January)].ValidatedAt) != activity.NewDate(2025, time.January, 31)) {
         t.Fatalf("imported calendar: %+v", calendar.Settings)
     }
-    if run := runCommand(t, "", "import", "olivier", file, "--replace", database); (run.code != ExitError) || !strings.Contains(run.stdout, "2025-01-02 : le mois est validé") {
+    if run := runCommand(t, "", "import", "olivier", file, "--replace", database); (run.code != ExitError) || !strings.Contains(run.stdout, "2025-01-02: the month is validated") {
         t.Fatalf("import over a validated month: %+v", run)
     }
     moved := filepath.Join(directory, "moved.json")
     writeTestFile(t, moved, `{"format": "timesheet-import", "version": 1, "settings": {"start": "2024-06-01", "counters": {"CP": {"initial": "1"}}}, "days": {}}`)
-    if run := runCommand(t, "", "import", "olivier", moved, database); (run.code != ExitError) || !strings.Contains(run.stdout, "début du suivi : un mois est déjà validé") || !strings.Contains(run.stdout, "Congés payés : un mois est déjà validé") {
+    if run := runCommand(t, "", "import", "olivier", moved, database); (run.code != ExitError) || !strings.Contains(run.stdout, "tracking start: a month is already validated") || !strings.Contains(run.stdout, "Congés payés: a month is already validated") {
         t.Fatalf("settings over a validated month: %+v", run)
     }
 }
@@ -137,19 +137,19 @@ func TestImportRefusesInvalidFiles(t *testing.T) {
         header + `"days": {}, "extra": true}`: "unknown field",
         `{"format": "other", "version": 1, "days": {}}`: "format",
         `{"format": "timesheet-import", "version": 2, "days": {}}`: "version",
-        header + `"days": {"2026-11-03": {"am": "NOPE", "pm": "", "comment": ""}}}`: "2026-11-03 : Matin : code d'activité non disponible",
-        header + `"days": {"2026-11-07": {"am": "CP", "pm": "CP", "comment": ""}}}`: "2026-11-07 : Matin : « Congés payés » est décompté",
-        header + `"days": {"2026-11-11": {"am": "CP", "pm": "", "comment": ""}}}`: "2026-11-11 : Matin : « Congés payés » est décompté",
-        header + `"days": {"2029-01-03": {"am": "TT", "pm": "TT", "comment": ""}}}`: "au-delà de l'horizon",
-        header + `"settings": {"counters": {"NOPE": {"initial": "0"}}}, "days": {}}`: "compteur \"NOPE\" inconnu",
-        header + `"settings": {"counters": {"CP": {"amount": "400", "initial": "0"}}}, "days": {}}`: "montant d'acquisition invalide",
+        header + `"days": {"2026-11-03": {"am": "NOPE", "pm": "", "comment": ""}}}`: "2026-11-03: Matin : code d'activité non disponible",
+        header + `"days": {"2026-11-07": {"am": "CP", "pm": "CP", "comment": ""}}}`: "2026-11-07: Matin : « Congés payés » est décompté",
+        header + `"days": {"2026-11-11": {"am": "CP", "pm": "", "comment": ""}}}`: "2026-11-11: Matin : « Congés payés » est décompté",
+        header + `"days": {"2029-01-03": {"am": "TT", "pm": "TT", "comment": ""}}}`: "beyond the planning horizon",
+        header + `"settings": {"counters": {"NOPE": {"initial": "0"}}}, "days": {}}`: "counter \"NOPE\" unknown",
+        header + `"settings": {"counters": {"CP": {"amount": "400", "initial": "0"}}}, "days": {}}`: "invalid accrual amount",
         header + `"days": {}} {}`: "data after the object",
-        header + `"days": {}}`: "aucune journée à importer",
+        header + `"days": {}}`: "no day to import",
         header + `"days": {}, "adjustments": [{"date": "2026-11-03", "counter": "TPC", "bucket": "current", "amount": "1", "reason": "bulletin"}]}`: "unknown field",
-        header + `"days": {}, "adjustments": [{"date": "2026-11-03", "counter": "NOPE", "amount": "1", "reason": "bulletin"}]}`: "compteur \"NOPE\" inconnu ou archivé",
-        header + `"days": {}, "adjustments": [{"date": "2026-11-03", "counter": "CP", "amount": "0", "reason": "bulletin"}]}`: "quantité non nulle",
-        header + `"days": {}, "adjustments": [{"date": "2026-11-03", "counter": "CP", "amount": "1", "reason": ""}]}`: "motif obligatoire",
-        header + `"days": {}, "adjustments": [{"date": "2029-01-03", "counter": "CP", "amount": "1", "reason": "bulletin"}]}`: "dans un mois ouvert, à partir du début du suivi",
+        header + `"days": {}, "adjustments": [{"date": "2026-11-03", "counter": "NOPE", "amount": "1", "reason": "bulletin"}]}`: "adjustment of 2026-11-03: counter \"NOPE\" unknown or archived",
+        header + `"days": {}, "adjustments": [{"date": "2026-11-03", "counter": "CP", "amount": "0", "reason": "bulletin"}]}`: "a non-zero quantity",
+        header + `"days": {}, "adjustments": [{"date": "2026-11-03", "counter": "CP", "amount": "1", "reason": ""}]}`: "a reason is required",
+        header + `"days": {}, "adjustments": [{"date": "2029-01-03", "counter": "CP", "amount": "1", "reason": "bulletin"}]}`: "in an open month, from the tracking start",
     }
     for content, expected := range cases {
         file := filepath.Join(directory, "refused.json")
@@ -181,10 +181,10 @@ func TestImportReplacesOnlyWhenAsked(t *testing.T) {
     if run := runCommand(t, "", "import", "olivier", file, database); run.code != ExitOK {
         t.Fatalf("first import: %+v", run)
     }
-    if run := runCommand(t, "", "import", "olivier", file, database); (run.code != ExitError) || !strings.Contains(run.stdout, "une saisie existe déjà") {
+    if run := runCommand(t, "", "import", "olivier", file, database); (run.code != ExitError) || !strings.Contains(run.stdout, "an entry already exists") {
         t.Fatalf("second import: %+v", run)
     }
-    if run := runCommand(t, "", "import", "olivier", file, "--replace", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "ajustement du 2026-11-03 déjà présent, ignoré") {
+    if run := runCommand(t, "", "import", "olivier", file, "--replace", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "warning: adjustment of 2026-11-03 already present, ignored") {
         t.Fatalf("replace: %+v", run)
     }
     if _, calendar, _ := openTestDatabase(t, database).Account("olivier"); len(calendar.Adjustments) != 1 {
@@ -214,7 +214,7 @@ func TestImportKeepsAdjustmentsInsideTheTracking(t *testing.T) {
     }
     moved := filepath.Join(directory, "moved.json")
     writeTestFile(t, moved, `{"format": "timesheet-import", "version": 1, "settings": {"start": "2026-03-01"}, "days": {}}`)
-    if run := runCommand(t, "", "import", "olivier", moved, database); (run.code != ExitError) || !strings.Contains(run.stdout, "des ajustements sont datés avant 2026-03") {
+    if run := runCommand(t, "", "import", "olivier", moved, database); (run.code != ExitError) || !strings.Contains(run.stdout, "adjustments are dated before 2026-03") {
         t.Fatalf("start moved after an adjustment: %+v", run)
     }
 }
@@ -270,7 +270,7 @@ func TestSessionClearEmptiesTheSessionFile(t *testing.T) {
     runCommand(t, "", "init", template, database)
     sessions := filepath.Join(directory, ".ts.json.sessions")
     writeTestFile(t, sessions, `[{"key": "` + strings.Repeat("ab", 32) + `", "login": "olivier", "csrf": "t", "created": "2026-11-11T21:00:00Z", "seen": "2026-11-11T21:00:00Z"}]`)
-    if run := runCommand(t, "", "session", "clear", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "Toutes les sessions sont fermées.") {
+    if run := runCommand(t, "", "session", "clear", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "All sessions are closed.") {
         t.Fatalf("session clear: %+v", run)
     }
     if data, _ := os.ReadFile(sessions); strings.TrimSpace(string(data)) != "[]" {
@@ -359,7 +359,7 @@ func TestImportValidatesOnlyImportedMonths(t *testing.T) {
     file := filepath.Join(directory, "activite.json")
     writeTestImport(t, file)
     run := runCommand(t, "", "import", "olivier", file, "--validate", database)
-    if strings.Contains(run.stdout, "2025-02") || !strings.Contains(run.stdout, "2025-01 validé") {
+    if strings.Contains(run.stdout, "2025-02") || !strings.Contains(run.stdout, "2025-01 validated") {
         t.Fatalf("validation outside the imported range: %s", run.stdout)
     }
 }
@@ -378,7 +378,7 @@ func TestImportValidationStopsAtAMonthLeftOutOfTheFile(t *testing.T) {
     file := filepath.Join(directory, "gap.json")
     writeTestFile(t, file, `{"format": "timesheet-import", "version": 1, "settings": {"start": "2026-01-01"}, "days": {` + strings.Join(days, ", ") + `}}`)
     run := runCommand(t, "", "import", "olivier", file, "--validate", database)
-    if (run.code != ExitOK) || !strings.Contains(run.stdout, "2026-01 validé") || !strings.Contains(run.stdout, "validation arrêtée à 2026-02 : ce mois n'a pas été importé") || strings.Contains(run.stdout, "2026-03 validé") {
+    if (run.code != ExitOK) || !strings.Contains(run.stdout, "2026-01 validated") || !strings.Contains(run.stdout, "validation stopped at 2026-02: this month was not imported") || strings.Contains(run.stdout, "2026-03 validated") {
         t.Fatalf("validation across a month left out: %+v", run)
     }
 }
@@ -423,7 +423,7 @@ func TestImportSkipsAnAdjustmentRepeatedInTheFile(t *testing.T) {
     file := filepath.Join(directory, "twice.json")
     adjustment := `{"date": "2026-11-03", "counter": "CP", "amount": "1", "reason": "bulletin"}`
     writeTestFile(t, file, `{"format": "timesheet-import", "version": 1, "days": {}, "adjustments": [` + adjustment + `, ` + adjustment + `]}`)
-    if run := runCommand(t, "", "import", "olivier", file, database); (run.code != ExitOK) || !strings.Contains(run.stdout, "déjà présent, ignoré") {
+    if run := runCommand(t, "", "import", "olivier", file, database); (run.code != ExitOK) || !strings.Contains(run.stdout, "already present, ignored") {
         t.Fatalf("repeated adjustment: %+v", run)
     }
     if _, calendar, _ := openTestDatabase(t, database).Account("olivier"); len(calendar.Adjustments) != 1 {
@@ -460,7 +460,7 @@ func TestImportValidatesAReopenedMonthNow(t *testing.T) {
     if err := opened.SaveCalendar("olivier", calendar.Revision, reopened); err != nil {
         t.Fatal(err)
     }
-    if run := runCommand(t, "", "import", "olivier", file, "--replace", "--validate", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "2025-01 validé") {
+    if run := runCommand(t, "", "import", "olivier", file, "--replace", "--validate", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "2025-01 validated") {
         t.Fatalf("second import: %+v", run)
     }
     _, calendar, _ = openTestDatabase(t, database).Account("olivier")
@@ -493,10 +493,10 @@ func TestImportTemplateIsValid(t *testing.T) {
     runCommand(t, "", "init", "--template=" + filepath.Join(share, "timesheet-database-template.json"), database)
     runCommand(t, "correct horse battery", "user", "add", "demo", database)
     sample := filepath.Join(share, "timesheet-import-template.json")
-    if run := runCommand(t, "", "import", "demo", sample, "--dry-run", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "Simulation") {
+    if run := runCommand(t, "", "import", "demo", sample, "--dry-run", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "Dry run") {
         t.Fatalf("dry run of the import template: %+v", run)
     }
-    if run := runCommand(t, "", "import", "demo", sample, "--validate", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "2026-01 validé") || strings.Contains(run.stdout, "non renseigné") {
+    if run := runCommand(t, "", "import", "demo", sample, "--validate", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "2026-01 validated") || strings.Contains(run.stdout, "missing entries") {
         t.Fatalf("import of the import template: %+v", run)
     }
     _, calendar, _ := openTestDatabase(t, database).Account("demo")
@@ -593,7 +593,7 @@ func TestConfigShowAndSetHandleEveryKey(t *testing.T) {
             t.Errorf("%v: %+v", args, run)
         }
     }
-    if run := runCommand(t, "", "config", "set", "server.tls_cert", "a.pem", "server.tls_key", "b.pem", "sessions.idle_timeout", "30m", config); (run.code != ExitOK) || !strings.Contains(run.stdout, "server.tls_cert, server.tls_key, sessions.idle_timeout mis à jour") {
+    if run := runCommand(t, "", "config", "set", "server.tls_cert", "a.pem", "server.tls_key", "b.pem", "sessions.idle_timeout", "30m", config); (run.code != ExitOK) || !strings.Contains(run.stdout, "server.tls_cert, server.tls_key, sessions.idle_timeout updated in") {
         t.Fatalf("linked keys set together: %+v", run)
     }
     for key, want := range map[string]string{"server.tls_key": "b.pem", "sessions.idle_timeout": "30m", "server.origins": "http://127.0.0.1:8080,http://localhost:8080"} {

@@ -50,7 +50,8 @@
         </main>
         <footer>
             <p class="brand"><img src="/static/img/icons/logo.svg" alt="" width="24" height="24"> Timesheet{{if .Chrome.Connected}} <small>version {{.Chrome.Version}}</small>{{end}}</p>
-            <p><small>Logiciel libre sous licence GNU GPL version 2 ou ultérieure, © 2023-{{.Chrome.Year}} Olivier Poncet.</small></p>
+            <p><small>Logiciel libre sous licence GNU GPL version 2 ou ultérieure</small></p>
+            <p><small>Copyright © 2023-{{.Chrome.Year}} - Olivier Poncet.</small></p>
         </footer>
         <script type="module" src="/static/js/chrome_page.js"></script>
 {{- block "scripts" .}}{{end}}

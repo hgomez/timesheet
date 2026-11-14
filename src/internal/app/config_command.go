@@ -69,7 +69,7 @@ func (c *ConfigCommand) Run(out io.Writer) error {
     if err := file.Save(configuration); err != nil {
         return err
     }
-    fmt.Fprintf(out, "%s mis à jour dans %s ; relancez le serveur pour l'appliquer.\n", strings.Join(keys, ", "), file.Path())
+    fmt.Fprintf(out, "%s updated in %s; restart the server to apply it.\n", strings.Join(keys, ", "), file.Path())
     return nil
 }
 

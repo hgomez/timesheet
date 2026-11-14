@@ -60,8 +60,9 @@ Every change of behaviour, screen, label, route, form field, computation rule, d
 
 ## CONVENTIONS
 
-- The user interface is in French. Identifiers, code and documentation are in English.
+- The web pages are in French. The command line (help, prompts, messages, import report), identifiers, code, logs and documentation are in English; the command line keeps in French only the texts it shares with the pages (labels of codes and counters, refusals of the grid).
 - Interface texts are quoted between « » and are the exact French texts shown on screen.
+- Texts printed by the command line are quoted in backticks and are the exact English texts printed.
 - A part of an interface text that varies is written `<name>` inside the quotes, for instance « Soldes au \<date du jour> ».
 - Identifiers, values, paths, fields, routes and commands are written in backticks.
 - An HTTP status is written as its number after the case it answers, for instance "refused (409)".
@@ -77,7 +78,7 @@ Every change of behaviour, screen, label, route, form field, computation rule, d
 - It follows the eleven national legal holidays of metropolitan France ([Legal holidays](#legal-holidays)).
 - It keeps paid leave (congés payés) with a June-to-May acquisition period and a rounding at the end of the period.
 - It keeps RTT days, part-time days and the extra days some employers grant to part-time employees.
-- The interface is in French.
+- The web interface is in French; the command line is in English.
 - Activity codes and counters are configurable ([Activity codes](#activity-codes), [Counters](#counters)).
 - The holiday calendar and the rules are French: another country is out of scope ([Out of scope](#out-of-scope)).
 - The rules are the choices of the application; their differences with common French practice are listed in [Simplifications](#simplifications).
@@ -982,7 +983,7 @@ The panel is a `<nav aria-label="Compte">`, the same on every page of the dashbo
 - The footer is centred and has no link.
 - It shows the brand: the logo and « Timesheet ».
 - When connected, the brand carries the version: the release number written in the program (`ReleaseVersion` of `BuildInfo`), the same as the first entry of `debian/changelog`.
-- It ends with the licence line.
+- It ends with two lines: « Logiciel libre sous licence GNU GPL version 2 ou ultérieure », then « Copyright © 2023-\<année> - Olivier Poncet. », the year being the current one.
 
 ### Columns of tiles
 
@@ -1900,7 +1901,7 @@ An error is printed on the standard error as `timesheet: <message>`. An error fo
 
 ### Help and version
 
-- `help` prints the usage in French: the commands, the common options and the options of each command.
+- `help` prints the usage in English: `Usage: timesheet COMMAND [ARGUMENT...] [OPTION...]`, then the groups `Commands`, `Common options` and `Options of <command>` for `init`, `run`, `user add` and `import`, then how the password is read and how options are written.
 - `version` prints `timesheet <version> (revision <commit>, <date>)`, the release number written in the program followed by the commit and its date, with `, modified` before the closing parenthesis when the tree had uncommitted changes.
 
 ### Bootstrap
@@ -1916,7 +1917,7 @@ The procedure, with the paths of an installed package, is in [OPERATIONS.md, Ins
 `user add` and `user passwd` read the password from the first source available:
 
 1. the environment variable `TIMESHEET_PASSWORD`, refused when it is set but empty;
-2. otherwise, on Linux, twice on the terminal without echo; the two must match, and an interruption restores the echo;
+2. otherwise, on Linux, twice on the terminal without echo, after the prompts `Password: ` and `Confirmation: `; the two must match, and an interruption restores the echo;
 3. otherwise one line of the standard input (4096 bytes at most).
 
 The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The help text lists these sources in another order; the order of this list is the one applied.
@@ -1946,7 +1947,7 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 - Creates the database with that configuration and no account, mode 0600.
 - Refuses an existing database (exit 1).
 - Does not create the directory of the database: it must exist.
-- Prints « Base créée : \<fichier> » and the command that creates the first administrator.
+- Prints `Database created: <file>`, then `Now create an administrator: ` followed by the command that creates the first administrator.
 
 ### `timesheet run`
 
@@ -2000,7 +2001,7 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 - `config show KEY` prints only the value of one key, raw, on one line: a string without quotes, a duration in its shortest form, a number, a list as values separated by commas, `null` for no value. A script reads a setting this way, for instance `config show database.path`.
 - `config set KEY VALUE [KEY VALUE...]` reads each value according to the type of its key, applies all of them, validates the whole configuration, then rewrites the file atomically in its layout, mode 0644, creating its directory (mode 0755) when missing. Nothing is written when one value is refused.
 - Linked keys are set in the same command: `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` and `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. Set one after the other, the first may be refused.
-- `config set` prints « \<clés> mis à jour dans \<fichier> ; relancez le serveur pour l'appliquer. », the keys separated by commas.
+- `config set` prints `<keys> updated in <file>; restart the server to apply it.`, the keys separated by commas.
 - Neither reads the database nor needs the server stopped.
 - Without `--config`, both act on `etc/timesheet/timesheet.json` under the current directory; `config set` creates it there. On a Debian package, give `--config=/etc/timesheet/timesheet.json`.
 - The keys are those of the [server configuration](#server-configuration), written `<section>.<key>`: `server.listen`, `sessions.idle_timeout`, `limits.accounts`, and so on. An unknown key is a usage error (exit 2).
@@ -2023,38 +2024,38 @@ Change `server.origins` together with `server.listen`: a request whose `Host` is
 - Refuses a login already taken (exit 1), before reading the password.
 - Reads the password ([Passwords](#passwords)).
 - The account does not have to change its password.
-- Prints « Compte \<login> créé (\<profil>). ».
+- Prints `Account <login> created (<profile>).`.
 
 ### `timesheet user profile`
 
 - Sets the profile `USER` or `ADMIN` of an account.
 - Closes its sessions first, even when the change is then refused (last enabled `ADMIN`, exit 1).
-- Prints « Profil de \<login> : \<profil> ».
+- Prints `Profile of <login>: <profile>`.
 
 ### `timesheet user passwd`
 
 - Reads a new password, closes the sessions of the account, then sets the password.
 - Clears the flag of a provisional password.
-- Prints « Mot de passe de \<login> changé. ».
+- Prints `Password of <login> changed.`.
 
 ### `timesheet user del`
 
 - Closes the sessions of the account, then deletes the account and all its data.
 - Refuses the last enabled `ADMIN` (exit 1).
-- Prints « Compte \<login> supprimé. ».
+- Prints `Account <login> deleted.`.
 
 ### `timesheet user list`
 
-- Prints one row per account under the headers `LOGIN`, `PROFIL`, `ÉTAT`, `CRÉÉ LE`, `DERNIÈRE CONNEXION`, `NOM`.
+- Prints one row per account under the headers `LOGIN`, `PROFILE`, `STATE`, `CREATED`, `LAST LOGIN`, `NAME`.
 - The state is `enabled` or `disabled`; it can only be changed from the web.
-- The creation and the last login are UTC timestamps (RFC 3339); the last login is `jamais` before the first.
+- The creation and the last login are UTC timestamps (RFC 3339); the last login is `never` before the first.
 - Works while the server runs.
 
 ### `timesheet session clear`
 
 - Closes every session of every account by emptying the [session file](#session-file).
 - Needs the server stopped, like every command that writes.
-- Prints « Toutes les sessions sont fermées. ».
+- Prints `All sessions are closed.`.
 
 ### `timesheet import`
 
@@ -2155,39 +2156,40 @@ Settings follow the rules of the [settings page](#settings-page):
 
 ### Errors
 
-- Every problem is listed, prefixed with `erreur : `, then the command exits with 1 and nothing is written.
+- Every problem is listed, prefixed with `error: `, then the command exits with 1 and nothing is written.
 - Problems of days and adjustments carry their date; problems of settings do not.
-- A file with no day and no adjustment within `--from` and `--to`, and no `settings`, is refused (« aucune journée à importer »). A file holding only `"settings": {}` is accepted.
+- A file with no day and no adjustment within `--from` and `--to`, and no `settings`, is refused (`no day to import`). A file holding only `"settings": {}` is accepted.
+- The messages are in English, except the refusals of the grid and the labels of counters, which are the French texts of the pages.
 
-| Problem | Text after `erreur : ` |
+| Problem | Text after `error: ` |
 | --- | --- |
-| Day beyond the planning horizon | « \<date> : au-delà de l'horizon de planification » |
-| Day in a validated month | « \<date> : le mois est validé » |
-| Day already entered, without `--replace` | « \<date> : une saisie existe déjà (utilisez --replace) » |
-| Day refused by the grid rules | « \<date> : \<problème> », as in [Refusals of the activity page](#refusals-of-the-activity-page) |
-| File starting before a validated tracking start | « le fichier commence avant le début du suivi, déjà validé » |
-| Adjustment outside an open tracked month | « ajustement du \<date> : la date doit tomber dans un mois ouvert, à partir du début du suivi » |
-| Adjustment on an unknown or archived counter | « ajustement du \<date> : compteur "\<ID>" inconnu ou archivé » |
-| Adjustment quantity | « ajustement du \<date> : quantité non nulle entre -366 et 366 attendue » |
-| Adjustment reason | « ajustement du \<date> : motif obligatoire, une ligne de 200 caractères au plus » |
-| `start` locked | « début du suivi : un mois est déjà validé, il n'est plus modifiable » |
-| `start` after an adjustment | « début du suivi : des ajustements sont datés avant \<date> » |
-| Unknown or archived counter in `settings` | « compteur "\<ID>" inconnu ou archivé » |
-| Own amount | « \<compteur> : montant d'acquisition invalide (entre 0 et 366) » |
-| Initial balance | « \<compteur> : solde initial invalide (entre -366 et 366) » |
-| Initial balance locked | « \<compteur> : un mois est déjà validé, les soldes initiaux ne sont plus modifiables » |
+| Day beyond the planning horizon | `<date>: beyond the planning horizon` |
+| Day in a validated month | `<date>: the month is validated` |
+| Day already entered, without `--replace` | `<date>: an entry already exists (use --replace)` |
+| Day refused by the grid rules | `<date>: <problem>`, the problem being the French text of [Refusals of the activity page](#refusals-of-the-activity-page) |
+| File starting before a validated tracking start | `the file starts before the tracking start, already validated` |
+| Adjustment outside an open tracked month | `adjustment of <date>: the date must fall in an open month, from the tracking start` |
+| Adjustment on an unknown or archived counter | `adjustment of <date>: counter "<ID>" unknown or archived` |
+| Adjustment quantity | `adjustment of <date>: a non-zero quantity between -366 and 366 is expected` |
+| Adjustment reason | `adjustment of <date>: a reason is required, one line of 200 characters at most` |
+| `start` locked | `tracking start: a month is already validated, it can no longer change` |
+| `start` after an adjustment | `tracking start: adjustments are dated before <date>` |
+| Unknown or archived counter in `settings` | `counter "<ID>" unknown or archived` |
+| Own amount | `<counter>: invalid accrual amount (between 0 and 366)` |
+| Initial balance | `<counter>: invalid initial balance (between -366 and 366)` |
+| Initial balance locked | `<counter>: a month is already validated, the initial balances can no longer change` |
 
 ### Report
 
 The command prints, in this order:
 
-1. the warnings, prefixed with `avertissement : ` (« début du suivi avancé du \<date> au \<date> », « ajustement du \<date> déjà présent, ignoré »);
-2. « Réglages lus : début du suivi \<date>, \<n> compteur(s). » when the file has `settings`;
-3. « \<n> journée(s) lue(s), de \<mois> à \<mois>. »;
-4. month by month, « non renseigné(s) en \<mois> : \<dates> »: the days before today with a half-day or both left without entry, weekends and holidays included;
-5. « \<n> ajustement(s) lu(s). »;
-6. with `--validate`, « \<mois> validé. » per month, or « validation arrêtée à \<mois> : \<raison> »;
-7. « Simulation : rien n'a été écrit. » with `--dry-run`, otherwise « Import enregistré. ».
+1. the warnings, prefixed with `warning: ` (`tracking start moved from <date> to <date>`, `adjustment of <date> already present, ignored`);
+2. `Settings read: tracking start <date>, <n> counter(s).` when the file has `settings`;
+3. `<n> day(s) read, from <month> to <month>.`;
+4. month by month, `missing entries in <month>: <dates>`: the days before today with a half-day or both left without entry, weekends and holidays included;
+5. `<n> adjustment(s) read.`;
+6. with `--validate`, `<month> validated.` per month, or `validation stopped at <month>: <reason>`;
+7. `Dry run: nothing was written.` with `--dry-run`, otherwise `Import saved.`.
 
 Months are written `YYYY-MM` and dates `YYYY-MM-DD`.
 
@@ -2197,7 +2199,7 @@ With `--validate`, and only when days were imported:
 
 1. The open months are validated in order, from the first open month.
 2. The validation stops after the last imported month, and before the current month: the current month is never validated, without message.
-3. It stops at a month that was not imported (« ce mois n'a pas été importé ») or that cannot be validated.
+3. It stops at a month that was not imported (`this month was not imported`) or that cannot be validated (the error of the validation, in English).
 4. Each month is recorded as validated on its last day at 23:59:59 in `server.timezone`, its frozen entries created at that time, as if it had been validated then.
 5. A month whose history already holds a later event (it was reopened since) is recorded as validated at the time of the import, so that its history stays in order.
 

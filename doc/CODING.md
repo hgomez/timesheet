@@ -408,7 +408,8 @@ The only scripts allowed are:
 ### Language of the interface
 
 - Pages work without JavaScript; a script only enhances a page.
-- Interface texts are in French and never use the em dash.
+- Texts of the web pages are in French and never use the em dash.
+- The command line (help, prompts, messages, import report) is in English, like the logs and the errors; it keeps in French only the texts it shares with the pages (labels of codes and counters, refusals of the grid).
 
 ## JAVASCRIPT
 
@@ -745,6 +746,7 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 
 - Documentation is written in English.
 - Interface texts are quoted in French between « », exactly as on screen.
+- Texts printed by the command line are quoted in English between backticks, exactly as printed.
 - No em dash, and no en dash used as a dash, in any document or interface text.
 - Never name another project: state every rule as the project's own.
 - No personal data: examples are fictitious, and the spreadsheet the summary is modelled on is never copied.

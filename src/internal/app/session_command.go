@@ -62,7 +62,7 @@ func (c *SessionCommand) Run(out io.Writer) error {
     if err := sessions.SaveSessions(nil); err != nil {
         return err
     }
-    fmt.Fprintln(out, "Toutes les sessions sont fermées.")
+    fmt.Fprintln(out, "All sessions are closed.")
     return nil
 }
 

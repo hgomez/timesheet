@@ -61,11 +61,11 @@ func (p *PasswordReader) Read() (string, error) {
     if file, ok := p.stdin.(*os.File); ok {
         if restore, err := p.hideEcho(file); err == nil {
             defer restore()
-            first, err := p.prompt(file, "Mot de passe : ")
+            first, err := p.prompt(file, "Password: ")
             if err != nil {
                 return "", err
             }
-            second, err := p.prompt(file, "Confirmation : ")
+            second, err := p.prompt(file, "Confirmation: ")
             if err != nil {
                 return "", err
             }

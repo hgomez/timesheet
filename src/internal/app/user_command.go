@@ -92,7 +92,7 @@ func (c *UserCommand) Run(out io.Writer) error {
             if err := database.SetProfile(login, profile); err != nil {
                 return err
             }
-            fmt.Fprintf(out, "Profil de %s : %s\n", login, profile)
+            fmt.Fprintf(out, "Profile of %s: %s\n", login, profile)
         case "user passwd":
             hash, err := c.password(login)
             if err != nil {
@@ -104,7 +104,7 @@ func (c *UserCommand) Run(out io.Writer) error {
             if err := database.SetPassword(login, hash, false); err != nil {
                 return err
             }
-            fmt.Fprintf(out, "Mot de passe de %s changé.\n", login)
+            fmt.Fprintf(out, "Password of %s changed.\n", login)
         case "user del":
             if err := c.closeSessions(login); err != nil {
                 return err
@@ -112,7 +112,7 @@ func (c *UserCommand) Run(out io.Writer) error {
             if err := database.DeleteAccount(login); err != nil {
                 return err
             }
-            fmt.Fprintf(out, "Compte %s supprimé.\n", login)
+            fmt.Fprintf(out, "Account %s deleted.\n", login)
     }
     return nil
 }
@@ -135,7 +135,7 @@ func (c *UserCommand) add(out io.Writer, database *store.Database, login account
     if err := database.CreateAccount(created, activity.NewCalendar(today.Month().First())); err != nil {
         return err
     }
-    fmt.Fprintf(out, "Compte %s créé (%s).\n", login, profile)
+    fmt.Fprintf(out, "Account %s created (%s).\n", login, profile)
     return nil
 }
 
@@ -168,9 +168,9 @@ func (c *UserCommand) password(login account.Login) (account.PasswordHash, error
 
 func (c *UserCommand) list(out io.Writer, database *store.Database) error {
     writer := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-    fmt.Fprintln(writer, "LOGIN\tPROFIL\tÉTAT\tCRÉÉ LE\tDERNIÈRE CONNEXION\tNOM")
+    fmt.Fprintln(writer, "LOGIN\tPROFILE\tSTATE\tCREATED\tLAST LOGIN\tNAME")
     for _, item := range database.Accounts() {
-        last := "jamais"
+        last := "never"
         if !item.LastLogin.IsZero() {
             last = item.LastLogin.Format(time.RFC3339)
         }

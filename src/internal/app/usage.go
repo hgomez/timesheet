@@ -45,53 +45,53 @@ func NewUsage(program string) *Usage {
     return &Usage{
         program: program,
         groups: []usageGroup{
-            {title: "Commandes", options: [][2]string{
-                {"init", "créer la base à partir du modèle de configuration"},
-                {"run", "lancer le serveur web"},
-                {"config show [KEY]", "afficher la configuration du serveur, ou la seule valeur d'une clé"},
-                {"config set KEY VALUE...", "changer un ou plusieurs réglages du fichier de configuration (les clés de config show)"},
-                {"user add LOGIN", "créer un compte (mot de passe demandé)"},
-                {"user profile LOGIN PROFILE", "changer le profil d'un compte (USER ou ADMIN)"},
-                {"user passwd LOGIN", "changer le mot de passe d'un compte"},
-                {"user del LOGIN", "supprimer un compte et ses données"},
-                {"user list", "lister les comptes"},
-                {"session clear", "fermer toutes les sessions (le serveur arrêté)"},
-                {"import LOGIN FILE", "importer un fichier JSON (format timesheet-import)"},
-                {"help", "afficher cette aide"},
-                {"version", "afficher la version"},
+            {title: "Commands", options: [][2]string{
+                {"init", "create the database from the configuration template"},
+                {"run", "start the web server"},
+                {"config show [KEY]", "show the server configuration, or the value of a single key"},
+                {"config set KEY VALUE...", "change one or more settings of the configuration file (the keys of config show)"},
+                {"user add LOGIN", "create an account (password asked)"},
+                {"user profile LOGIN PROFILE", "change the profile of an account (USER or ADMIN)"},
+                {"user passwd LOGIN", "change the password of an account"},
+                {"user del LOGIN", "delete an account and its data"},
+                {"user list", "list the accounts"},
+                {"session clear", "close all the sessions (server stopped)"},
+                {"import LOGIN FILE", "import a JSON file (format timesheet-import)"},
+                {"help", "show this help"},
+                {"version", "show the version"},
             }},
-            {title: "Options communes", options: [][2]string{
-                {"--database=<file>", "base unique (défaut database.path de la configuration)"},
-                {"--config=<file>", "configuration du serveur (défaut " + DefaultConfig + ")"},
-                {"--log-level=<level>", "debug, info, warn ou error (défaut info, server.log_level de la configuration pour run)"},
-                {"-h, --help", "afficher cette aide"},
+            {title: "Common options", options: [][2]string{
+                {"--database=<file>", "single database (default database.path of the configuration)"},
+                {"--config=<file>", "server configuration (default " + DefaultConfig + ")"},
+                {"--log-level=<level>", "debug, info, warn or error (default info, server.log_level of the configuration for run)"},
+                {"-h, --help", "show this help"},
             }},
-            {title: "Options de init", options: [][2]string{
-                {"--template=<file>", "modèle de configuration (défaut " + DefaultTemplate + ")"},
+            {title: "Options of init", options: [][2]string{
+                {"--template=<file>", "configuration template (default " + DefaultTemplate + ")"},
             }},
-            {title: "Options de run", options: [][2]string{
-                {"--listen=<address>", "adresse d'écoute (défaut celle de la configuration)"},
-                {"--origin=<origin>", "origine publique, répétable (défaut celles de la configuration)"},
-                {"--trusted-proxy=<address>", "proxy dont X-Forwarded-For est accepté, adresse ou préfixe, répétable (défaut ceux de la configuration)"},
-                {"--tls-cert=<file>", "certificat d'une paire fournie (HTTPS, défaut celui de la configuration)"},
-                {"--tls-key=<file>", "clé privée d'une paire fournie (HTTPS, défaut celle de la configuration)"},
+            {title: "Options of run", options: [][2]string{
+                {"--listen=<address>", "listen address (default the one of the configuration)"},
+                {"--origin=<origin>", "public origin, repeatable (default the ones of the configuration)"},
+                {"--trusted-proxy=<address>", "proxy whose X-Forwarded-For is trusted, address or prefix, repeatable (default the ones of the configuration)"},
+                {"--tls-cert=<file>", "certificate of a provided pair (HTTPS, default the one of the configuration)"},
+                {"--tls-key=<file>", "private key of a provided pair (HTTPS, default the one of the configuration)"},
             }},
-            {title: "Options de user add", options: [][2]string{
-                {"--profile=<profile>", "USER ou ADMIN (défaut USER)"},
+            {title: "Options of user add", options: [][2]string{
+                {"--profile=<profile>", "USER or ADMIN (default USER)"},
             }},
-            {title: "Options de import", options: [][2]string{
-                {"--from=<YYYY-MM>", "premier mois importé"},
-                {"--to=<YYYY-MM>", "dernier mois importé"},
-                {"--dry-run", "contrôler sans rien écrire"},
-                {"--replace", "remplacer les saisies existantes aux dates présentes dans le fichier"},
-                {"--validate", "valider ensuite les mois importés, dans l'ordre"},
+            {title: "Options of import", options: [][2]string{
+                {"--from=<YYYY-MM>", "first imported month"},
+                {"--to=<YYYY-MM>", "last imported month"},
+                {"--dry-run", "check without writing anything"},
+                {"--replace", "replace the existing entries at the dates present in the file"},
+                {"--validate", "then validate the imported months, in order"},
             }},
         },
     }
 }
 
 func (u *Usage) Write(w io.Writer) {
-    fmt.Fprintf(w, "Usage: %s COMMANDE [ARGUMENT...] [OPTION...]\n\n", u.program)
+    fmt.Fprintf(w, "Usage: %s COMMAND [ARGUMENT...] [OPTION...]\n\n", u.program)
     width := 0
     for _, group := range u.groups {
         for _, option := range group.options {
@@ -105,7 +105,7 @@ func (u *Usage) Write(w io.Writer) {
         }
         fmt.Fprintln(w)
     }
-    fmt.Fprintf(w, "Le mot de passe de user add et user passwd est lu sur le terminal sans écho, sinon sur une ligne de l'entrée standard, ou dans la variable TIMESHEET_PASSWORD.\nLes options s'écrivent --nom=valeur, avant ou après les arguments ; un argument ne peut pas commencer par un tiret.\n")
+    fmt.Fprintf(w, "The password of user add and user passwd is read from the terminal without echo, otherwise from a line of the standard input, or from the variable TIMESHEET_PASSWORD.\nOptions are written --name=value, before or after the arguments; an argument cannot start with a dash.\n")
 }
 
 // ---------------------------------------------------------------------------

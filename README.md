@@ -28,11 +28,11 @@ This README is the entry point: what the application does, how to try it from th
   - the eleven national legal holidays of metropolitan France (the two extra holidays of Alsace-Moselle are not included);
   - paid leave (congés payés), accrued at 2.08 days a month over a June-to-May period and rounded up at its end;
   - RTT days, the weekly day off and the complementary days of a part-time contract;
-  - an interface in French.
+  - a web interface in French.
 - The activity codes and the counters are configurable. The holiday calendar and the rules are French: the application is not meant, as it stands, for another country.
 - The rules are choices of the application, simpler than common French practice: see [Simplifications](doc/SPECIFICATIONS.md#simplifications).
 - One static binary, no external service: it runs on a workstation or a small server.
-- The interface is in French. The French labels quoted in this document (« Tableau de bord », « Activité »…) are the ones shown on screen. Code and documentation are in English.
+- The web interface is in French. The French labels quoted in this document (« Tableau de bord », « Activité »…) are the ones shown on screen. The command line, code and documentation are in English.
 - Free software, released under the GNU General Public License version 2 or later.
 
 ### Where to start
@@ -129,8 +129,8 @@ This section goes from the sources to a running server on your workstation. To i
    It answers:
 
    ```text
-   Base créée : …/var/lib/timesheet/timesheet-database.json
-   Créez maintenant un administrateur : timesheet user add <login> --profile=ADMIN --database=…/var/lib/timesheet/timesheet-database.json
+   Database created: …/var/lib/timesheet/timesheet-database.json
+   Now create an administrator: timesheet user add <login> --profile=ADMIN --database=…/var/lib/timesheet/timesheet-database.json
    ```
 
    - The command it prints is the next step; from the repository root, prefix it with `bin/`. The database starts with the activity codes and counters of the configuration template and no account.
@@ -145,7 +145,7 @@ This section goes from the sources to a running server on your workstation. To i
    - On a Linux terminal, the password is asked twice, without echo.
    - It has at least 12 characters, 6 of them distinct, no space at its start or end, no control character, 256 bytes at most, and differs from the login.
    - To script it, give the password in the variable `TIMESHEET_PASSWORD`.
-   - It answers « Compte \<login> créé (ADMIN). ».
+   - It answers `Account <login> created (ADMIN).`.
 
 6. Start the server:
 
