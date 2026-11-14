@@ -159,7 +159,7 @@ This section goes from the sources to a running server on your workstation. To i
    - The warning `serving plain HTTP` is expected on a workstation. Read [Network and security](doc/OPERATIONS.md#network-and-security) before exposing the server on a network.
    - Ctrl-C or SIGTERM stops it after the requests in progress (`server.shutdown_timeout`, 10 s by default).
 
-7. Open `http://127.0.0.1:8080` or `http://localhost:8080`, choose « Se connecter » and log in. You arrive on « Tableau de bord ».
+7. Open `http://127.0.0.1:8080` or `http://localhost:8080`, click the arrow at the right of the header (« Se connecter ») and log in. You arrive on « Tableau de bord ».
 
 Then follow the [User guide](doc/USER-GUIDE.md).
 

@@ -80,6 +80,10 @@ body.public > header > nav a:hover {
     color: var(--on-accent);
 }
 
+body.public > header > nav a[href="/login"] {
+    padding: var(--space-2);
+}
+
 body.public > header > nav ul {
     justify-content: flex-end;
 }
@@ -115,8 +119,9 @@ body > header .theme-toggle img {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.375rem;
+    height: 2.375rem;
+    border: 1px solid var(--bar-ink-soft);
     border-radius: var(--radius);
     list-style: none;
     cursor: pointer;
@@ -129,6 +134,7 @@ body > header .theme-toggle img {
 
 .nav-menu > summary:hover, .nav-menu[open] > summary {
     background: var(--bar-hover);
+    border-color: var(--bar-ink);
 }
 
 .nav-menu > summary img {
@@ -1071,7 +1077,7 @@ body > footer .brand small {
     cursor: not-allowed;
 }
 
-.icon-button svg {
+.icon-button svg, body.public > header > nav a svg {
     display: block;
     fill: none;
     stroke: currentColor;

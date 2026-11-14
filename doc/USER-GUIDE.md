@@ -61,6 +61,7 @@ The legal holidays are built in. They name the rows of the grid, refuse leave (a
 | « Administration » | For administrators: the accounts (« Comptes ») and the configuration of the activity codes and counters (« Configuration »). |
 
 - The menu under the user's name leads to « Mon profil », « Mes réglages » and, for an administrator, « Administration ». It also logs out (« Se déconnecter »).
+- On the public pages, the arrow entering a door at the right of the header (« Se connecter » on hover) opens the login page « Connexion ».
 - The button of the header switches between the light and the dark theme. The choice is kept in the browser only.
 
 ## ACCOUNTS
@@ -192,6 +193,7 @@ The full rules are in [Administration](SPECIFICATIONS.md#administration).
 
 | Label | Where | Meaning |
 | --- | --- | --- |
+| « Se connecter » | header of the public pages | The tooltip of the arrow that opens the login page. |
 | « à ce jour » | « Tableau de bord » | The balance today: validated entries plus the provisional entries dated up to today. |
 | « Validé » | « Tableau de bord » | The balance at the end of the last validated month. |
 | « Prévision au \<date> » | « Tableau de bord » | The forecast balance at the end of the period, planned leave and future credits included. |

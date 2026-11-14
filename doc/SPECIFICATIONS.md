@@ -908,7 +908,7 @@ When the tracking started before the month, the number of tracked days is the nu
 
 | Family | Pages | Entries | `aria-label` of the `<nav>` |
 | --- | --- | --- | --- |
-| public | home, login, logout, error pages for a guest | a « Se connecter » or « Tableau de bord » button; nothing on the login page | « Navigation principale » |
+| public | home, login, logout, error pages for a guest | for a guest, a link to `/login` shown as an icon only, an arrow entering a door drawn in the text colour, with `title` and `aria-label` « Se connecter »; for a connected browser, a « Tableau de bord » button; nothing on the login page | « Navigation principale » |
 | dashboard | dashboard, activity, month, year, profile and settings pages | « Tableau de bord », « Activité », « Mois », « Année » | « Navigation principale » |
 | admin | accounts, account, configuration pages and read-only views | « Comptes », « Configuration » | « Navigation de l'administration » |
 
@@ -938,6 +938,7 @@ The burger menu:
 
 - is a `<details class="nav-menu">` placed last, at the right end of the header, after the theme button;
 - has a `<summary>` showing the icon `menu.svg` (`alt="Menu"`);
+- is framed like the theme button: same size, a thin border in the soft colour of the bar, brighter on hover and while open;
 - opens, below it, the same entries in a `<nav>` with the same label;
 - works without JavaScript;
 - is closed by `chrome_page.js` on a click outside or on `Échap`, like the user menu.
