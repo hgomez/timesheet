@@ -549,6 +549,8 @@ The look is sober and professional:
 ### Doubles
 
 - The clock is injected (`activity.ManualClock`).
+- Web tests start from `newTestSite(t)` of `src/internal/web/fixtures_test.go`: accounts `root` (`ADMIN`) and `demo` (`USER`) tracked from September 2026, clock at 2026-11-08 10:00 UTC; `client().login(name)`, `get`, `post`, `page` and `token` drive the pages.
+- `html/template` escapes an apostrophe inserted by an action (`{{.Label}}`, a notice) as `&#39;`, while the literal text of a template keeps it: a test that looks for an inserted text with an apostrophe uses the escaped form or another text.
 - Web tests use `httptest` and a database in `t.TempDir()`.
 - Password hashing uses `account.MinIterations` in tests: `Application.WithIterations` and the field `Iterations` of `SiteDependencies` take precedence over `passwords.iterations`, whose floor is 600 000.
 - A test that opens a database always gives its path (`--database` or `store.NewDatabase`): the default database is `/var/lib/timesheet/timesheet-database.json`.
@@ -575,6 +577,7 @@ The spreadsheet the summary is modelled on, and any import file made from person
 
 - No test checks the licence header of the Go files, of the `Makefile` and of the scripts, nor the section banners: check by hand that every file starts with its header and that every Go file ends with the `End-Of-File` banner.
 - The header of the templates, style sheets and scripts is checked by `TestWebSourcesStartWithTheLicenceHeader`.
+- `TestRenderedPagesHaveASemanticSkeleton` checks only the paths it lists, and accepts a 403 or a 404 there: add every new page to its list, and check its status in a test of its own.
 
 ## RUNNING ONE TEST
 
@@ -613,7 +616,7 @@ These rules hold in Go and JavaScript.
 | An operand that is itself a binary expression of another precedence is written in parentheses | `(a * b) + c`, `(err != nil) \|\| ok` |
 | Operators of the same precedence chain without parentheses | `a + b - c` |
 
-Three test lines still break the parentheses rule and are to be fixed: `src/internal/activity/summary_test.go:81`, `src/internal/web/login_throttle_test.go:43` and `:67`.
+Six test lines still break the parentheses rule and are to be fixed: `src/internal/activity/summary_test.go:81`, `src/internal/web/login_throttle_test.go:43`, `:67` and `:114`, `src/internal/app/application_test.go:583` and `:600`.
 
 ### switch and select
 
@@ -740,7 +743,7 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 - Any change also updates [README.md](../README.md) and the documents of `doc/` whose content it makes wrong.
 - A change that leaves the specifications out of sync with the code is incomplete.
 - A request that contradicts the specifications first updates them.
-- The [tests of the documentation](#tests-of-the-documentation) check the routes, the notice codes and the commands.
+- The [tests of the documentation](#tests-of-the-documentation) check the routes, the notice codes, the server configuration keys and the commands.
 
 ### Writing rules
 
@@ -763,4 +766,4 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 - It is written in English, in the imperative mood.
 - It has no body.
 - It has no `Co-Authored-By` line nor any other attribution.
-- Commit only when asked.
+- Commit, push or reset only on an explicit request in the current message: the approval of a plan or the end of a review is not one. Once the changes are done, propose a commit message and wait.

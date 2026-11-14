@@ -415,6 +415,7 @@ The format is specified in [SPECIFICATIONS.md, Import](SPECIFICATIONS.md#import)
 ## PAGES AND THE CODE THAT SERVES THEM
 
 Every view template is rendered inside `layout.html` and the header partial of its page family (`partials/public.html`, `dashboard.html` or `admin.html`).
+Every view of `templates/*.html` other than `layout.html` is parsed at start and rendered by its file name. `Renderer.familiesOf` gives its families: `admin_*` the admin family only; `home`, `login`, `logout` and `logged_out` the public family (a fixed list that a new public page must join); the error pages all three; any other view the admin family on an `/admin/` path for an administrator, the dashboard family otherwise.
 The routes and their answers are specified in [SPECIFICATIONS.md, Routes](SPECIFICATIONS.md#routes).
 
 | Page | Route | Controller | View builder | Template | Script |
