@@ -5,7 +5,7 @@ Timesheet: a web application for employees working in France, tracking a profess
 ## RULES
 
 - **Mandatory.** Every change of behaviour, screen, label, route, form field, computation rule, database schema or command updates `doc/SPECIFICATIONS.md` in the same change; a change that leaves the specifications out of sync with the code is incomplete ([Documentation](doc/CODING.md#documentation)).
-- Any change also updates `README.md` and the files of `doc/` whose content it makes wrong.
+- **Absolute.** Every change of code updates, in the same change, all the documentation it makes wrong: `doc/SPECIFICATIONS.md` first, then `doc/ARCHITECTURE.md`, `doc/CODING.md`, `doc/SECURITY.md`, the manuals (`doc/USER-GUIDE.md`, `doc/BUILD.md`, `doc/OPERATIONS.md`), `README.md` and this file; the documentation, the specifications above all, stays in sync with every line of code changed.
 - A request that contradicts the specifications first updates them.
 - Two `specifications_test.go` (packages `web` and `app`) compare the routes, the notice codes, the server configuration keys and the commands with `doc/SPECIFICATIONS.md`; a new notice code or command goes into the fixed lists of these tests, which otherwise do not see it ([Tests](doc/CODING.md#tests-of-the-documentation)).
 - Read [doc/CODING.md](doc/CODING.md) before writing code, starting with its [Summary of the checks](doc/CODING.md#summary-of-the-checks): its rules are strict and prevail over your defaults.

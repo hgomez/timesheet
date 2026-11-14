@@ -740,7 +740,7 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 ### Keeping it in sync
 
 - Every change of behaviour, screen, label, route, form field, computation rule, database schema or command updates [SPECIFICATIONS.md](SPECIFICATIONS.md) in the same change.
-- Any change also updates [README.md](../README.md) and the documents of `doc/` whose content it makes wrong.
+- Every change of code updates, in the same change, all the documentation it makes wrong: [SPECIFICATIONS.md](SPECIFICATIONS.md) first, then [ARCHITECTURE.md](ARCHITECTURE.md), this file, [SECURITY.md](SECURITY.md), the manuals ([USER-GUIDE.md](USER-GUIDE.md), [BUILD.md](BUILD.md), [OPERATIONS.md](OPERATIONS.md)), [README.md](../README.md) and `CLAUDE.md`; the documentation, the specifications above all, stays in sync with every line of code changed.
 - A change that leaves the specifications out of sync with the code is incomplete.
 - A request that contradicts the specifications first updates them.
 - The [tests of the documentation](#tests-of-the-documentation) check the routes, the notice codes, the server configuration keys and the commands.
