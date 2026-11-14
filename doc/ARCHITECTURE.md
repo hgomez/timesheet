@@ -70,8 +70,8 @@ src/
 etc/timesheet/
   timesheet.json                  server configuration: address, origins, database path, timeouts, sessions, login, limits
 share/timesheet/
-  timesheet-database-template.json   configuration template read by init
-  timesheet-import-template.json     fictitious example of an import file
+  database-template.json          configuration template read by init
+  import-template.json            fictitious example of an import file
 var/lib/timesheet/                database of the repository, given with --database, its lock and the session file
 debian/                           Debian packaging
 .ci/                              GitLab CI configuration and the build scripts
@@ -161,7 +161,7 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | `AccrualPeriod` | value | Accrual period of a counter: month or year |
 | `Accrual` | record | Amount credited per month or per year |
 | `CounterRule` | record | Counter rule: accrual, period start, carry over (with rounding up) or zeroing of its single balance |
-| `Configuration` | record | Configuration section of the database (codes, counters, revision), with `Validate` (which returns the path of the faulty field) and lookups. `NewDefaultConfiguration` mirrors `share/timesheet/timesheet-database-template.json` |
+| `Configuration` | record | Configuration section of the database (codes, counters, revision), with `Validate` (which returns the path of the faulty field) and lookups. `NewDefaultConfiguration` mirrors `share/timesheet/database-template.json` |
 | `ServerConfiguration` | record | The whole server configuration file: its sections `ServerSettings`, `DatabaseSettings`, `SessionSettings`, `LoginSettings`, `PasswordSettings` and `LimitSettings`, their defaults (`NewDefaultServerConfiguration`, whose encoding is `etc/timesheet/timesheet.json`), the bounds checked by `Validate`, including the links between keys, and the access by key `section.key` (`Keys`, `Value`, `Set`) used by `config show` and `config set` |
 | `ServerSettings` | record | Section `server`: address, origins, trusted proxies, time zone, log level, TLS pair (`NullableText`, written `null` without a pair) and version, HSTS, timeouts and request sizes, with `Validate`, `Location` and `Level` |
 | `DatabaseSettings`, `SessionSettings`, `LoginSettings`, `PasswordSettings`, `LimitSettings` | record | Sections `database`, `sessions`, `login`, `passwords` and `limits`, each with its defaults and `Validate` |
@@ -586,7 +586,7 @@ The word "configuration" names the configuration section of the database; the se
 
 ### Configuration and its template
 
-1. `init` initialises the database from the configuration template `share/timesheet/timesheet-database-template.json`.
+1. `init` initialises the database from the configuration template `share/timesheet/database-template.json`.
 2. Afterwards, the activity codes, the counters and their colours live in the database.
 3. An administrator edits them on the configuration page, `/admin/settings`.
 

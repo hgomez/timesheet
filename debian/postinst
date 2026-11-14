@@ -9,7 +9,7 @@ set -e
 arg_user='timesheet'
 arg_home='/var/lib/timesheet'
 arg_config='/etc/timesheet/timesheet.json'
-arg_template='/usr/share/timesheet/timesheet-database-template.json'
+arg_template='/usr/share/timesheet/database-template.json'
 arg_database=''
 arg_create_user='not-set'
 arg_create_home='not-set'

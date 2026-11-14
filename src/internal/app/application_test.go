@@ -55,7 +55,7 @@ func TestUsageAndArguments(t *testing.T) {
 func TestInitAndAccounts(t *testing.T) {
     directory, database := newTestDirectory(t)
     config := "--config=" + filepath.Join(directory, "timesheet.json")
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     if run := runCommand(t, "", "init", template, database); run.code != ExitOK {
         t.Fatalf("init: %+v", run)
     }
@@ -91,7 +91,7 @@ func TestInitAndAccounts(t *testing.T) {
 
 func TestImportReadsTheJSONFile(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "olivier", database)
     file := filepath.Join(directory, "activite.json")
@@ -129,7 +129,7 @@ func TestImportReadsTheJSONFile(t *testing.T) {
 
 func TestImportRefusesInvalidFiles(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "olivier", database)
     header := `{"format": "timesheet-import", "version": 1, `
@@ -173,7 +173,7 @@ func TestImportRefusesInvalidFiles(t *testing.T) {
 
 func TestImportReplacesOnlyWhenAsked(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "olivier", database)
     file := filepath.Join(directory, "day.json")
@@ -194,7 +194,7 @@ func TestImportReplacesOnlyWhenAsked(t *testing.T) {
 
 func TestImportKeepsAdjustmentsInsideTheTracking(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "olivier", database)
     file := filepath.Join(directory, "adjusted.json")
@@ -221,7 +221,7 @@ func TestImportKeepsAdjustmentsInsideTheTracking(t *testing.T) {
 
 func TestUserCommandsCloseTheSessionsOfTheAccount(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database)
     sessions := filepath.Join(directory, ".ts.json.sessions")
@@ -266,7 +266,7 @@ func TestVersionIsTheReleaseOfTheChangelog(t *testing.T) {
 
 func TestSessionClearEmptiesTheSessionFile(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     sessions := filepath.Join(directory, ".ts.json.sessions")
     writeTestFile(t, sessions, `[{"key": "` + strings.Repeat("ab", 32) + `", "login": "olivier", "csrf": "t", "created": "2026-11-11T21:00:00Z", "seen": "2026-11-11T21:00:00Z"}]`)
@@ -280,7 +280,7 @@ func TestSessionClearEmptiesTheSessionFile(t *testing.T) {
 
 func TestRunServesTheSite(t *testing.T) {
     _, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database)
     stderr := &bytes.Buffer{}
@@ -320,7 +320,7 @@ func TestRunServesTheSite(t *testing.T) {
 func TestCommandEdgeCases(t *testing.T) {
     directory, database := newTestDirectory(t)
     config := "--config=" + filepath.Join(directory, "timesheet.json")
-    template := filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     trailing := filepath.Join(directory, "template.json")
     data, _ := os.ReadFile(template)
     os.WriteFile(trailing, append(data, []byte("{}")...), 0o600)
@@ -353,7 +353,7 @@ func TestCommandEdgeCases(t *testing.T) {
 
 func TestImportValidatesOnlyImportedMonths(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "olivier", database)
     file := filepath.Join(directory, "activite.json")
@@ -366,7 +366,7 @@ func TestImportValidatesOnlyImportedMonths(t *testing.T) {
 
 func TestImportValidationStopsAtAMonthLeftOutOfTheFile(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "olivier", database)
     days := []string{}
@@ -385,7 +385,7 @@ func TestImportValidationStopsAtAMonthLeftOutOfTheFile(t *testing.T) {
 
 func TestImportReportNeutralisesControlCharacters(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "olivier", database)
     file := filepath.Join(directory, "escape.json")
@@ -402,7 +402,7 @@ func TestImportReportNeutralisesControlCharacters(t *testing.T) {
 func TestConfigSetChecksThePortOfTheAddress(t *testing.T) {
     directory, database := newTestDirectory(t)
     config := "--config=" + filepath.Join(directory, "timesheet.json")
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     if run := runCommand(t, "", "config", "set", "server.listen", "127.0.0.1:99999", database, config); run.code != ExitError {
         t.Fatalf("port out of range: %+v", run)
@@ -417,7 +417,7 @@ func TestConfigSetChecksThePortOfTheAddress(t *testing.T) {
 
 func TestImportSkipsAnAdjustmentRepeatedInTheFile(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "olivier", database)
     file := filepath.Join(directory, "twice.json")
@@ -440,7 +440,7 @@ func TestDatabaseNamesNeverCollideWithTheirCompanionFiles(t *testing.T) {
 
 func TestImportValidatesAReopenedMonthNow(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "olivier", database)
     file := filepath.Join(directory, "activite.json")
@@ -472,7 +472,7 @@ func TestImportValidatesAReopenedMonthNow(t *testing.T) {
 
 func TestUserCommandsOnAnUnknownAccountKeepTheSessions(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database)
     sessions := filepath.Join(directory, ".ts.json.sessions")
@@ -490,9 +490,9 @@ func TestUserCommandsOnAnUnknownAccountKeepTheSessions(t *testing.T) {
 func TestImportTemplateIsValid(t *testing.T) {
     _, database := newTestDirectory(t)
     share := filepath.Join("..", "..", "..", "share", "timesheet")
-    runCommand(t, "", "init", "--template=" + filepath.Join(share, "timesheet-database-template.json"), database)
+    runCommand(t, "", "init", "--template=" + filepath.Join(share, "database-template.json"), database)
     runCommand(t, "correct horse battery", "user", "add", "demo", database)
-    sample := filepath.Join(share, "timesheet-import-template.json")
+    sample := filepath.Join(share, "import-template.json")
     if run := runCommand(t, "", "import", "demo", sample, "--dry-run", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "Dry run") {
         t.Fatalf("dry run of the import template: %+v", run)
     }
@@ -508,7 +508,7 @@ func TestImportTemplateIsValid(t *testing.T) {
 func TestConfigSetAcceptsSeveralTrustedProxies(t *testing.T) {
     directory, database := newTestDirectory(t)
     config := "--config=" + filepath.Join(directory, "timesheet.json")
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     if run := runCommand(t, "", "config", "set", "server.trusted_proxies", "10.0.0.0/8, 172.16.0.0/12,192.168.0.0/16", database, config); run.code != ExitOK {
         t.Fatalf("list of prefixes: %+v", run)
@@ -537,7 +537,7 @@ func TestConfigSetAcceptsSeveralTrustedProxies(t *testing.T) {
 
 func TestServerConfigurationLivesInItsOwnFile(t *testing.T) {
     directory, database := newTestDirectory(t)
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     file := filepath.Join(directory, "etc", "timesheet.json")
     config := "--config=" + file
     if run := runCommand(t, "", "config", "show", config); (run.code != ExitOK) || !strings.Contains(run.stdout, `"listen": "127.0.0.1:8080"`) || !strings.Contains(run.stdout, `"timezone": "Europe/Paris"`) {
@@ -613,7 +613,7 @@ func TestConfigShowAndSetHandleEveryKey(t *testing.T) {
 func TestDatabasePathComesFromTheConfiguration(t *testing.T) {
     directory, _ := newTestDirectory(t)
     config := "--config=" + filepath.Join(directory, "timesheet.json")
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     path := filepath.Join(directory, "configured.json")
     if run := runCommand(t, "", "config", "set", "database.path", path, config); run.code != ExitOK {
         t.Fatalf("config set: %+v", run)
@@ -645,7 +645,7 @@ func TestDatabasePathComesFromTheConfiguration(t *testing.T) {
 func TestLimitsComeFromTheConfiguration(t *testing.T) {
     directory, database := newTestDirectory(t)
     config := "--config=" + filepath.Join(directory, "timesheet.json")
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database, config)
     runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database, config)
     runCommand(t, "correct horse battery", "user", "add", "second", database, config)
@@ -663,7 +663,7 @@ func TestLimitsComeFromTheConfiguration(t *testing.T) {
 func TestRunTakesTheTLSPairFromTheFile(t *testing.T) {
     directory, database := newTestDirectory(t)
     config := "--config=" + filepath.Join(directory, "timesheet.json")
-    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database, config)
     runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database, config)
     runCommand(t, "", "config", "set", "server.tls_cert", filepath.Join(directory, "a.pem"), "server.tls_key", filepath.Join(directory, "b.pem"), config)

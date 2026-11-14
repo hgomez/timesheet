@@ -658,9 +658,9 @@ Steps of a change:
 
 1. Update [SPECIFICATIONS.md, Database](SPECIFICATIONS.md#database) and write how existing databases are handled in [Migration notes](SPECIFICATIONS.md#migration-notes).
 2. Change the records in `internal/activity`, `internal/account` or `internal/store` and their validation.
-3. When the configuration changes, update `share/timesheet/timesheet-database-template.json` and `NewDefaultConfiguration` together (`TestTemplateMirrorsTheDefaultConfiguration`).
+3. When the configuration changes, update `share/timesheet/database-template.json` and `NewDefaultConfiguration` together (`TestTemplateMirrorsTheDefaultConfiguration`).
 4. When the server configuration changes, update the settings of `internal/activity` (defaults, bounds, `ServerConfiguration.keys`), regenerate `etc/timesheet/timesheet.json` with `bin/timesheet config show --config=<missing file>` (`TestShippedServerFileIsTheDefaultConfiguration`), and add the key to its table in [Server configuration](SPECIFICATIONS.md#server-configuration) (`TestServerKeysMatchTheSpecifications`). A new key has a default and bounds; a key renamed, removed or made mandatory needs a migration note, since the file is decoded strictly.
-5. When the import format changes, update the import code, `share/timesheet/timesheet-import-template.json` (`TestImportTemplateIsValid`) and [SPECIFICATIONS.md, Import](SPECIFICATIONS.md#import).
+5. When the import format changes, update the import code, `share/timesheet/import-template.json` (`TestImportTemplateIsValid`) and [SPECIFICATIONS.md, Import](SPECIFICATIONS.md#import).
 
 ## MAKEFILE
 

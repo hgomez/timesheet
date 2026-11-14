@@ -41,7 +41,7 @@ func TestDefaultConfigurationIsValid(t *testing.T) {
 }
 
 func TestTemplateMirrorsTheDefaultConfiguration(t *testing.T) {
-    data, err := os.ReadFile(filepath.Join("..", "..", "..", "share", "timesheet", "timesheet-database-template.json"))
+    data, err := os.ReadFile(filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json"))
     if err != nil {
         t.Fatal(err)
     }
@@ -55,7 +55,7 @@ func TestTemplateMirrorsTheDefaultConfiguration(t *testing.T) {
         t.Fatal(err)
     }
     if !reflect.DeepEqual(template, NewDefaultConfiguration()) {
-        t.Fatalf("share/timesheet/timesheet-database-template.json differs from NewDefaultConfiguration:\n%+v\n%+v", template, NewDefaultConfiguration())
+        t.Fatalf("share/timesheet/database-template.json differs from NewDefaultConfiguration:\n%+v\n%+v", template, NewDefaultConfiguration())
     }
 }
 

@@ -32,7 +32,7 @@ Every term and acronym is defined in the [Glossary](SPECIFICATIONS.md#glossary).
 
 ## ACTIVITY CODES
 
-The database starts with these codes and counters (from the configuration template `share/timesheet/timesheet-database-template.json`). Each code names a counter of the same identifier.
+The database starts with these codes and counters (from the configuration template `share/timesheet/database-template.json`). Each code names a counter of the same identifier.
 
 | Code | Label on screen | Effect | Meaning |
 | --- | --- | --- | --- |

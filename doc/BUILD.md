@@ -59,8 +59,8 @@ make install DESTDIR=/tmp/stage
 | File | Installed as | Mode |
 | --- | --- | --- |
 | `bin/timesheet` | `$(DESTDIR)/usr/bin/timesheet` | 755 |
-| `share/timesheet/timesheet-database-template.json` (configuration template) | `$(DESTDIR)/usr/share/timesheet/` | 644 |
-| `share/timesheet/timesheet-import-template.json` (import template) | `$(DESTDIR)/usr/share/timesheet/` | 644 |
+| `share/timesheet/database-template.json` (configuration template) | `$(DESTDIR)/usr/share/timesheet/` | 644 |
+| `share/timesheet/import-template.json` (import template) | `$(DESTDIR)/usr/share/timesheet/` | 644 |
 | `etc/timesheet/timesheet.json` (server configuration, as is: the database at `/var/lib/timesheet/timesheet-database.json`) | `$(DESTDIR)/etc/timesheet/` | 644 |
 
 - Without `DESTDIR`, the files go under `/usr` and `/etc`: run `sudo make install`.
@@ -68,7 +68,7 @@ make install DESTDIR=/tmp/stage
 - It replaces an `/etc/timesheet/timesheet.json` already there: save your own first.
 - It creates neither the service account, nor the database directory, nor the service. The [Debian package](#build-the-debian-package) does.
 - The server configuration names the database `/var/lib/timesheet/timesheet-database.json` (`database.path`): the installed binary finds it through the configuration, without `--database`.
-- The installed binary still reads `etc/timesheet/timesheet.json` under the current directory by default: give it `--config=/etc/timesheet/timesheet.json` and, for `init`, `--template=/usr/share/timesheet/timesheet-database-template.json`.
+- The installed binary still reads `etc/timesheet/timesheet.json` under the current directory by default: give it `--config=/etc/timesheet/timesheet.json` and, for `init`, `--template=/usr/share/timesheet/database-template.json`.
 
 ## CLEAN
 

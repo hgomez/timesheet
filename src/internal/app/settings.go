@@ -54,7 +54,7 @@ type Settings struct {
 }
 
 const (
-    DefaultTemplate = "share/timesheet/timesheet-database-template.json"
+    DefaultTemplate = "share/timesheet/database-template.json"
     DefaultConfig   = "etc/timesheet/timesheet.json"
 )
 

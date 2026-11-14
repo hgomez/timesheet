@@ -29,8 +29,8 @@ Every procedure below gives two forms:
 | --- | --- | --- |
 | Database | `var/lib/timesheet/timesheet-database.json`, given with `--database` | `/var/lib/timesheet/timesheet-database.json`, the `database.path` of the server configuration |
 | Server configuration | `etc/timesheet/timesheet.json` | `/etc/timesheet/timesheet.json` |
-| Configuration template | `share/timesheet/timesheet-database-template.json` | `/usr/share/timesheet/timesheet-database-template.json` |
-| Import template | `share/timesheet/timesheet-import-template.json` | `/usr/share/timesheet/timesheet-import-template.json` |
+| Configuration template | `share/timesheet/database-template.json` | `/usr/share/timesheet/database-template.json` |
+| Import template | `share/timesheet/import-template.json` | `/usr/share/timesheet/import-template.json` |
 | Sessions | `.timesheet-database.json.sessions`, next to the database | the same, in `/var/lib/timesheet/` |
 | Server | `bin/timesheet.sh`, or `bin/timesheet run --database=var/lib/timesheet/timesheet-database.json`, in the foreground | the unit `timesheet.service` |
 | Logs | the standard error of `run` | the journal: `journalctl -u timesheet` |
@@ -208,7 +208,7 @@ Days, counter settings and adjustments can be imported from a JSON file of the f
 
 - The file holds the tracking start, counter settings, days with morning, afternoon and comment, and adjustments.
 - The application reads no spreadsheet. A spreadsheet is first converted to this format outside the application, its categories becoming the activity codes.
-- `share/timesheet/timesheet-import-template.json` is a small, fictitious file of this format: one month (January 2026) with a holiday, paid leave, a half-day of RTT, an absence, comments, the settings of three counters and one adjustment. Copy it as a starting point.
+- `share/timesheet/import-template.json` is a small, fictitious file of this format: one month (January 2026) with a holiday, paid leave, a half-day of RTT, an absence, comments, the settings of three counters and one adjustment. Copy it as a starting point.
 
 To import:
 
@@ -220,7 +220,7 @@ To import:
    bin/timesheet import <login> ~/private/activity.json --dry-run --database=var/lib/timesheet/timesheet-database.json
    ```
 
-   Try it first on the shipped template, `bin/timesheet import <login> share/timesheet/timesheet-import-template.json --dry-run --database=var/lib/timesheet/timesheet-database.json`, which answers:
+   Try it first on the shipped template, `bin/timesheet import <login> share/timesheet/import-template.json --dry-run --database=var/lib/timesheet/timesheet-database.json`, which answers:
 
    ```text
    Settings read: tracking start 2026-01-01, 3 counter(s).
@@ -428,7 +428,7 @@ The errors of the commands are prefixed with `timesheet:`. Those of `run` are lo
 
 | Message | Cause | What to do |
 | --- | --- | --- |
-| `open share/timesheet/timesheet-database-template.json: no such file or directory` | `init` is run outside the repository root, or by the installed binary. | Go to the root, or give `--template` and `--database`. |
+| `open share/timesheet/database-template.json: no such file or directory` | `init` is run outside the repository root, or by the installed binary. | Go to the root, or give `--template` and `--database`. |
 | `cannot lock …` with `the directory does not exist` | `run` is started with a wrong `--database` or `database.path`, or a relative path from another directory. | Run `bin/timesheet.sh`, or give `--database`. |
 | `the database does not exist, run init first`, or a permission error, naming `/var/lib/timesheet/timesheet-database.json` | A command of the sources is run without `--database`: the default database is the one of the package. | Give `--database=var/lib/timesheet/timesheet-database.json`. |
 | `the database does not exist, run init first` | The database file is missing, at `database.path` or at `--database` (for `user list`, also when its directory is missing). | Run `init`, or fix the path. |

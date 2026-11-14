@@ -42,11 +42,11 @@ arg_dst_binary="${arg_bindir}/timesheet"
 arg_src_config="${arg_srcdir}/etc/timesheet/timesheet.json"
 arg_dst_config="${arg_confdir}/timesheet.json"
 
-arg_src_database="${arg_srcdir}/share/timesheet/timesheet-database-template.json"
-arg_dst_database="${arg_datadir}/timesheet-database-template.json"
+arg_src_database="${arg_srcdir}/share/timesheet/database-template.json"
+arg_dst_database="${arg_datadir}/database-template.json"
 
-arg_src_import="${arg_srcdir}/share/timesheet/timesheet-import-template.json"
-arg_dst_import="${arg_datadir}/timesheet-import-template.json"
+arg_src_import="${arg_srcdir}/share/timesheet/import-template.json"
+arg_dst_import="${arg_datadir}/import-template.json"
 
 # ----------------------------------------------------------------------------
 # install the binary

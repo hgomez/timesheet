@@ -150,7 +150,7 @@ The number of extra days comes from the employment contract: the application doe
 | frozen entry | A ledger entry written at the validation of a month. |
 | guest | A request without a valid session (profile `GUEST`). |
 | HTML template | A page template under `src/internal/web/templates/`. |
-| import template | The fictitious import file `share/timesheet/timesheet-import-template.json`. |
+| import template | The fictitious import file `share/timesheet/import-template.json`. |
 | indicators | The day counts of a month ([Monthly indicators](#monthly-indicators)). |
 | journal | The sequence of the entries of a counter: the frozen ones plus the provisional ones computed for the open months. |
 | ledger | The stored list of frozen entries and reversals, `ledger` in the database. |
@@ -1864,7 +1864,7 @@ All the forms post to `POST /admin/settings` and carry `revision`, the configura
 ## COMMAND LINE
 
 ```text
-timesheet init [--template=share/timesheet/timesheet-database-template.json]
+timesheet init [--template=share/timesheet/database-template.json]
 timesheet run [--listen=...] [--origin=...] [--trusted-proxy=...] [--tls-cert=... --tls-key=...]
 timesheet config show [KEY]
 timesheet config set KEY VALUE [KEY VALUE...]
@@ -1954,7 +1954,7 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 
 ### `timesheet init`
 
-- Reads the configuration template given by `--template` (default `share/timesheet/timesheet-database-template.json`), strictly, 1 MiB at most ([Configuration template](#configuration-template)).
+- Reads the configuration template given by `--template` (default `share/timesheet/database-template.json`), strictly, 1 MiB at most ([Configuration template](#configuration-template)).
 - Creates the database with that configuration and no account, mode 0600.
 - Refuses an existing database (exit 1).
 - Does not create the directory of the database: it must exist.
@@ -2111,7 +2111,7 @@ Imports days, adjustments and settings into an account ([Import](#import)).
 
 ### Import template
 
-- `share/timesheet/timesheet-import-template.json` is a small fictitious file of this format, installed next to the configuration template.
+- `share/timesheet/import-template.json` is a small fictitious file of this format, installed next to the configuration template.
 - It covers January 2026: every day entered, a holiday, paid leave, a half-day of `RTT`, an absence, comments, the settings of `CP`, `RTT` and `TPC`, and one adjustment.
 - A test imports it, so that it stays valid.
 
@@ -2553,7 +2553,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 
 ## CONFIGURATION TEMPLATE
 
-- `share/timesheet/timesheet-database-template.json` is the initial `configuration` section: codes, counters and default colours ([Codes of the template](#codes-of-the-template), [Counters of the template](#counters-of-the-template)).
+- `share/timesheet/database-template.json` is the initial `configuration` section: codes, counters and default colours ([Codes of the template](#codes-of-the-template), [Counters of the template](#counters-of-the-template)).
 - It is read by `init` only, strictly, 1 MiB at most, and validated like the configuration.
 - Editing it afterwards has no effect on an existing database: codes, counters and default colours are then edited in the [configuration page](#configuration-page).
 - The settings of the server are not in the database: see [Server configuration](#server-configuration).
@@ -2580,12 +2580,14 @@ Procedure:
 
 ### Renamed shipped files
 
-The same version renamed the shipped files:
+The same version renamed the shipped files, renamed again later:
 
 | Former name | Current name |
 | --- | --- |
-| `share/timesheet/timesheet-template.json` | `share/timesheet/timesheet-database-template.json` |
-| `share/timesheet/timesheet-import-example.json` | `share/timesheet/timesheet-import-template.json` |
+| `share/timesheet/timesheet-template.json` | `share/timesheet/database-template.json` |
+| `share/timesheet/timesheet-database-template.json` | `share/timesheet/database-template.json` |
+| `share/timesheet/timesheet-import-example.json` | `share/timesheet/import-template.json` |
+| `share/timesheet/timesheet-import-template.json` | `share/timesheet/import-template.json` |
 
 A script or an `--template` option that names a former file fails with `no such file or directory`.
 
