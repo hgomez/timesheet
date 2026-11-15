@@ -192,6 +192,7 @@ func TestDatabaseRefusesInvalidFiles(t *testing.T) {
         strings.Replace(string(data), `"version": 1`, `"version": 9`, 1):               ErrUnsupportedVersion,
         strings.Replace(string(data), `"accounts": []`, `"accounts": [], "extra": 1`, 1): ErrMalformedDatabase,
         strings.Replace(string(data), `"#33d17a"`, `"green"`, 1):                       ErrMalformedDatabase,
+        strings.Replace(string(data), `"fr-metropole"`, `"corse"`, 1):                     ErrMalformedDatabase,
     }
     for content, want := range cases {
         os.WriteFile(path, []byte(content), 0o600)
@@ -327,6 +328,10 @@ func TestDatabaseRefusesInconsistentMonthsAndLedgers(t *testing.T) {
         "reversal of another amount":       build(map[activity.Month]activity.MonthRecord{january: validated}, entry("a", january, activity.KindCredit, 2, ""), entry("b", january, activity.KindReversal, 77, "a")),
         "reversal of a reversal":           build(map[activity.Month]activity.MonthRecord{january: validated}, entry("a", january, activity.KindCredit, 2, ""), entry("b", january, activity.KindReversal, -2, "a"), entry("c", january, activity.KindReversal, 2, "b")),
     }
+    corse := activity.PublicHolidayZone("corse")
+    unknownZone := build(map[activity.Month]activity.MonthRecord{})
+    unknownZone.Settings.PublicHolidays = &corse
+    cases["unknown zone of public holidays"] = unknownZone
     for name, calendar := range cases {
         if err := database.CheckCalendar("bob", 1, calendar); !errors.Is(err, ErrMalformedDatabase) {
             t.Errorf("%s: %v", name, err)

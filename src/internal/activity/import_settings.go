@@ -28,9 +28,10 @@ import (
 // ---------------------------------------------------------------------------
 
 type ImportSettings struct {
-    Start    *Date                    `json:"start"`
-    Counters map[string]ImportCounter `json:"counters"`
-    order    []string
+    Start          *Date                    `json:"start"`
+    PublicHolidays *PublicHolidayZone       `json:"public_holidays"`
+    Counters       map[string]ImportCounter `json:"counters"`
+    order          []string
 }
 
 // ---------------------------------------------------------------------------
@@ -49,9 +50,15 @@ func (s ImportSettings) MarshalJSON() ([]byte, error) {
     if err != nil {
         return nil, err
     }
+    zone, err := json.Marshal(s.PublicHolidays)
+    if err != nil {
+        return nil, err
+    }
     var data bytes.Buffer
     data.WriteString(`{"start":`)
     data.Write(start)
+    data.WriteString(`,"public_holidays":`)
+    data.Write(zone)
     data.WriteString(`,"counters":{`)
     for i, id := range ids {
         key, err := json.Marshal(id)

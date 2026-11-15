@@ -1,8 +1,9 @@
 {
   "version": 1,
-  "revision": 3,
+  "revision": 1,
   "configuration": {
     "revision": 1,
+    "public_holidays": "fr-metropole",
     "activities": [
       {
         "id": "TT",
@@ -210,6 +211,7 @@
       "revision": 2,
       "settings": {
         "start": "2023-11-27",
+        "public_holidays": null,
         "counters": {
           "CP": {
             "enabled": true,

@@ -475,7 +475,7 @@ func TestImportValidatesAReopenedMonthNow(t *testing.T) {
     opened := openTestDatabase(t, database)
     _, calendar, _ := opened.Account("olivier")
     january := activity.NewMonth(2025, time.January)
-    closing := activity.NewMonthClosing(activity.NewBookkeeper(opened.Configuration(), calendar, activity.NewHolidayCalendar()), activity.NewIdentifierGenerator(rand.Reader))
+    closing := activity.NewMonthClosing(activity.NewBookkeeper(opened.Configuration(), calendar), activity.NewIdentifierGenerator(rand.Reader))
     reopenedAt := time.Date(2026, time.June, 1, 8, 0, 0, 0, time.UTC)
     reopened, err := closing.Reopen(january, "correction", reopenedAt)
     if err != nil {

@@ -22,7 +22,7 @@ It is written for the people who use the application. Installing and running the
 | Activity code | What a half-day was, such as `TT` (working time) or `CP` (paid leave). The codes are listed in [Activity codes](#activity-codes). The list is configurable. |
 | Counter | A balance in days, kept like a bank account: a journal of dated entries, a statement per month, a balance equal to the sum of the entries. |
 | Feeding code | A code that credits its counter by half a day per half-day, on any day. Its counter simply counts days. |
-| Consuming code | A code that debits its counter by half a day per half-day: leave taken from acquired rights. It is accepted on working days only (Monday to Friday, legal holidays excluded). |
+| Consuming code | A code that debits its counter by half a day per half-day: leave taken from acquired rights. It is accepted on working days only (Monday to Friday, public holidays excluded). |
 | Accrual | A credit of a counter, every month or every year. Paid leave accrues 2.08 days a month by default. An account can have its own amount, for instance 7/12 day a month of complementary part time. |
 | Period end | At the end of its period, a balance is either carried over and rounded up to the whole day (paid leave), or reset to zero. |
 | Adjustment | A dated, signed correction of a balance with a mandatory reason, for a gap with a payslip for instance. |
@@ -46,7 +46,7 @@ The database starts with these codes and counters (from the configuration templa
 | `RTT` | « Récupération temps de travail » | Consumes | RTT days. RTT stands for réduction du temps de travail: days off granted for working beyond 35 hours a week. |
 | `TPC` | « Temps partiel complémentaire » | Consumes | Complementary part-time days, managed like RTT. |
 
-The legal holidays are built in. They name the rows of the grid, refuse leave (a consuming code) and are counted in « Jours fériés ».
+The public holidays are built in, for thirteen zones: « Métropole », « Alsace-Moselle » (Good Friday and 26 December in addition) and the overseas territories (the abolition of slavery in addition, at its local date, where it is a holiday). The administrator chooses the default zone; each user may choose their own in « Réglages ». The public holidays name the rows of the grid, refuse leave (a consuming code) and are counted in « Jours fériés ».
 
 ## PAGES
 
@@ -57,9 +57,9 @@ The legal holidays are built in. They name the rows of the grid, refuse leave (a
 | « Mois » | Consultation only: the totals of the month, its calendar, its summary and the statement of each counter. |
 | « Année » | Consultation only: the totals of the year, the calendar, the summary of the calendar year and one section per counter. The summary is modelled on a spreadsheet: a carry-forward row « Report N-1 », one row per month and totals. |
 | « Mon profil » | Identity, name shown in the menu, password, open sessions. |
-| « Réglages » | Tracking start, counters enabled, own accrual amounts, initial balances, colours of the codes. Its menu entry is « Mes réglages ». |
+| « Réglages » | Tracking start, calendar of public holidays, counters enabled, own accrual amounts, initial balances, colours of the codes. Its menu entry is « Mes réglages ». |
 | « Données » | Import of a file, export of your data in the same format, deletion of your data to start the tracking again. Its menu entry is « Mes données ». |
-| « Administration » | For administrators: the software version and the server settings, read-only (« Serveur »), the accounts (« Comptes ») and the configuration of the activity codes and counters (« Configuration »). |
+| « Administration » | For administrators: the software version and the server settings, read-only (« Serveur »), the accounts (« Comptes ») and the configuration of the default calendar of public holidays, the activity codes and the counters (« Configuration »). |
 
 - The menu under the user's name shows the profile and leads to « Mon profil » and « Mes réglages ». It also logs out (« Se déconnecter »).
 - For an administrator, the header shows « Administration » left of « Tableau de bord ».
@@ -83,11 +83,12 @@ The rights are defined in [Profiles](SPECIFICATIONS.md#profiles).
 1. Open « Mes réglages » in the menu under your name. The page is titled « Réglages ».
 2. In « Début du suivi », set « Date de début », the first day you track. It defaults to the first day of the month in which your account was created.
 3. To enter earlier months, move the date back first: a month before it is shown read-only.
-4. In the table of the counters:
+4. In « Jours fériés », keep « Par défaut (\<zone>) » to follow the calendar chosen by the administrator, or choose the zone where you work, such as « Alsace-Moselle » or « La Réunion ». A change applies to the months not validated yet.
+5. In the table of the counters:
    - tick « Activé » for each counter you use;
    - give a « Montant propre » when your accrual differs from the default one (empty: the default amount);
    - give a « Solde initial », the balance you had on the start date.
-5. Choose « Enregistrer les réglages ».
+6. Choose « Enregistrer les réglages ».
 
 Once a month is validated, the start date and the initial balances are locked: correct them with an adjustment.
 
@@ -207,12 +208,13 @@ The page of an account (its login in the table) also has:
 ### Change the configuration
 
 1. Open « Administration », page « Configuration ».
-2. Change the activity codes and the counters: labels, colours, accrual amounts and periods.
+2. In « Jours fériés », choose the « Calendrier par défaut », followed by every account that has not chosen its own.
+3. Change the activity codes and the counters: labels, colours, accrual amounts and periods.
 
 - A code or a counter already used can be archived, not deleted.
 - An archived code is no longer offered in the grid.
 - An archived counter is disabled for every user: no more credits, no new adjustment, its consuming codes are no longer offered. Existing days keep debiting it and its history stays.
-- A change of rule applies only to the months that are not validated.
+- A change of rule or of the default calendar of public holidays applies only to the months that are not validated.
 
 The full rules are in [Administration](SPECIFICATIONS.md#administration).
 
@@ -232,10 +234,11 @@ The full rules are in [Administration](SPECIFICATIONS.md#administration).
 | « provisoire », « validé », « prévisionnel », « hors suivi » | « Mois », « Année » | A month not validated yet, a validated month, a future month, a month before the tracking start. |
 | « Report N-1 » | « Année » | The balance of each counter on the eve of 1 January, or of the tracking start if later. |
 | « Débit », « Crédit », « Ajustement », « Solde » | « Mois », « Année » | Leave taken; accruals and days of feeding codes; adjustments, signed; balance at the end. |
-| « Ouvrés », « Fériés » | « Mois », « Année » | Working days of the month; legal holidays from Monday to Friday. |
+| « Ouvrés », « Fériés » | « Mois », « Année » | Working days of the month; public holidays from Monday to Friday. |
 | « Contre-passation » | Statements | A reversal entry, added when a month is reopened. |
 | « Montant propre » | « Réglages » | Your own accrual amount for a counter. |
 | « Solde initial » | « Réglages » | Your balance on the start date. |
+| « Calendrier des jours fériés » | « Réglages » | The zone whose public holidays apply to you; « Par défaut » follows the calendar chosen by the administrator. |
 | « Quantité signée » | « Activité » | The amount of an adjustment: positive to credit, negative to debit. |
 | « Motif » | « Activité » | The mandatory reason of an adjustment or of a reopening. |
 | « Mot de passe provisoire » | « Comptes » | A password set by an administrator, to change at the first login. |

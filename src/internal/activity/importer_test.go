@@ -30,13 +30,15 @@ import (
 
 func TestExportedFileGivesBackTheSameBalances(t *testing.T) {
     config := authorConfiguration()
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     calendar := authorCalendar(t, "2026-01")
     for m := month(t, "2026-01"); !m.After(month(t, "2026-03")); m = m.Next() {
         fillMonth(t, &calendar, m, holidays)
     }
     amount := q(t, "8/12")
     calendar.Settings.Counters["RTT"] = CounterSettings{Enabled: calendar.Settings.Counters["RTT"].Enabled, Amount: &amount}
+    alsace := ZoneAlsaceMoselle
+    calendar.Settings.PublicHolidays = &alsace
     calendar.Adjustments = append(calendar.Adjustments, Adjustment{ID: "a1", Date: day(t, "2026-02-27"), Counter: "CP", Amount: q(t, "0.5"), Reason: "Alignement sur le bulletin de paie"})
     data, err := NewImportFileOf(calendar, config).Encode()
     if err != nil {
@@ -63,7 +65,7 @@ func TestExportedFileGivesBackTheSameBalances(t *testing.T) {
         "enabled": true,
         "amount": "7/12",
         "initial": "0"
-      }`, `"comment": null`, `"adjustments": [`} {
+      }`, `"public_holidays": "fr-alsace-moselle"`, `"comment": null`, `"adjustments": [`} {
         if !strings.Contains(text, expected) {
             t.Errorf("the export must write %s", expected)
         }
@@ -75,13 +77,13 @@ func TestExportedFileGivesBackTheSameBalances(t *testing.T) {
     today := day(t, "2026-04-15")
     options := NewImportOptions()
     options.Validate = true
-    importer := NewImporter(config, holidays, NewManualClock(time.Date(2026, time.April, 15, 10, 0, 0, 0, time.UTC)), NewIdentifierGenerator(rand.Reader), time.UTC)
+    importer := NewImporter(config, NewManualClock(time.Date(2026, time.April, 15, 10, 0, 0, 0, time.UTC)), NewIdentifierGenerator(rand.Reader), time.UTC)
     report, err := importer.Run(NewCalendar(day(t, "2026-04-01")), exported, options, today, month(t, "2028-04"))
-    if (err != nil) || (len(report.Problems) != 0) || (len(report.Validated) != 3) || (len(report.Warnings) != 0) || (report.Calendar.Settings.Start != day(t, "2026-01-01")) {
+    if (err != nil) || (len(report.Problems) != 0) || (len(report.Validated) != 3) || (len(report.Warnings) != 0) || (report.Calendar.Settings.Start != day(t, "2026-01-01")) || (report.Calendar.Settings.PublicHolidays == nil) || (*report.Calendar.Settings.PublicHolidays != alsace) {
         t.Fatalf("import of the export: %v %+v %v %+v", err, report.Problems, report.Validated, report.Warnings)
     }
-    before := NewBookkeeper(config, calendar, holidays).Journal(month(t, "2026-03"))
-    after := NewBookkeeper(config, report.Calendar, holidays).Journal(month(t, "2026-03"))
+    before := NewBookkeeper(config, calendar).Journal(month(t, "2026-03"))
+    after := NewBookkeeper(config, report.Calendar).Journal(month(t, "2026-03"))
     for _, id := range []string{"CP", "RTT", "TPC", "TT"} {
         if !before.Balance(id, day(t, "2026-03-31")).Equal(after.Balance(id, day(t, "2026-03-31"))) {
             t.Errorf("%s: %s before, %s after", id, before.Balance(id, day(t, "2026-03-31")), after.Balance(id, day(t, "2026-03-31")))
@@ -105,6 +107,38 @@ func TestImportProblemsSpeakEnglishAndFrench(t *testing.T) {
         if (c.problem.Text() != c.text) || (c.problem.Label() != c.label) {
             t.Errorf("%q / %q", c.problem.Text(), c.problem.Label())
         }
+    }
+}
+
+func TestImportedPublicHolidaysAreChecked(t *testing.T) {
+    importer := NewImporter(authorConfiguration(), NewManualClock(time.Date(2026, time.April, 15, 10, 0, 0, 0, time.UTC)), NewIdentifierGenerator(rand.Reader), time.UTC)
+    calendar := authorCalendar(t, "2026-01")
+    guyane := ZoneGuyane
+    calendar.Settings.PublicHolidays = &guyane
+    cases := map[string]struct {
+        text     string
+        problems int
+        zone     PublicHolidayZone
+    }{
+        "absent":  {`{}`, 0, ZoneGuyane},
+        "null":    {`{"public_holidays": null}`, 0, ZoneGuyane},
+        "known":   {`{"public_holidays": "fr-mayotte"}`, 0, ZoneMayotte},
+        "unknown": {`{"public_holidays": "corse"}`, 1, ZoneGuyane},
+    }
+    for name, c := range cases {
+        imported, err := NewImportFile([]byte(`{"format": "timesheet-import", "version": 1, "settings": ` + c.text + `}`))
+        if err != nil {
+            t.Fatalf("%s: %v", name, err)
+        }
+        report, err := importer.Run(calendar, imported, NewImportOptions(), day(t, "2026-04-15"), month(t, "2027-04"))
+        if (err != nil) || (len(report.Problems) != c.problems) || (*report.Calendar.Settings.PublicHolidays != c.zone) {
+            t.Errorf("%s: %v %+v %s", name, err, report.Problems, *report.Calendar.Settings.PublicHolidays)
+        }
+    }
+    imported, _ := NewImportFile([]byte(`{"format": "timesheet-import", "version": 1, "settings": {"public_holidays": "corse"}}`))
+    report, _ := importer.Run(calendar, imported, NewImportOptions(), day(t, "2026-04-15"), month(t, "2027-04"))
+    if text := report.Problems[0].Text(); text != `public holidays: zone "corse" unknown` {
+        t.Errorf("problem text %q", text)
     }
 }
 

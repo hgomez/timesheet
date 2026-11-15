@@ -40,11 +40,12 @@ type SettingsController struct {
 }
 
 type settingsRecord struct {
-    Revision      int64
-    Configuration int64
-    Start         string
-    Locked        bool
-    Counters      []counterSettingsRecord
+    Revision       int64
+    Configuration  int64
+    Start          string
+    Locked         bool
+    PublicHolidays []OptionRecord
+    Counters       []counterSettingsRecord
 }
 
 type counterSettingsRecord struct {
@@ -84,6 +85,14 @@ func (c *SettingsController) Show(w http.ResponseWriter, r *http.Request) {
 
 func (c *SettingsController) render(w http.ResponseWriter, r *http.Request, ws *Workspace, status int, alert string, alerts ...string) {
     record := settingsRecord{Revision: ws.Calendar.Revision, Configuration: ws.Config.Revision, Start: ws.Calendar.Settings.Start.String(), Locked: ws.Calendar.HasHistory()}
+    own := activity.PublicHolidayZone("")
+    if ws.Calendar.Settings.PublicHolidays != nil {
+        own = *ws.Calendar.Settings.PublicHolidays
+    }
+    record.PublicHolidays = append(record.PublicHolidays, OptionRecord{Value: "", Label: "Par défaut (" + ws.Config.PublicHolidayZone().Label() + ")", Selected: own == ""})
+    for _, zone := range activity.PublicHolidayZones() {
+        record.PublicHolidays = append(record.PublicHolidays, OptionRecord{Value: string(zone), Label: zone.Label(), Selected: zone == own})
+    }
     for _, rule := range ws.Config.Counters {
         if rule.Archived {
             continue
@@ -128,6 +137,12 @@ func (c *SettingsController) Submit(w http.ResponseWriter, r *http.Request) {
             default:
                 calendar.Settings.Start = start
         }
+    }
+    calendar.Settings.PublicHolidays = nil
+    if zone := activity.PublicHolidayZone(r.PostFormValue("public_holidays")); zone.Valid() {
+        calendar.Settings.PublicHolidays = &zone
+    } else if zone != "" {
+        problems = append(problems, "Calendrier des jours fériés invalide.")
     }
     counters := map[string]activity.CounterSettings{}
     for _, rule := range ws.Config.Counters {

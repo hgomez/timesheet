@@ -28,7 +28,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestSummaryFollowsTheWorkbookLayout(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     calendar := authorCalendar(t, "2025-01")
     calendar.Settings.Counters["CP"] = CounterSettings{Initial: q(t, "14.32")}
     for m := month(t, "2025-01"); m.Year() == 2025; m = m.Next() {
@@ -37,7 +37,7 @@ func TestSummaryFollowsTheWorkbookLayout(t *testing.T) {
     calendar.Days[day(t, "2025-02-11")] = DayEntry{AM: "TPC", PM: "TPC"}
     calendar.Days[day(t, "2025-01-07")] = DayEntry{AM: "CP", PM: "CP"}
     calendar.Days[day(t, "2026-02-10")] = DayEntry{AM: "CP", PM: "CP"}
-    book := NewBookkeeper(authorConfiguration(), calendar, holidays)
+    book := NewBookkeeper(authorConfiguration(), calendar)
     today := day(t, "2026-01-15")
     summary := NewSummary(book, book.Journal(month(t, "2026-12")), month(t, "2025-01"), month(t, "2025-12"), today)
     ids := []string{}

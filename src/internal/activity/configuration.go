@@ -30,9 +30,10 @@ import (
 // ---------------------------------------------------------------------------
 
 type Configuration struct {
-    Revision   int64          `json:"revision"`
-    Activities []ActivityCode `json:"activities"`
-    Counters   []CounterRule  `json:"counters"`
+    Revision       int64             `json:"revision"`
+    PublicHolidays PublicHolidayZone `json:"public_holidays"`
+    Activities     []ActivityCode    `json:"activities"`
+    Counters       []CounterRule     `json:"counters"`
 }
 
 const (
@@ -51,6 +52,7 @@ var ErrInvalidConfiguration = errors.New("activity: invalid configuration")
 
 func NewDefaultConfiguration() Configuration {
     return Configuration{
+        PublicHolidays: ZoneMetropole,
         Activities: []ActivityCode{
             {ID: "TT", Label: "Temps de travail", Feeds: "TT", Color: "#33d17a"},
             {ID: "WE", Label: "Week-end", Feeds: "WE", Color: "#9a9996"},
@@ -94,6 +96,13 @@ func (c Configuration) Consumed(counter string) bool {
     return false
 }
 
+func (c Configuration) PublicHolidayZone() PublicHolidayZone {
+    if c.PublicHolidays == "" {
+        return ZoneMetropole
+    }
+    return c.PublicHolidays
+}
+
 func (c Configuration) Counter(id string) (CounterRule, bool) {
     for _, rule := range c.Counters {
         if rule.ID == id {
@@ -104,6 +113,9 @@ func (c Configuration) Counter(id string) (CounterRule, bool) {
 }
 
 func (c Configuration) Validate() error {
+    if !c.PublicHolidayZone().Valid() {
+        return c.fail("public_holidays", "a known zone of public holidays expected")
+    }
     if (len(c.Activities) == 0) || (len(c.Activities) > MaxActivities) {
         return c.fail("activities", "between 1 and %d activity codes expected", MaxActivities)
     }

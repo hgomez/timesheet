@@ -179,6 +179,9 @@ func (d *Database) validateCalendar(config activity.Configuration, calendar acti
     if !calendar.Settings.Start.Month().Valid() {
         return errors.New("settings.start: invalid date")
     }
+    if (calendar.Settings.PublicHolidays != nil) && !calendar.Settings.PublicHolidays.Valid() {
+        return errors.New("settings.public_holidays: unknown zone")
+    }
     text := activity.NewTextPolicy()
     for date, entry := range calendar.Days {
         if !text.Accepts(entry.Comment, activity.MaxCommentLength) {

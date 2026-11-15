@@ -52,6 +52,10 @@ func NewCalendar(start Date) Calendar {
 
 func (c Calendar) Clone() Calendar {
     clone := c
+    if c.Settings.PublicHolidays != nil {
+        zone := *c.Settings.PublicHolidays
+        clone.Settings.PublicHolidays = &zone
+    }
     clone.Settings.Counters = make(map[string]CounterSettings, len(c.Settings.Counters))
     for id, settings := range c.Settings.Counters {
         clone.Settings.Counters[id] = settings.Clone()

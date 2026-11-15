@@ -22,9 +22,10 @@ package activity
 // ---------------------------------------------------------------------------
 
 type UserSettings struct {
-    Start    Date                       `json:"start"`
-    Counters map[string]CounterSettings `json:"counters"`
-    Colors   ColorSet                   `json:"colors"`
+    Start          Date                       `json:"start"`
+    PublicHolidays *PublicHolidayZone         `json:"public_holidays"`
+    Counters       map[string]CounterSettings `json:"counters"`
+    Colors         ColorSet                   `json:"colors"`
 }
 
 // ---------------------------------------------------------------------------

@@ -29,7 +29,7 @@ import (
 type Bookkeeper struct {
     config      Configuration
     calendar    Calendar
-    holidays    *HolidayCalendar
+    holidays    *PublicHolidayCalendar
     codes       map[string]ActivityCode
     adjustments map[Date][]Adjustment
 }
@@ -44,14 +44,15 @@ type ledgerWriter struct {
 // Bookkeeper implementation
 // ---------------------------------------------------------------------------
 
-func NewBookkeeper(config Configuration, calendar Calendar, holidays *HolidayCalendar) *Bookkeeper {
-    b := &Bookkeeper{config: config, calendar: calendar, holidays: holidays, codes: map[string]ActivityCode{}, adjustments: map[Date][]Adjustment{}}
+func NewBookkeeper(config Configuration, calendar Calendar) *Bookkeeper {
+    b := &Bookkeeper{config: config, calendar: calendar, codes: map[string]ActivityCode{}, adjustments: map[Date][]Adjustment{}}
     for _, code := range config.Activities {
         b.codes[code.ID] = code
     }
     for _, adjustment := range calendar.Adjustments {
         b.adjustments[adjustment.Date] = append(b.adjustments[adjustment.Date], adjustment)
     }
+    b.holidays = NewPublicHolidayCalendar(b.PublicHolidayZone())
     return b
 }
 
@@ -63,8 +64,15 @@ func (b *Bookkeeper) Calendar() Calendar {
     return b.calendar
 }
 
-func (b *Bookkeeper) Holidays() *HolidayCalendar {
+func (b *Bookkeeper) PublicHolidays() *PublicHolidayCalendar {
     return b.holidays
+}
+
+func (b *Bookkeeper) PublicHolidayZone() PublicHolidayZone {
+    if b.calendar.Settings.PublicHolidays != nil {
+        return *b.calendar.Settings.PublicHolidays
+    }
+    return b.config.PublicHolidayZone()
 }
 
 func (b *Bookkeeper) Enabled(rule CounterRule) bool {
@@ -275,7 +283,7 @@ func (b *Bookkeeper) Indicators(m Month, today Date) MonthlyIndicators {
         weekday := !d.IsWeekend()
         if weekday {
             indicators.Total = indicators.Total.Add(one)
-            if b.holidays.IsHoliday(d) {
+            if b.holidays.IsPublicHoliday(d) {
                 indicators.Holidays = indicators.Holidays.Add(one)
             }
         }

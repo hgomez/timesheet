@@ -192,7 +192,7 @@ func TestDataExportGivesBackTheSameBalances(t *testing.T) {
     }
     balances := func(login string) map[string]string {
         _, calendar, _ := site.database.Account(account.Login(login))
-        journal := activity.NewBookkeeper(site.database.Configuration(), calendar, activity.NewHolidayCalendar()).Journal(activity.NewMonth(2026, time.December))
+        journal := activity.NewBookkeeper(site.database.Configuration(), calendar).Journal(activity.NewMonth(2026, time.December))
         sums := map[string]string{}
         for _, id := range []string{"CP", "TT", "WE"} {
             sums[id] = journal.Balance(id, activity.NewDate(2026, time.December, 31)).String()

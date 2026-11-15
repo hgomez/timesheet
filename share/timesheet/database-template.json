@@ -1,5 +1,6 @@
 {
   "revision": 0,
+  "public_holidays": "fr-metropole",
   "activities": [
     {
       "id": "TT",

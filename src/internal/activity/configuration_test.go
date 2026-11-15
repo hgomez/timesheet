@@ -74,6 +74,7 @@ func TestConfigurationValidationNamesTheField(t *testing.T) {
         "activities[0].feeds":    func(c *Configuration) { c.Activities[0].Feeds = "NOPE" },
         "counters[2].id":         func(c *Configuration) { c.Counters[2].ID = "TOO_LONG_IDENTIFIER" },
         "activities[4].label":    func(c *Configuration) { c.Activities[4].Label = "bad\u202elabel" },
+        "public_holidays":        func(c *Configuration) { c.PublicHolidays = "corse" },
     }
     for path, mutate := range cases {
         config := NewDefaultConfiguration().Clone()
@@ -85,8 +86,19 @@ func TestConfigurationValidationNamesTheField(t *testing.T) {
     }
 }
 
+func TestConfigurationWithoutPublicHolidaysFollowsTheMetropole(t *testing.T) {
+    config := NewDefaultConfiguration()
+    if config.PublicHolidayZone() != ZoneMetropole {
+        t.Fatalf("default zone %s", config.PublicHolidayZone())
+    }
+    config.PublicHolidays = ""
+    if err := config.Validate(); (err != nil) || (config.PublicHolidayZone() != ZoneMetropole) {
+        t.Fatalf("absent zone: %v, %s", err, config.PublicHolidayZone())
+    }
+}
+
 func TestEveryColourKeepsItsTextReadable(t *testing.T) {
-    if horizon := NewBookkeeper(NewDefaultConfiguration(), NewCalendar(NewMonth(2099, time.January).First()), NewHolidayCalendar()).Horizon(NewDate(2099, time.December, 31)); horizon.Year() != MaxYear {
+    if horizon := NewBookkeeper(NewDefaultConfiguration(), NewCalendar(NewMonth(2099, time.January).First())).Horizon(NewDate(2099, time.December, 31)); horizon.Year() != MaxYear {
         t.Fatalf("horizon %s beyond the last year", horizon)
     }
     for red := 0; red < 256; red += 5 {

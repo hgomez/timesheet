@@ -76,7 +76,7 @@ Every change of behaviour, screen, label, route, form field, computation rule, d
 ### Scope
 
 - Timesheet is designed for employees working in France.
-- It follows the eleven national legal holidays of metropolitan France ([Legal holidays](#legal-holidays)).
+- It follows the public holidays of metropolitan France, of Alsace-Moselle and of the overseas territories, one zone per account ([Public holidays](#public-holidays)).
 - It keeps paid leave (congés payés) with a June-to-May acquisition period and a rounding at the end of the period.
 - It keeps RTT days, part-time days and the extra days some employers grant to part-time employees.
 - The web interface is in French; the command line is in English.
@@ -120,7 +120,7 @@ The number of extra days comes from the employment contract: the application doe
 | --- | --- |
 | `TT` | Code and counter « Temps de travail »: a worked half-day. |
 | `WE` | Code and counter « Week-end »: a weekend half-day. |
-| `JF` | Code and counter « Jour férié »: a half-day entered as a holiday. A "day entered `JF`" is not always a [legal holiday](#legal-holidays). |
+| `JF` | Code and counter « Jour férié »: a half-day entered as a holiday. A "day entered `JF`" is not always a [public holiday](#public-holidays). |
 | `CP` | Code and counter « Congés payés »: paid leave. |
 | `CSS` | Code and counter « Congé sans solde »: unpaid leave. |
 | `RTT` | Code and counter « Récupération temps de travail »: days off granted for working beyond 35 hours a week. |
@@ -137,7 +137,7 @@ The number of extra days comes from the employment contract: the application doe
 | balance | The value of a counter: the sum of its entries. |
 | cancelled entry | A ledger entry that a reversal cancels. |
 | carry over | Keeping the balance of a counter into the next period. |
-| configuration | The section of the database holding the activity codes and the counters. |
+| configuration | The section of the database holding the default zone of public holidays, the activity codes and the counters. |
 | configuration page | The page `/admin/settings` that edits the configuration. |
 | configuration template | The JSON file read by `init` to create the configuration ([Configuration template](#configuration-template)). |
 | connected | The access level of the routes reserved to a valid session of a `USER` or an `ADMIN`. |
@@ -156,7 +156,6 @@ The number of extra days comes from the employment contract: the application doe
 | indicators | The day counts of a month ([Monthly indicators](#monthly-indicators)). |
 | journal | The sequence of the entries of a counter: the frozen ones plus the provisional ones computed for the open months. |
 | ledger | The stored list of frozen entries and reversals, `ledger` in the database. |
-| legal holiday | One of the eleven national holidays of [Legal holidays](#legal-holidays). |
 | login | The identifier of an account; also the act of logging in. |
 | missing half-day | An empty half-day of a tracked day before today, shown « Non renseigné ». |
 | notice | A paragraph `<p role="status">`, in green at the top of the page, confirming a successful action ([Main content](#main-content)). |
@@ -171,6 +170,7 @@ The number of extra days comes from the employment contract: the application doe
 | planning horizon | The last month that can be entered: 24 months after the current one. |
 | position | The three balances of a counter on the dashboard: today, validated, forecast. |
 | problem | A reason why a submitted value is refused. |
+| public holiday | A holiday of the zone of public holidays of an account ([Public holidays](#public-holidays)). |
 | provisional entry | An entry computed for an open month on each display, never stored. |
 | recap | The monthly table of one counter on the year page. |
 | reversal | An entry of opposite amount that cancels an earlier entry, labelled « Contre-passation : \<motif> ». |
@@ -187,12 +187,13 @@ The number of extra days comes from the employment contract: the application doe
 | untracked half-day | A half-day before the tracking start, shown « Hors suivi ». |
 | upcoming half-day | An empty half-day from today on, shown « À venir ». |
 | user | The person using the application; `USER` is the profile of a person who is not an administrator. |
-| user settings | The settings of an account: tracking start, counters, colours ([User settings](#user-settings)). |
+| user settings | The settings of an account: tracking start, zone of public holidays, counters, colours ([User settings](#user-settings)). |
 | validated month | A month whose entries are frozen ([Validation](#validation)). |
 | warning | A paragraph `<p role="status" class="is-warning">`, in yellow at the top of the page, pointing out what to check or to do ([Main content](#main-content)). |
 | worked day | A day entered `TT`. |
-| working day | A day from Monday to Friday that is not a legal holiday, whatever is entered. |
+| working day | A day from Monday to Friday that is not a public holiday, whatever is entered. |
 | zeroing | The adjustment that brings the balance of a counter to zero at its period start. |
+| zone of public holidays | One of the thirteen calendars of [Public holidays](#public-holidays): the zone chosen in the settings of an account, otherwise the default zone of the configuration. |
 
 Technical words:
 
@@ -313,8 +314,8 @@ Accounts created on the command line do not have the flag, and `user passwd` cle
 - Each half-day holds an activity code or nothing.
 - Every day is entered, weekends and holidays included: the template has the codes `WE` « Week-end » and `JF` « Jour férié » for them.
 - Nothing is prefilled.
-- The calendar only names the rows: the name of the holiday for a legal holiday (« Noël »), « Week-end » for a Saturday or a Sunday, « Semaine » for a working day.
-- The calendar refuses a consuming code on a weekend or a legal holiday ([Day kinds](#day-kinds)).
+- The calendar only names the rows: the name of the holiday for a public holiday (« Noël »), « Week-end » for a Saturday or a Sunday, « Semaine » for a working day.
+- The calendar refuses a consuming code on a weekend or a public holiday ([Day kinds](#day-kinds)).
 
 ### Comments
 
@@ -351,15 +352,17 @@ Lengths count characters (Unicode code points), not bytes.
 | Kind | Definition | Row label | Consuming code |
 | --- | --- | --- | --- |
 | Weekend day | Saturday or Sunday | « Week-end » | refused |
-| Legal holiday | one of the [legal holidays](#legal-holidays), on any weekday | the name of the holiday, « \<nom> » | refused |
-| Working day | Monday to Friday, not a legal holiday | « Semaine » | allowed |
+| Public holiday | one of the [public holidays](#public-holidays), on any weekday | the name of the holiday, « \<nom> » | refused |
+| Working day | Monday to Friday, not a public holiday | « Semaine » | allowed |
 
 - A code that is not consuming can be entered on any day, and credits its counter wherever it is entered.
-- The indicators Jours fériés and Ouvrés follow the calendar of legal holidays, whatever is entered.
+- The indicators Jours fériés and Ouvrés follow the calendar of public holidays of the account, whatever is entered.
 - A bridge day (a working day the employer gives off between a holiday and a weekend) entered `JF` stays a working day; it shows in the « Crédit » of `JF`.
 - A worked Whit Monday still counts as a holiday.
 
-### Legal holidays
+### Public holidays
+
+The public holidays of an account are those of its zone of public holidays: the zone chosen in its [settings](#user-settings), otherwise the default zone of the [configuration](#configuration-page), « Métropole » in the template. Every zone has the eleven national holidays:
 
 | Holiday | Date or rule |
 | --- | --- |
@@ -375,6 +378,27 @@ Lengths count characters (Unicode code points), not bytes.
 | « Armistice 1918 » | 11 November |
 | « Noël » | 25 December |
 
+Some zones add their own holidays:
+
+| Zone | Identifier | Extra holidays |
+| --- | --- | --- |
+| « Métropole » | `fr-metropole` | none |
+| « Alsace-Moselle » | `fr-alsace-moselle` | « Vendredi saint », Easter - 2; « Saint-Étienne », 26 December |
+| « Guadeloupe » | `fr-guadeloupe` | « Abolition de l'esclavage », 27 May |
+| « Guyane » | `fr-guyane` | « Abolition de l'esclavage », 10 June |
+| « Martinique » | `fr-martinique` | « Abolition de l'esclavage », 22 May |
+| « Mayotte » | `fr-mayotte` | « Abolition de l'esclavage », 27 April |
+| « Nouvelle-Calédonie » | `fr-nouvelle-caledonie` | none |
+| « La Réunion » | `fr-la-reunion` | « Abolition de l'esclavage », 20 December |
+| « Polynésie française » | `fr-polynesie-francaise` | none |
+| « Saint-Barthélemy » | `fr-saint-barthelemy` | « Abolition de l'esclavage », 9 October |
+| « Saint-Martin » | `fr-saint-martin` | « Abolition de l'esclavage », 27 May until 2017, 28 May from 2018 |
+| « Wallis-et-Futuna » | `fr-wallis-et-futuna` | none |
+| « Saint-Pierre-et-Miquelon » | `fr-saint-pierre-et-miquelon` | none |
+
+- The identifier of a zone starts with the code of its country, ISO 3166-1 alpha-2 in lower case, and a hyphen (`fr-`), so that zones of other countries can be added later; the rest is the name of the zone in the public dataset of the French administration (calendrier.api.gouv.fr).
+- The zones and their dates are those of that dataset; the local holidays of the territories of the Pacific are not part of it.
+- Changing the zone, in the settings of an account or the default zone of the configuration, applies from the first open month: validated months keep their entries and their indicators; their grid shows the current zone.
 - Easter Sunday follows the Meeus/Butcher algorithm.
 - A holiday falling on a weekend is labelled with its name on the row, not « Week-end ».
 
@@ -466,7 +490,7 @@ How long the limit lasts:
 
 | Effect | Amount | Days | Shown in |
 | --- | --- | --- | --- |
-| Consuming code | debits its counter by 0.5 day per half-day | working days only: refused on a weekend or a legal holiday | the « Débit » of its counter |
+| Consuming code | debits its counter by 0.5 day per half-day | working days only: refused on a weekend or a public holiday | the « Débit » of its counter |
 | Feeding code | credits its counter by 0.5 day per half-day | any day, weekends and holidays included | the « Crédit » of its counter |
 
 ### Codes of the template
@@ -640,6 +664,7 @@ The settings are edited in the [settings page](#settings-page).
 | Setting | Label | Default | Bounds | After the first validation |
 | --- | --- | --- | --- | --- |
 | Tracking start | « Date de début » | first day of the month of the account creation | 2000-01-01 to 2099-12-31, not after the date of an existing adjustment | locked |
+| Zone of public holidays | « Calendrier des jours fériés » | « Par défaut (\<zone>) »: the default zone of the configuration, followed when it changes | one of the [zones](#public-holidays) | applies from the first open month |
 | Counter enabled | « Activé » | `enabled_by_default` of the counter | | applies from the first open month |
 | Own amount | « Montant propre » | empty: the default amount | 0 to 366 | applies from the first open month |
 | Initial balance | « Solde initial » | 0 | -366 to 366 | locked |
@@ -661,7 +686,7 @@ The settings are edited in the [settings page](#settings-page).
 - While some month is validated, the tracking start and the initial balances are locked: the fields are disabled, and values posted anyway are ignored without error.
 - Corrections then go through adjustments.
 - The lock follows the history of the account: it is lifted when the first validated month is reopened.
-- The other settings (enabled, own amount) apply from the first open month: validated months keep their entries.
+- The other settings (zone of public holidays, enabled, own amount) apply from the first open month: validated months keep their entries.
 
 ### Stale settings form
 
@@ -757,7 +782,7 @@ A month can be validated when all these conditions hold, checked in this order:
 
 | Anomaly | Blocking | Text listed above the grid |
 | --- | --- | --- |
-| A consuming code on a weekend or a legal holiday | yes | « \<jour>, \<Matin ou Après-midi> : « \<libellé> » est décompté et ne peut pas être posé un week-end ou un jour férié » |
+| A consuming code on a weekend or a public holiday | yes | « \<jour>, \<Matin ou Après-midi> : « \<libellé> » est décompté et ne peut pas être posé un week-end ou un jour férié » |
 | A consuming code whose counter is disabled or archived | no | « \<jour>, \<Matin ou Après-midi> : le compteur « \<libellé> » n'est pas activé » |
 | An unknown code | yes | cannot occur: the load of the database refuses it |
 
@@ -853,7 +878,7 @@ Indicators are computed in days (a half-day is 0.5) for one month, over every da
 
 | Indicator | Definition |
 | --- | --- |
-| Jours fériés (« Fériés » in the summary) | legal holidays from Monday to Friday |
+| Jours fériés (« Fériés » in the summary) | public holidays from Monday to Friday |
 | Total (« Total ») | days from Monday to Friday |
 | Ouvrés (« Ouvrés ») | Total minus Jours fériés |
 | X, per counter | half-days of the codes that feed or consume counter X, every day of the month: `TT` the worked days, `WE` the weekend days, `TP` the part-time days, `CP` the paid leave taken |
@@ -1289,7 +1314,7 @@ The section « Synthèse de l'année \<année> » holds one table, January to De
 | same | « Ajustement » | the adjustments of the month, signed: initial balance, roundings, zeroings and adjustments entered by the user |
 | same | « Solde » | the balance at the end of the month |
 | « Jours » | « Ouvrés » | Total minus Fériés |
-| same | « Fériés » | legal holidays from Monday to Friday |
+| same | « Fériés » | public holidays from Monday to Friday |
 | same | « Non renseignés » | missing days |
 | same | « Total » | days from Monday to Friday |
 
@@ -1407,9 +1432,10 @@ The section « Identité » lists:
 The section « Suivi et compteurs » holds one form:
 
 1. the fieldset « Début du suivi » with the field « Date de début », disabled once a month is validated;
-2. the table of the counters, one row per counter that is not archived, with the columns « Compteur », « Activé », « Montant propre », « Solde initial » and, last, « Couleur »;
-3. the checkbox « Rétablir les couleurs par défaut »;
-4. the button « Enregistrer les réglages ».
+2. the fieldset « Jours fériés » with the list « Calendrier des jours fériés »: first « Par défaut (\<zone>) », naming the default zone of the configuration, then the thirteen zones in the order of [Public holidays](#public-holidays), and the sentence « Un changement s'applique aux mois non validés. »;
+3. the table of the counters, one row per counter that is not archived, with the columns « Compteur », « Activé », « Montant propre », « Solde initial » and, last, « Couleur »;
+4. the checkbox « Rétablir les couleurs par défaut »;
+5. the button « Enregistrer les réglages ».
 
 - The field « Montant propre » shows the default amount and the rhythm as a placeholder.
 - The column « Couleur » holds a colour field for each code that feeds or consumes the counter and is not archived, named « Couleur, \<code> : \<libellé> ».
@@ -1429,6 +1455,7 @@ The problems listed under « Réglages non enregistrés. » are:
 
 - « Date de début de suivi invalide. »;
 - « Des ajustements sont datés avant cette date de début : supprimez-les d'abord. »;
+- « Calendrier des jours fériés invalide. »;
 - « \<compteur> : montant d'acquisition invalide. »;
 - « \<compteur> : solde initial invalide (entre -366 et 366). »;
 - « \<libellé du code> : couleur invalide. ».
@@ -1465,8 +1492,8 @@ The missing half-days and the validation are computed only when there is no prob
 - The section « Supprimer mes données » explains what is erased and asks « Retapez votre identifiant pour confirmer » (`confirm`); its button « Supprimer mes données » is red (class `danger`).
 - It posts to `POST /dashboard/data/reset`, on the account of the viewer only.
 - The confirmation must be the login exactly, case included.
-- It erases the whole tracking of the account: day entries, adjustments, history of the months, ledger entries (validated months included), settings (counters, own amounts, initial balances, colours).
-- The account starts again like a new one: tracking start on the first day of the current month in `server.timezone`, every counter and colour by default.
+- It erases the whole tracking of the account: day entries, adjustments, history of the months, ledger entries (validated months included), settings (zone of public holidays, counters, own amounts, initial balances, colours).
+- The account starts again like a new one: tracking start on the first day of the current month in `server.timezone`, zone of public holidays, every counter and colour by default.
 - The identity, the name, the profile, the password and the sessions are kept.
 - It is the only operation that removes validated entries ([Invariants](#invariants)).
 - Success: 303 to `/dashboard/data`, notice `erased`.
@@ -1637,6 +1664,7 @@ Route `/admin/settings`, entry « Configuration » of the administration navigat
 
 #### Forms
 
+- The section « Jours fériés » comes first: one form « Calendrier des jours fériés » with the list « Calendrier par défaut » of the thirteen zones and the button « Enregistrer »; a change applies to the open months of the accounts that follow the default zone.
 - The section « Codes d'activité » holds one form per code, then the form « Nouveau code d'activité ».
 - The section « Compteurs » holds one form per counter, then the form « Nouveau compteur ».
 - Each form works without JavaScript and carries an `action` and the configuration revision.
@@ -1648,19 +1676,21 @@ Route `/admin/settings`, entry « Configuration » of the administration navigat
 
 The whole configuration is checked before it is written:
 
-1. 1 to 100 activity codes, at most 20 counters;
-2. unique identifiers, in `[A-Z][A-Z0-9_]{0,15}`;
-3. labels of 1 to 60 characters, short labels of 1 to 6, [free-text rule](#free-text-rule);
-4. exactly one of `consumes` and `feeds` per code (« Effet »: « Alimente » or « Décompte »), naming an existing counter (« Compteur »);
-5. a usable colour `#rrggbb` on every code;
-6. an accrual rhythm « par mois » or « par an », and an amount between 0 and 366;
-7. a period start `MM-DD`, 29 February excluded;
-8. no change that would make the stored data invalid.
+1. a known default zone of public holidays, or none, which means `fr-metropole`;
+2. 1 to 100 activity codes, at most 20 counters;
+3. unique identifiers, in `[A-Z][A-Z0-9_]{0,15}`;
+4. labels of 1 to 60 characters, short labels of 1 to 6, [free-text rule](#free-text-rule);
+5. exactly one of `consumes` and `feeds` per code (« Effet »: « Alimente » or « Décompte »), naming an existing counter (« Compteur »);
+6. a usable colour `#rrggbb` on every code;
+7. an accrual rhythm « par mois » or « par an », and an amount between 0 and 366;
+8. a period start `MM-DD`, 29 February excluded;
+9. no change that would make the stored data invalid.
 
 #### Changing, archiving and deleting
 
 | Object | Change | Deletion | Archiving |
 | --- | --- | --- | --- |
+| Default zone of public holidays | any zone; it applies from the first open month of each account without its own zone | none | none |
 | Activity code | label, colour, archived; `consumes` and `feeds` only while the code is not used | only while not used (not present in any day entry) | an archived code is no longer offered; stored entries keep it |
 | Counter | label, short label, enabled by default, amount, rhythm, period start, carry over, archived; the new rule applies from the first open month | only while not used and while no code consumes or feeds it | [Disabled and archived counters](#disabled-and-archived-counters) |
 
@@ -1674,6 +1704,7 @@ The whole configuration is checked before it is written:
 | Case | Status | Message |
 | --- | --- | --- |
 | unreadable revision or unknown `action` | 400 | page « Requête invalide » |
+| unknown default zone of public holidays | 422 | « Calendrier des jours fériés inconnu. » |
 | no effect chosen for a code | 422 | « Indiquez si le code alimente ou décompte son compteur. » |
 | new code with an existing identifier | 422 | « Cet identifiant de code existe déjà. » |
 | update or deletion of an unknown code | 422 | « Code inconnu. » |
@@ -1899,6 +1930,7 @@ Every form posts `application/x-www-form-urlencoded` data, except the import of 
 | `revision` | hidden | the account revision |
 | `configuration` | hidden | the configuration revision |
 | `start` | « Date de début », date from 2000-01-01 to 2099-12-31, disabled once a month is validated | the tracking start |
+| `public_holidays` | « Calendrier des jours fériés », list | the identifier of a zone, or empty for the default zone |
 | `enabled:<ID>` | « \<compteur> activé », checkbox | the counter is enabled |
 | `amount:<ID>` | « Montant propre, \<compteur> », text, 32 characters | the own amount, or empty for the default amount |
 | `initial:<ID>` | « Solde initial, \<compteur> », text, 32 characters, disabled once a month is validated | the initial balance; empty means 0 |
@@ -1949,6 +1981,8 @@ All the forms post to `POST /admin/settings` and carry `revision`, the configura
 
 | Form | Field | Control | Content |
 | --- | --- | --- | --- |
+| Public holidays | `action` | button « Enregistrer » | `public-holidays-update` |
+| Public holidays | `public_holidays` | « Calendrier par défaut », list | the identifier of the default zone |
 | Code | `action` | button « Enregistrer » or « Supprimer »; hidden in « Nouveau code d'activité » | `activity-update`, `activity-delete`, `activity-add` |
 | Code | `id` | hidden; « Identifiant », text, 16 characters, in « Nouveau code d'activité » | the identifier |
 | Code | `label` | « Libellé », text, 60 characters | the label |
@@ -2196,6 +2230,7 @@ Imports days, adjustments and settings into an account ([Import](#import)).
   "version": 1,
   "settings": {
     "start": "2025-01-01",
+    "public_holidays": "fr-alsace-moselle",
     "counters": {
       "CP": { "enabled": true, "initial": "1.5" },
       "TPC": { "enabled": true, "amount": "7/12", "initial": "0" }
@@ -2210,7 +2245,7 @@ Imports days, adjustments and settings into an account ([Import](#import)).
 | --- | --- | --- |
 | `format` | yes | exactly `"timesheet-import"` |
 | `version` | yes | exactly `1` |
-| `settings` | no | `start`, a date `YYYY-MM-DD`; `counters`, a map from a counter identifier to `enabled`, `amount` and `initial`, as in the [database](#database) |
+| `settings` | no | `start`, a date `YYYY-MM-DD`; `public_holidays`, the identifier of a [zone](#public-holidays); `counters`, a map from a counter identifier to `enabled`, `amount` and `initial`, as in the [database](#database) |
 | `days` | no | a map from a date `YYYY-MM-DD` to a day record `am`, `pm`, `comment` |
 | `adjustments` | no | a list of `date`, `counter`, `amount`, `reason` |
 
@@ -2246,6 +2281,7 @@ Settings follow the rules of the [settings page](#settings-page):
 - `start` never after the date of an existing adjustment;
 - an absent `initial` keeps the stored initial balance, an absent `enabled` the stored flag;
 - an absent `amount` means the default amount;
+- a known `public_holidays` becomes the zone of the account, applied from the first open month; an absent one keeps the stored zone, an unknown one is a problem;
 - a `null` value counts as an absent one;
 - `enabled` and `amount` apply from the first open month.
 
@@ -2253,7 +2289,7 @@ Settings follow the rules of the [settings page](#settings-page):
 
 - Each imported day is checked like an entry of the grid, its comment trimmed the same way.
 - Its codes must be offered: an archived code, or a consuming code whose counter is disabled, is refused unless it is already stored on that half-day.
-- A consuming code is refused on a weekend or a legal holiday.
+- A consuming code is refused on a weekend or a public holiday.
 - The comment follows the [free-text rule](#free-text-rule), 500 characters at most.
 - The month must be within the planning horizon and not validated.
 - An existing entry is replaced only with `--replace`, even an identical one.
@@ -2295,6 +2331,7 @@ Settings follow the rules of the [settings page](#settings-page):
 | Adjustment reason | `adjustment of <date>: a reason is required, one line of 200 characters at most` | « Ajustement du \<jj/mm/aaaa> : un motif est requis, une ligne de 200 caractères au plus » |
 | `start` locked | `tracking start: a month is already validated, it can no longer change` | « Date de début : un mois est déjà validé, elle ne peut plus changer » |
 | `start` after an adjustment | `tracking start: adjustments are dated before <date>` | « Date de début : des ajustements sont datés avant le \<jj/mm/aaaa> » |
+| Unknown zone in `settings` | `public holidays: zone "<zone>" unknown` | « Calendrier des jours fériés "\<zone>" inconnu » |
 | Unknown or archived counter in `settings` | `counter "<ID>" unknown or archived` | « Compteur "\<ID>" inconnu ou archivé » |
 | Own amount | `<counter>: invalid accrual amount (between 0 and 366)` | « \<compteur> : montant d'acquisition invalide (entre 0 et 366) » |
 | Initial balance | `<counter>: invalid initial balance (between -366 and 366)` | « \<compteur> : solde initial invalide (entre -366 et 366) » |
@@ -2331,11 +2368,11 @@ After a validation, importing the same file again fails: its days and adjustment
 `GET /dashboard/data/export` downloads the data of the viewer's own account in the import format:
 
 - `format` and `version`;
-- `settings`: the tracking start, and every counter of the configuration that is not archived, in the order of the configuration, each with its effective values: `enabled` (`true` or `false`, the choice of the account or else the default of the counter), `amount` (the own amount or else the default amount) and `initial`;
+- `settings`: the tracking start, the effective zone of public holidays (the zone of the account or else the default zone), and every counter of the configuration that is not archived, in the order of the configuration, each with its effective values: `enabled` (`true` or `false`, the choice of the account or else the default of the counter), `amount` (the own amount or else the default amount) and `initial`;
 - `days`: every stored day entry, by date, with `am`, `pm` and `comment` always written, `null` when empty;
 - `adjustments`: every adjustment, open or frozen in a validated month, by date; `[]` when there is none.
 
-Nothing is left implicit: every field is written, and no value depends on the defaults of the configuration. Imported again, `enabled` and `amount` therefore become choices of the account: a later change of the default amount no longer applies to it. Archived counters are left out, since the import refuses them.
+Nothing is left implicit: every field is written, and no value depends on the defaults of the configuration. Imported again, `public_holidays`, `enabled` and `amount` therefore become choices of the account: a later change of the default zone or of the default amount no longer applies to it. Archived counters are left out, since the import refuses them.
 
 | Header | Value |
 | --- | --- |
@@ -2368,6 +2405,7 @@ The spreadsheet an employee converts, and the import file made from it, are pers
   "revision": 42,
   "configuration": {
     "revision": 3,
+    "public_holidays": "fr-metropole",
     "activities": [ { "id": "CP", "label": "Congés payés", "consumes": "CP", "feeds": null, "color": "#e01b24", "archived": false } ],
     "counters": [ { "id": "CP", "label": "Congés payés", "short_label": "CP", "enabled_by_default": true, "accrual": { "every": "month", "amount": "2.08" }, "period_start": "06-01", "carry_over": true, "archived": false } ]
   },
@@ -2382,7 +2420,7 @@ The spreadsheet an employee converts, and the import file made from it, are pers
       "created": "2026-11-08T10:00:00Z",
       "last_login": "2026-11-08T10:05:00Z",
       "revision": 17,
-      "settings": { "start": "2025-01-01", "counters": { "CP": { "enabled": true, "amount": null, "initial": "1.5" }, "TPC": { "enabled": true, "amount": "7/12", "initial": "0" }, "RTT": { "enabled": false, "amount": null, "initial": "0" } }, "colors": { "TT": "#c8e0b0" } },
+      "settings": { "start": "2025-01-01", "public_holidays": null, "counters": { "CP": { "enabled": true, "amount": null, "initial": "1.5" }, "TPC": { "enabled": true, "amount": "7/12", "initial": "0" }, "RTT": { "enabled": false, "amount": null, "initial": "0" } }, "colors": { "TT": "#c8e0b0" } },
       "days": { "2026-11-03": { "am": "TT", "pm": "TT", "comment": "Formation sécurité" }, "2026-11-04": { "am": "TT", "pm": null, "comment": null } },
       "adjustments": [ { "id": "9f2c…", "date": "2026-11-30", "counter": "CP", "amount": "1.5", "reason": "alignement bulletin de paie" } ],
       "months": { "2026-10": { "status": "validated", "validated_at": "…", "rules": { "ABS": "0", "CP": "2.08", "CSS": "0", "JF": "0", "TP": "0", "TPC": "7/12", "TT": "0", "WE": "0" }, "indicators": { "holidays": "0", "total": "22", "working_days": "22", "missing": "0", "upcoming": "0", "by_counter": { "CP": "4", "TP": "4", "TT": "14", "WE": "9" }, "by_code": { "CP": "4", "TP": "4", "TT": "14", "WE": "9" } }, "history": [ { "at": "…", "action": "validated", "reason": null } ] } },
@@ -2415,7 +2453,9 @@ The configuration of the example is shortened to one code and one counter; `rule
 | `reason` of a month event | the event is a validation |
 | `validated_at`, `rules`, `indicators`, `history` of a month | the month was never validated |
 | `colors` of the settings | the account never changed a colour |
+| `public_holidays` of the settings | the account follows the default zone of the configuration |
 
+- `public_holidays` of the configuration is the identifier of a [zone](#public-holidays); an older database without it follows `fr-metropole` ([Migration notes](#migration-notes)).
 - `state` is mandatory: `enabled` for an active account, `disabled` for a disabled one.
 - `profile` is `USER` or `ADMIN`.
 - `status` of a month is `open` or `validated`; the `action` of a month event is `validated` or `reopened`.
@@ -2426,7 +2466,7 @@ The configuration of the example is shortened to one code and one counter; `rule
 - `version` is the version of the schema. Version 1 is the current one.
 - A database of a newer version is refused (`the database was written by a newer version`): an older binary cannot read it.
 - Any other version is refused as malformed.
-- The layout of version 1 changed once without a change of version: see [Migration notes](#migration-notes).
+- The layout of version 1 changed without a change of version: see [Migration notes](#migration-notes).
 
 ### Revisions
 
@@ -2447,7 +2487,7 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 | File | strict decoding: unknown fields and data after the object refused; the standard decoder matches field names without regard to case and keeps the last of repeated keys; `version` as in [Schema version](#schema-version); `database.max_bytes` at most (64 MiB by default) |
 | Configuration | the rules of [Validation before writing](#validation-before-writing) |
 | Accounts | logins valid and unique; profiles, states, names (one line, 60 characters at most, no surrounding space); password hashes with 1 000 to 1 200 000 iterations |
-| Settings | tracking start; counters that exist; own amounts and initial balances within their bounds; colours `#rrggbb` of codes that exist |
+| Settings | tracking start; a known zone of public holidays or `null`; counters that exist; own amounts and initial balances within their bounds; colours `#rrggbb` of codes that exist |
 | Days | known codes; comments following the [free-text rule](#free-text-rule) |
 | Adjustments | an existing counter; unique non-empty identifiers; a date; a non-zero amount between -366 and 366; a non-empty reason following the free-text rule |
 | Ledger | an existing counter; a valid kind; unique non-empty identifiers; a date within the month of the entry; a label following the free-text rule, 1000 characters at most |
@@ -2766,6 +2806,14 @@ The path of the database moved from the default of `--database` into the key `da
 - From the sources: a command run without `--database` now opens `/var/lib/timesheet/timesheet-database.json` instead of `var/lib/timesheet/timesheet-database.json` under the current directory, and fails with `store: the database does not exist, run init first` or with a permission error naming that path. Give `--database=var/lib/timesheet/timesheet-database.json`, or start the server with `bin/timesheet.sh`, which passes it.
 - The installation script of the package reads the path with `timesheet config show database.path --config=/etc/timesheet/timesheet.json`. When the file cannot be read, it warns and creates no database; fix the file, then run `dpkg-reconfigure timesheet`.
 
+### Zones of public holidays
+
+The zones of public holidays added the key `public_holidays` to the configuration, to the settings of each account and to the import format, without raising the schema `version`, which is still 1.
+
+- Nothing to do: a database without `configuration.public_holidays` follows the zone `fr-metropole`, the former calendar, and an account without `settings.public_holidays` follows the default zone. The keys are written at the next change.
+- An older binary refuses a database written since, with `json: unknown field "public_holidays"`: restore the backup taken before the upgrade, or delete the keys by hand.
+- An import file with `public_holidays` is refused by an older binary for the same reason.
+
 ### Rule for future changes
 
 A change of the layout of the database raises its `version` and makes the program read or convert the former version, or adds a note to this section with its symptom and its procedure. The same applies to the server configuration and to the import format.
@@ -2934,7 +2982,7 @@ The column « Setting » names the key of the [server configuration](#server-con
 - CSV or PDF export.
 - The holidays and the leave rules of another country than France.
 - An interface in another language.
-- The holidays of Alsace-Moselle and of the overseas territories.
+- The local holidays of the territories of the Pacific, outside the public dataset ([Public holidays](#public-holidays)).
 - A recurring part-time pattern, or any pre-filling: part-time days are entered by hand.
 - Contract modelling: full-time base, rate, days per year.
 - Tracking worked days against a contract.
@@ -2957,8 +3005,8 @@ These are choices of the application. Each one gives the way to reach the expect
 - There are no extra splitting days (jours de fractionnement).
 - The number of `RTT` days comes from a company agreement; the template's 8/12 a month (8 days a year) is an example, to adapt in the [configuration page](#configuration-page) or with an own amount.
 - `TPC` and the arrangement of the [worked example](#worked-example) are the arrangement of one employer, not a legal scheme.
-- Every legal holiday is treated as not worked: leave cannot be entered on a holiday that the employer makes worked, such as Whit Monday as the solidarity day. Enter the day with a code that is not consuming, for instance `JF`, and the leave taken as a negative adjustment of its counter.
-- The eleven national holidays are built in; the extra holidays of Alsace-Moselle and of the overseas territories are not.
+- Every public holiday is treated as not worked: leave cannot be entered on a holiday that the employer makes worked, such as Whit Monday as the solidarity day. Enter the day with a code that is not consuming, for instance `JF`, and the leave taken as a negative adjustment of its counter.
+- The holidays of the thirteen zones of the public dataset are built in; another calendar, such as the local holidays of a territory of the Pacific, is not: enter such a day with a code that is not consuming, for instance `JF`.
 - Leave is debited only on the half-days entered with a consuming code. When the employer counts the usual day off of a part-time employee within a week of leave, the employee enters the consuming code on that day too.
 - Gaps with the payslip are entered as adjustments.
 

@@ -234,7 +234,7 @@ func (v *MonthView) month(ws *Workspace, page string, m activity.Month, submitte
 }
 
 func (v *MonthView) day(ws *Workspace, d activity.Date, stored activity.DayEntry, entry activity.DayEntry, problems []string) dayRecord {
-    holidays := ws.Book.Holidays()
+    holidays := ws.Book.PublicHolidays()
     record := dayRecord{Date: d.String(), Label: d.Label(), Problems: problems}
     states := []string{}
     record.Kind = "Semaine"

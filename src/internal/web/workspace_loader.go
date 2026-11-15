@@ -33,15 +33,14 @@ import (
 type WorkspaceLoader struct {
     repository Repository
     today      *Today
-    holidays   *activity.HolidayCalendar
 }
 
 // ---------------------------------------------------------------------------
 // WorkspaceLoader implementation
 // ---------------------------------------------------------------------------
 
-func NewWorkspaceLoader(repository Repository, today *Today, holidays *activity.HolidayCalendar) *WorkspaceLoader {
-    return &WorkspaceLoader{repository: repository, today: today, holidays: holidays}
+func NewWorkspaceLoader(repository Repository, today *Today) *WorkspaceLoader {
+    return &WorkspaceLoader{repository: repository, today: today}
 }
 
 func (l *WorkspaceLoader) Own(r *http.Request) (*Workspace, bool) {
@@ -67,7 +66,7 @@ func (l *WorkspaceLoader) load(viewer *Viewer, login account.Login, base string,
         return nil, false
     }
     config := l.repository.Configuration()
-    return &Workspace{Viewer: viewer, Owner: owner, Calendar: calendar, Config: config, Book: activity.NewBookkeeper(config, calendar, l.holidays), Today: l.today.Date(), Location: l.today.Location(), Base: base, ReadOnly: readOnly}, true
+    return &Workspace{Viewer: viewer, Owner: owner, Calendar: calendar, Config: config, Book: activity.NewBookkeeper(config, calendar), Today: l.today.Date(), Location: l.today.Location(), Base: base, ReadOnly: readOnly}, true
 }
 
 func (l *WorkspaceLoader) Month(r *http.Request) (activity.Month, bool) {

@@ -74,8 +74,9 @@ func NewImportFile(data []byte) (ImportFile, error) {
 
 func NewImportFileOf(calendar Calendar, config Configuration) ImportFile {
     start := calendar.Settings.Start
-    settings := &ImportSettings{Start: &start, Counters: map[string]ImportCounter{}}
-    book := NewBookkeeper(config, calendar, NewHolidayCalendar())
+    book := NewBookkeeper(config, calendar)
+    zone := book.PublicHolidayZone()
+    settings := &ImportSettings{Start: &start, PublicHolidays: &zone, Counters: map[string]ImportCounter{}}
     for _, rule := range config.Counters {
         if rule.Archived {
             continue

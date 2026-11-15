@@ -1,5 +1,5 @@
 /*
- * holiday_calendar.go - Copyright (c) 2023-2026 - Olivier Poncet
+ * public_holiday_calendar.go - Copyright (c) 2023-2026 - Olivier Poncet
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,20 +20,26 @@ package activity
 import "time"
 
 // ---------------------------------------------------------------------------
-// HolidayCalendar declaration
+// PublicHolidayCalendar declaration
 // ---------------------------------------------------------------------------
 
-type HolidayCalendar struct{}
-
-// ---------------------------------------------------------------------------
-// HolidayCalendar implementation
-// ---------------------------------------------------------------------------
-
-func NewHolidayCalendar() *HolidayCalendar {
-    return &HolidayCalendar{}
+type PublicHolidayCalendar struct {
+    zone PublicHolidayZone
 }
 
-func (h *HolidayCalendar) Easter(year int) Date {
+// ---------------------------------------------------------------------------
+// PublicHolidayCalendar implementation
+// ---------------------------------------------------------------------------
+
+func NewPublicHolidayCalendar(zone PublicHolidayZone) *PublicHolidayCalendar {
+    return &PublicHolidayCalendar{zone: zone}
+}
+
+func (h *PublicHolidayCalendar) Zone() PublicHolidayZone {
+    return h.zone
+}
+
+func (h *PublicHolidayCalendar) Easter(year int) Date {
     a := year % 19
     b := year / 100
     c := year % 100
@@ -51,7 +57,14 @@ func (h *HolidayCalendar) Easter(year int) Date {
     return NewDate(year, time.Month(month), day)
 }
 
-func (h *HolidayCalendar) Name(d Date) (string, bool) {
+func (h *PublicHolidayCalendar) Name(d Date) (string, bool) {
+    if name, holiday := h.national(d); holiday {
+        return name, true
+    }
+    return h.local(d)
+}
+
+func (h *PublicHolidayCalendar) national(d Date) (string, bool) {
     easter := h.Easter(d.Year())
     switch {
         case (d.Month().Number() == 1) && (d.Day() == 1):
@@ -80,14 +93,53 @@ func (h *HolidayCalendar) Name(d Date) (string, bool) {
     return "", false
 }
 
-func (h *HolidayCalendar) IsHoliday(d Date) bool {
+func (h *PublicHolidayCalendar) local(d Date) (string, bool) {
+    if h.zone == ZoneAlsaceMoselle {
+        switch {
+            case d == h.Easter(d.Year()).AddDays(-2):
+                return "Vendredi saint", true
+            case (d.Month().Number() == 12) && (d.Day() == 26):
+                return "Saint-Étienne", true
+        }
+        return "", false
+    }
+    if abolition, found := h.abolitionOfSlavery(d.Year()); found && (d == abolition) {
+        return "Abolition de l'esclavage", true
+    }
+    return "", false
+}
+
+func (h *PublicHolidayCalendar) abolitionOfSlavery(year int) (Date, bool) {
+    switch h.zone {
+        case ZoneMayotte:
+            return NewDate(year, time.April, 27), true
+        case ZoneMartinique:
+            return NewDate(year, time.May, 22), true
+        case ZoneGuadeloupe:
+            return NewDate(year, time.May, 27), true
+        case ZoneSaintMartin:
+            if year < 2018 {
+                return NewDate(year, time.May, 27), true
+            }
+            return NewDate(year, time.May, 28), true
+        case ZoneGuyane:
+            return NewDate(year, time.June, 10), true
+        case ZoneSaintBarthelemy:
+            return NewDate(year, time.October, 9), true
+        case ZoneLaReunion:
+            return NewDate(year, time.December, 20), true
+    }
+    return Date{}, false
+}
+
+func (h *PublicHolidayCalendar) IsPublicHoliday(d Date) bool {
     _, holiday := h.Name(d)
     return holiday
 }
 
-func (h *HolidayCalendar) Kind(d Date) DayKind {
+func (h *PublicHolidayCalendar) Kind(d Date) DayKind {
     switch {
-        case h.IsHoliday(d):
+        case h.IsPublicHoliday(d):
             return HolidayDay
         case d.IsWeekend():
             return WeekendDay
@@ -95,7 +147,7 @@ func (h *HolidayCalendar) Kind(d Date) DayKind {
     return WorkingDay
 }
 
-func (h *HolidayCalendar) IsWorkingDay(d Date) bool {
+func (h *PublicHolidayCalendar) IsWorkingDay(d Date) bool {
     return h.Kind(d) == WorkingDay
 }
 

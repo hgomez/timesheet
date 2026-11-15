@@ -21,7 +21,6 @@ import (
     "net/http"
 
     "timesheet/internal/account"
-    "timesheet/internal/activity"
 )
 
 // ---------------------------------------------------------------------------
@@ -56,7 +55,7 @@ func NewSite(deps SiteDependencies) (*Site, error) {
     }
     errors := NewErrorPages(renderer)
     guard := NewAuthGuard(sessions, deps.Repository, errors)
-    loader := NewWorkspaceLoader(deps.Repository, today, activity.NewHolidayCalendar())
+    loader := NewWorkspaceLoader(deps.Repository, today)
     address := NewClientAddress(deps.TrustedProxies, deps.LocalPrefixes)
     throttle := NewLoginThrottle(deps.Clock, deps.Server.Login)
     login, err := NewLoginController(guard, sessions, deps.Repository, throttle, address, renderer, errors, deps.Clock, deps.Random, deps.Iterations, deps.Server.Login.FormLifetime.Std(), deps.Logger)

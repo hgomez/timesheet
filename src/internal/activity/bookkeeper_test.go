@@ -28,7 +28,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestPartTimeComplementAccruesSevenTwelfthsAndResets(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     calendar := authorCalendar(t, "2025-01")
     for m := month(t, "2025-01"); m.Year() == 2025; m = m.Next() {
         fillMonth(t, &calendar, m, holidays)
@@ -37,7 +37,7 @@ func TestPartTimeComplementAccruesSevenTwelfthsAndResets(t *testing.T) {
         calendar.Days[day(t, text)] = DayEntry{AM: "TPC", PM: "TPC", Comment: "conférence"}
     }
     calendar.Days[day(t, "2025-07-10")] = DayEntry{AM: "TPC", PM: "TT"}
-    book := NewBookkeeper(authorConfiguration(), calendar, holidays)
+    book := NewBookkeeper(authorConfiguration(), calendar)
     journal := book.Journal(month(t, "2026-01"))
     expectQuantity(t, "TP credited in 2025", journal.Sum("TPC", month(t, "2025-03"), KindCredit), "7/12")
     expectQuantity(t, "TP at 2025-12-31", journal.Balance("TPC", day(t, "2025-12-31")), "0.5")
@@ -49,7 +49,7 @@ func TestPartTimeComplementAccruesSevenTwelfthsAndResets(t *testing.T) {
 }
 
 func TestPaidLeaveIsCarriedOverAndRoundedUp(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     calendar := authorCalendar(t, "2025-01")
     calendar.Settings.Counters["CP"] = CounterSettings{Initial: q(t, "15")}
     calendar.Days[day(t, "2025-03-04")] = DayEntry{AM: "CP", PM: "CP"}
@@ -60,7 +60,7 @@ func TestPaidLeaveIsCarriedOverAndRoundedUp(t *testing.T) {
             calendar.Days[d] = DayEntry{AM: "CP", PM: "CP"}
         }
     }
-    journal := NewBookkeeper(authorConfiguration(), calendar, holidays).Journal(month(t, "2025-12"))
+    journal := NewBookkeeper(authorConfiguration(), calendar).Journal(month(t, "2025-12"))
     expectQuantity(t, "January credits only the monthly accrual", journal.Sum("CP", month(t, "2025-01"), KindCredit), "2.08")
     expectQuantity(t, "initial balances are adjustments", journal.Sum("CP", month(t, "2025-01"), KindAdjustment), "15")
     expectQuantity(t, "balance on 31 May, rounded up", journal.Balance("CP", day(t, "2025-05-31")), "23")
@@ -74,7 +74,7 @@ func TestPaidLeaveIsCarriedOverAndRoundedUp(t *testing.T) {
 func TestAdjustmentOfTheLastDayFollowsTheRounding(t *testing.T) {
     calendar := authorCalendar(t, "2025-01")
     calendar.Adjustments = append(calendar.Adjustments, Adjustment{ID: "a1", Date: day(t, "2025-05-31"), Counter: "CP", Amount: q(t, "-0.28"), Reason: "bulletin"})
-    journal := NewBookkeeper(authorConfiguration(), calendar, NewHolidayCalendar()).Journal(month(t, "2025-06"))
+    journal := NewBookkeeper(authorConfiguration(), calendar).Journal(month(t, "2025-06"))
     expectQuantity(t, "balance on 31 May, rounded up then adjusted", journal.Balance("CP", day(t, "2025-05-31")), "10.72")
     expectQuantity(t, "balance on 1 June", journal.Balance("CP", day(t, "2025-06-01")), "10.72")
 }
@@ -83,13 +83,13 @@ func TestDisabledCounterIsNotRounded(t *testing.T) {
     calendar := authorCalendar(t, "2025-01")
     disabled := false
     calendar.Settings.Counters["CP"] = CounterSettings{Enabled: &disabled, Initial: q(t, "3.5")}
-    journal := NewBookkeeper(authorConfiguration(), calendar, NewHolidayCalendar()).Journal(month(t, "2025-06"))
+    journal := NewBookkeeper(authorConfiguration(), calendar).Journal(month(t, "2025-06"))
     expectQuantity(t, "no rounding of a disabled counter", journal.Balance("CP", day(t, "2025-06-01")), "3.5")
 }
 
 func TestForecastStaysWithinTheLastYear(t *testing.T) {
     calendar := NewCalendar(month(t, "2099-06").First())
-    book := NewBookkeeper(authorConfiguration(), calendar, NewHolidayCalendar())
+    book := NewBookkeeper(authorConfiguration(), calendar)
     today := day(t, "2099-07-01")
     cp, _ := authorConfiguration().Counter("CP")
     if position := NewPosition(book.Journal(book.Horizon(today)), cp, today); position.ForecastDate != day(t, "2099-12-31") {
@@ -101,20 +101,20 @@ func TestHalfDayDebitsHalfADay(t *testing.T) {
     calendar := authorCalendar(t, "2025-01")
     calendar.Settings.Counters["CP"] = CounterSettings{Initial: q(t, "0.25")}
     calendar.Days[day(t, "2025-01-07")] = DayEntry{AM: "CP", PM: "TT"}
-    journal := NewBookkeeper(authorConfiguration(), calendar, NewHolidayCalendar()).Journal(month(t, "2025-01"))
+    journal := NewBookkeeper(authorConfiguration(), calendar).Journal(month(t, "2025-01"))
     expectQuantity(t, "debit of a half-day", journal.Sum("CP", month(t, "2025-01"), KindDebit), "-0.5")
     expectQuantity(t, "balance", journal.Balance("CP", day(t, "2025-01-07")), "-0.25")
 }
 
 func TestIndicatorsMatchTheWorkbookDefinitions(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     calendar := authorCalendar(t, "2025-01")
     fillMonth(t, &calendar, month(t, "2025-05"), holidays)
     calendar.Days[day(t, "2025-05-06")] = DayEntry{AM: "CP", PM: "CP"}
     calendar.Days[day(t, "2025-05-07")] = DayEntry{AM: "ABS", PM: "ABS", Comment: "ARRÊT MALADIE"}
     calendar.Days[day(t, "2025-05-10")] = DayEntry{AM: "TT", PM: "TT"}
     delete(calendar.Days, day(t, "2025-05-13"))
-    book := NewBookkeeper(authorConfiguration(), calendar, holidays)
+    book := NewBookkeeper(authorConfiguration(), calendar)
     got := book.Indicators(month(t, "2025-05"), day(t, "2025-11-08"))
     expectQuantity(t, "total", got.Total, "22")
     expectQuantity(t, "holidays", got.Holidays, "3")
@@ -132,11 +132,11 @@ func TestIndicatorsMatchTheWorkbookDefinitions(t *testing.T) {
 }
 
 func TestCountedPartTimeCodeIsTakenFromItsCounter(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     calendar := authorCalendar(t, "2025-01")
     fillMonth(t, &calendar, month(t, "2025-05"), holidays)
     calendar.Days[day(t, "2025-05-06")] = DayEntry{AM: "TPC", PM: "TPC"}
-    book := NewBookkeeper(authorConfiguration(), calendar, holidays)
+    book := NewBookkeeper(authorConfiguration(), calendar)
     got := book.Indicators(month(t, "2025-05"), day(t, "2025-11-08"))
     expectQuantity(t, "taken from TPC", got.ByCounter["TPC"], "1")
     expectQuantity(t, "part time keeps the weekly days only", got.ByCounter["TP"], "4")
@@ -150,14 +150,14 @@ func TestCountedPartTimeCodeIsTakenFromItsCounter(t *testing.T) {
 }
 
 func TestFedCounterReceivesHalfADayPerHalfDay(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     calendar := authorCalendar(t, "2025-01")
     fillMonth(t, &calendar, month(t, "2025-05"), holidays)
     fillMonth(t, &calendar, month(t, "2025-12"), holidays)
     calendar.Days[day(t, "2025-05-10")] = DayEntry{AM: "TT", PM: "TT", Comment: "salon"}
     calendar.Days[day(t, "2025-05-07")] = DayEntry{AM: "ABS", PM: "TT", Comment: "rendez-vous"}
     calendar.Days[day(t, "2025-05-11")] = DayEntry{AM: "WE", PM: "WE"}
-    book := NewBookkeeper(authorConfiguration(), calendar, holidays)
+    book := NewBookkeeper(authorConfiguration(), calendar)
     journal := book.Journal(month(t, "2026-01"))
     worked := book.Indicators(month(t, "2025-05"), day(t, "2025-11-08")).ByCounter["TT"]
     expectQuantity(t, "TT credited with the worked half-days of May, the Saturday included", journal.Sum("TT", month(t, "2025-05"), KindCredit), worked.String())
@@ -173,25 +173,25 @@ func TestFedCounterReceivesHalfADayPerHalfDay(t *testing.T) {
     }
     disabled := false
     calendar.Settings.Counters["TT"] = CounterSettings{Enabled: &disabled}
-    if !NewBookkeeper(authorConfiguration(), calendar, holidays).Journal(month(t, "2025-05")).Sum("TT", month(t, "2025-05"), KindCredit).IsZero() {
+    if !NewBookkeeper(authorConfiguration(), calendar).Journal(month(t, "2025-05")).Sum("TT", month(t, "2025-05"), KindCredit).IsZero() {
         t.Fatal("a disabled counter must receive nothing")
     }
 }
 
 func TestHolidaysFollowTheCalendar(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     calendar := authorCalendar(t, "2025-01")
     fillMonth(t, &calendar, month(t, "2025-05"), holidays)
     calendar.Days[day(t, "2025-05-02")] = DayEntry{AM: "JF", PM: "JF", Comment: "pont"}
-    book := NewBookkeeper(authorConfiguration(), calendar, holidays)
+    book := NewBookkeeper(authorConfiguration(), calendar)
     got := book.Indicators(month(t, "2025-05"), day(t, "2025-11-08"))
     expectQuantity(t, "legal holidays from the calendar, the bridge day excepted", got.Holidays, "3")
     expectQuantity(t, "the bridge day stays a working day", got.WorkingDays, "19")
     expectQuantity(t, "JF counted on its counter", got.ByCounter["JF"], "4")
     calendar.Days[day(t, "2025-05-01")] = DayEntry{AM: "TT", PM: "TT"}
-    worked := NewBookkeeper(authorConfiguration(), calendar, holidays).Indicators(month(t, "2025-05"), day(t, "2025-11-08"))
+    worked := NewBookkeeper(authorConfiguration(), calendar).Indicators(month(t, "2025-05"), day(t, "2025-11-08"))
     expectQuantity(t, "a legal holiday worked still leaves the working days", worked.WorkingDays, "19")
-    expectQuantity(t, "JF credited, two legal holidays and the bridge day once 1 May is worked", NewBookkeeper(authorConfiguration(), calendar, holidays).Journal(month(t, "2025-05")).Sum("JF", month(t, "2025-05"), KindCredit), "3")
+    expectQuantity(t, "JF credited, two legal holidays and the bridge day once 1 May is worked", NewBookkeeper(authorConfiguration(), calendar).Journal(month(t, "2025-05")).Sum("JF", month(t, "2025-05"), KindCredit), "3")
     if problems := book.CheckEntry(day(t, "2025-05-03"), DayEntry{}, DayEntry{AM: "JF"}); len(problems) != 0 {
         t.Fatalf("JF on a Saturday: %v", problems)
     }
@@ -202,7 +202,7 @@ func TestHolidaysFollowTheCalendar(t *testing.T) {
 
 func TestLeaveIsRefusedOnWeekendsAndHolidays(t *testing.T) {
     calendar := authorCalendar(t, "2025-01")
-    book := NewBookkeeper(authorConfiguration(), calendar, NewHolidayCalendar())
+    book := NewBookkeeper(authorConfiguration(), calendar)
     if problems := book.CheckEntry(day(t, "2026-11-11"), DayEntry{}, DayEntry{AM: "CP"}); len(problems) != 1 {
         t.Fatalf("leave on a holiday: %v", problems)
     }
@@ -221,6 +221,38 @@ func TestLeaveIsRefusedOnWeekendsAndHolidays(t *testing.T) {
     }
 }
 
+func TestPublicHolidaysFollowTheZoneOfTheAccount(t *testing.T) {
+    goodFriday := day(t, "2026-04-03")
+    metropole, alsace := ZoneMetropole, ZoneAlsaceMoselle
+    config := authorConfiguration()
+    calendar := authorCalendar(t, "2025-01")
+    cases := []struct {
+        name     string
+        config   PublicHolidayZone
+        own      *PublicHolidayZone
+        zone     PublicHolidayZone
+        refused  int
+        holidays string
+    }{
+        {"default of an older database", "", nil, ZoneMetropole, 0, "1"},
+        {"default of the configuration", ZoneAlsaceMoselle, nil, ZoneAlsaceMoselle, 1, "2"},
+        {"own zone of the account", ZoneAlsaceMoselle, &metropole, ZoneMetropole, 0, "1"},
+        {"own zone over the metropole", ZoneMetropole, &alsace, ZoneAlsaceMoselle, 1, "2"},
+    }
+    for _, c := range cases {
+        config.PublicHolidays = c.config
+        calendar.Settings.PublicHolidays = c.own
+        book := NewBookkeeper(config, calendar)
+        if book.PublicHolidayZone() != c.zone {
+            t.Errorf("%s: zone %s, want %s", c.name, book.PublicHolidayZone(), c.zone)
+        }
+        if problems := book.CheckEntry(goodFriday, DayEntry{}, DayEntry{AM: "CP"}); len(problems) != c.refused {
+            t.Errorf("%s: leave on Good Friday: %v", c.name, problems)
+        }
+        expectQuantity(t, c.name, book.Indicators(month(t, "2026-04"), day(t, "2026-05-01")).Holidays, c.holidays)
+    }
+}
+
 func TestYearlyCreditAndPositions(t *testing.T) {
     calendar := NewCalendar(month(t, "2026-01").First())
     config := authorConfiguration()
@@ -229,7 +261,7 @@ func TestYearlyCreditAndPositions(t *testing.T) {
             config.Counters[i].Accrual = Accrual{Every: EveryYear, Amount: NewQuantity(10, 1)}
         }
     }
-    book := NewBookkeeper(config, calendar, NewHolidayCalendar())
+    book := NewBookkeeper(config, calendar)
     today := day(t, "2026-11-08")
     journal := book.Journal(book.Horizon(today))
     rtt, _ := config.Counter("RTT")

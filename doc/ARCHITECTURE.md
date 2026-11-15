@@ -26,7 +26,7 @@ Purpose and French specifics:
 
 - Timesheet tracks the activity and the leave counters of employees working in France.
 - The domain package `internal/activity` carries the French specifics:
-  - the legal holidays of metropolitan France;
+  - the public holidays of the thirteen French zones, metropolitan France, Alsace-Moselle and the overseas territories;
   - the rules of paid leave, RTT (récupération temps de travail) and part-time counters;
   - the French labels.
 
@@ -138,7 +138,7 @@ The column Kind says what the entity is:
 | `NullableText` | value | Text written `null` when empty |
 | `NullableTime` | value | Time written `null` when zero |
 | `HalfDay` | value | Morning or afternoon |
-| `DayKind` | value | Working day, weekend or holiday |
+| `DayKind` | value | Working day, weekend or public holiday |
 | `DayType` | value | Display type of a half-day: entered code, missing, empty, out of the tracking |
 | `Color` | value | `#rrggbb` colour with its relative luminance and its readable ink, black or white |
 | `ColorSet` | value | The colours a user gives to codes, over the colour of each code |
@@ -162,14 +162,15 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | `AccrualPeriod` | value | Accrual period of a counter: month or year |
 | `Accrual` | record | Amount credited per month or per year |
 | `CounterRule` | record | Counter rule: accrual, period start, carry over (with rounding up) or zeroing of its single balance |
-| `Configuration` | record | Configuration section of the database (codes, counters, revision), with `Validate` (which returns the path of the faulty field) and lookups. `NewDefaultConfiguration` mirrors `share/timesheet/database-template.json` |
+| `Configuration` | record | Configuration section of the database (default zone of public holidays, codes, counters, revision), with `Validate` (which returns the path of the faulty field) and lookups. `NewDefaultConfiguration` mirrors `share/timesheet/database-template.json` |
 | `ServerConfiguration` | record | The whole server configuration file: its sections `ServerSettings`, `DatabaseSettings`, `SessionSettings`, `LoginSettings`, `PasswordSettings` and `LimitSettings`, their defaults (`NewDefaultServerConfiguration`, whose encoding is `etc/timesheet/timesheet.json`), the bounds checked by `Validate`, including the links between keys, and the access by key `section.key` (`Keys`, `Value`, `Set`) used by `config show` and `config set` |
 | `ServerSettings` | record | Section `server`: address, origins, trusted proxies, time zone, log level, TLS pair (`NullableText`, written `null` without a pair) and version, HSTS, timeouts and request sizes, with `Validate`, `Location` and `Level` |
 | `DatabaseSettings`, `SessionSettings`, `LoginSettings`, `PasswordSettings`, `LimitSettings` | record | Sections `database`, `sessions`, `login`, `passwords` and `limits`, each with its defaults and `Validate` |
 | `Duration` | value | Duration of the server configuration: read like `time.ParseDuration`, a whole number of milliseconds, written in its shortest form (`8h`, `1m`), shown in French (`8 h`, `1 min`) |
 | `SettingCheck` | service | Bound checks of the server configuration, with the path `section.key` in the error |
 | `TrustedProxies` | value | Addresses and prefixes of the proxies whose `X-Forwarded-For` header is believed, built from the list `server.trusted_proxies` |
-| `HolidayCalendar` | service | Easter (Meeus/Butcher algorithm), the eleven legal holidays of metropolitan France, and the kind of a day |
+| `PublicHolidayZone` | value | Zone of public holidays (`fr-metropole`, `fr-alsace-moselle`…), with its French label; `PublicHolidayZones` lists the thirteen zones in display order |
+| `PublicHolidayCalendar` | service | Public holidays of one zone: Easter (Meeus/Butcher algorithm), the eleven national holidays and those of the zone, and the kind of a day |
 
 #### Records of a user
 
@@ -177,7 +178,7 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | --- | --- | --- |
 | `DayEntry` | record | Codes of the two half-days of a day and its comment |
 | `CounterSettings` | record | Settings of one counter for one user |
-| `UserSettings` | record | Tracking start, counter settings, colours |
+| `UserSettings` | record | Tracking start, own zone of public holidays (`nil`: the default zone), counter settings, colours |
 | `Adjustment` | record | Adjustment of a counter |
 | `EntryKind` | value | Kind of a ledger entry |
 | `LedgerEntry` | record | Frozen entry of the ledger |
@@ -191,7 +192,7 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 
 | Entity | Kind | Role |
 | --- | --- | --- |
-| `Bookkeeper` | service | Rule engine of a user (methods below) |
+| `Bookkeeper` | service | Rule engine of a user (methods below); it builds the `PublicHolidayCalendar` of the zone of the user |
 | `JournalLine` | record | A ledger entry marked provisional or reversed |
 | `Journal` | value | Lines indexed by counter; sums and balances by counter, date, month and kind |
 | `MonthClosing` | service | Validation conditions and freezing of a month; reopening of the last validated month by reversal entries |
@@ -207,6 +208,7 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | Method of `Bookkeeper` | Role |
 | --- | --- |
 | `Enabled`, `Amount` | Effective enabled flag and effective amount of a counter for the user |
+| `PublicHolidayZone`, `PublicHolidays` | Effective zone of public holidays of the user (own zone, else the default zone of the configuration) and its calendar |
 | `Horizon` | Computation limit of the journal; it is not the planning horizon |
 | `Journal(through)` | The frozen ledger, then provisional entries month by month, in this order: initial balances, zeroings, debits, yearly credits, credits of feeding codes, monthly credits, roundings, adjustments |
 | `DayType` | Display type of a half-day |
@@ -228,7 +230,7 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | Entity | Kind | Role |
 | --- | --- | --- |
 | `ImportFile` | record | The JSON import file: strict decoding within `MaxImportSize` (`NewImportFile`), the export of a calendar (`NewImportFileOf`), its indented encoding (`Encode`) |
-| `ImportSettings` | record | Settings of the import file |
+| `ImportSettings` | record | Settings of the import file: tracking start, zone of public holidays, counters |
 | `ImportCounter` | record | Settings of one counter in the import file |
 | `ImportAdjustment` | record | Adjustment in the import file |
 | `Importer` | service | Applies an import file to a calendar, with its `ImportOptions` (replace, validate, period) |

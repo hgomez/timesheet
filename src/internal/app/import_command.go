@@ -88,7 +88,7 @@ func (c *ImportCommand) Run(out io.Writer) error {
     for range web.PlanningMonths {
         horizon = horizon.Next()
     }
-    importer := activity.NewImporter(database.Configuration(), activity.NewHolidayCalendar(), c.clock, activity.NewIdentifierGenerator(c.random), location)
+    importer := activity.NewImporter(database.Configuration(), c.clock, activity.NewIdentifierGenerator(c.random), location)
     report, err := importer.Run(calendar, imported, options, today, horizon)
     if err != nil {
         return err

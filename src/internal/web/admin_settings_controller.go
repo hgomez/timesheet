@@ -40,12 +40,13 @@ type AdminSettingsController struct {
 }
 
 type configurationRecord struct {
-    Revision   int64
-    Activities []activityCodeRecord
-    Counters   []counterRuleRecord
-    Effects    []OptionRecord
-    Counter    []OptionRecord
-    Every      []OptionRecord
+    Revision       int64
+    PublicHolidays []OptionRecord
+    Activities     []activityCodeRecord
+    Counters       []counterRuleRecord
+    Effects        []OptionRecord
+    Counter        []OptionRecord
+    Every          []OptionRecord
 }
 
 type activityCodeRecord struct {
@@ -91,6 +92,9 @@ func (c *AdminSettingsController) Show(w http.ResponseWriter, r *http.Request) {
 func (c *AdminSettingsController) render(w http.ResponseWriter, r *http.Request, status int, alert string) {
     config := c.repository.Configuration()
     record := configurationRecord{Revision: config.Revision}
+    for _, zone := range activity.PublicHolidayZones() {
+        record.PublicHolidays = append(record.PublicHolidays, OptionRecord{Value: string(zone), Label: zone.Label(), Selected: zone == config.PublicHolidayZone()})
+    }
     record.Effects = c.effects(true)
     record.Counter = c.counters(config, "")
     record.Every = c.every("")
@@ -128,6 +132,8 @@ func (c *AdminSettingsController) Submit(w http.ResponseWriter, r *http.Request)
     config := c.repository.Configuration().Clone()
     alert := ""
     switch r.PostFormValue("action") {
+        case "public-holidays-update":
+            alert = c.savePublicHolidays(&config, r)
         case "activity-add", "activity-update":
             alert = c.saveActivity(&config, r)
         case "activity-delete":
@@ -191,6 +197,15 @@ func (c *AdminSettingsController) refusal(err error) string {
             return "couleur invalide (#rrggbb)."
     }
     return "valeur invalide."
+}
+
+func (c *AdminSettingsController) savePublicHolidays(config *activity.Configuration, r *http.Request) string {
+    zone := activity.PublicHolidayZone(r.PostFormValue("public_holidays"))
+    if !zone.Valid() {
+        return "Calendrier des jours fériés inconnu."
+    }
+    config.PublicHolidays = zone
+    return ""
 }
 
 func (c *AdminSettingsController) saveActivity(config *activity.Configuration, r *http.Request) string {

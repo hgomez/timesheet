@@ -25,7 +25,7 @@ This README is the entry point: what the application does, how to try it from th
 ### Features
 
 - Designed for the French labour market:
-  - the eleven national legal holidays of metropolitan France (the two extra holidays of Alsace-Moselle are not included);
+  - the public holidays of metropolitan France, of Alsace-Moselle and of the overseas territories, with a default zone for the database and an optional zone per user;
   - paid leave (congés payés), accrued at 2.08 days a month over a June-to-May period and rounded up at its end;
   - RTT days, the weekly day off and the complementary days of a part-time contract;
   - a web interface in French.

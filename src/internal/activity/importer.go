@@ -31,7 +31,6 @@ import (
 
 type Importer struct {
     config      Configuration
-    holidays    *HolidayCalendar
     clock       Clock
     identifiers *IdentifierGenerator
     location    *time.Location
@@ -52,8 +51,8 @@ var ErrMonthNotImported = errors.New("this month was not imported")
 // Importer implementation
 // ---------------------------------------------------------------------------
 
-func NewImporter(config Configuration, holidays *HolidayCalendar, clock Clock, identifiers *IdentifierGenerator, location *time.Location) *Importer {
-    return &Importer{config: config, holidays: holidays, clock: clock, identifiers: identifiers, location: location}
+func NewImporter(config Configuration, clock Clock, identifiers *IdentifierGenerator, location *time.Location) *Importer {
+    return &Importer{config: config, clock: clock, identifiers: identifiers, location: location}
 }
 
 func NewImportOptions() ImportOptions {
@@ -94,7 +93,7 @@ func (i *Importer) Run(calendar Calendar, imported ImportFile, options ImportOpt
             next.Settings.Start = report.Dates[0]
         }
     }
-    book := NewBookkeeper(i.config, next, i.holidays)
+    book := NewBookkeeper(i.config, next)
     for _, d := range report.Dates {
         entry := days[d]
         existing := calendar.Days[d]
@@ -148,6 +147,13 @@ func (i *Importer) apply(calendar *Calendar, settings *ImportSettings) []ImportP
         return problems
     }
     locked := calendar.HasHistory()
+    if settings.PublicHolidays != nil {
+        if zone := *settings.PublicHolidays; zone.Valid() {
+            calendar.Settings.PublicHolidays = &zone
+        } else {
+            problems = append(problems, ImportProblem{Kind: importPublicHolidaysUnknown, Detail: strconv.QuoteToASCII(string(zone))})
+        }
+    }
     if (settings.Start != nil) && (*settings.Start != calendar.Settings.Start) {
         switch {
             case locked:
@@ -202,7 +208,7 @@ func (i *Importer) apply(calendar *Calendar, settings *ImportSettings) []ImportP
 }
 
 func (i *Importer) missing(calendar Calendar, first Month, last Month, today Date) []ImportMissing {
-    book := NewBookkeeper(i.config, calendar, i.holidays)
+    book := NewBookkeeper(i.config, calendar)
     missing := []ImportMissing{}
     for m := first; !m.After(last); m = m.Next() {
         dates := []Date{}
@@ -229,7 +235,7 @@ func (i *Importer) validate(report *ImportReport, calendar Calendar, today Date)
             report.Stopped, report.StopReason = m, ErrMonthNotImported
             break
         }
-        closing := NewMonthClosing(NewBookkeeper(i.config, calendar, i.holidays), i.identifiers)
+        closing := NewMonthClosing(NewBookkeeper(i.config, calendar), i.identifiers)
         end := m.Last().Time()
         at := time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 0, i.location).UTC()
         if history := calendar.Months[m].History; (len(history) > 0) && history[len(history) - 1].At.After(at) {

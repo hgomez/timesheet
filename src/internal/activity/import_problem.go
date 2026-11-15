@@ -49,6 +49,7 @@ const (
     importNothing
     importStartMoved
     importAdjustmentPresent
+    importPublicHolidaysUnknown
 )
 
 // ---------------------------------------------------------------------------
@@ -92,6 +93,8 @@ func (p ImportProblem) Text() string {
             return "tracking start moved from " + p.Previous.String() + " to " + date
         case importAdjustmentPresent:
             return "adjustment of " + date + " already present, ignored"
+        case importPublicHolidaysUnknown:
+            return "public holidays: zone " + p.Detail + " unknown"
     }
     return "no day to import"
 }
@@ -133,6 +136,8 @@ func (p ImportProblem) Label() string {
             return "Date de début avancée du " + p.Previous.Numeric() + " au " + date
         case importAdjustmentPresent:
             return "Ajustement du " + date + " déjà présent, ignoré"
+        case importPublicHolidaysUnknown:
+            return "Calendrier des jours fériés " + p.Detail + " inconnu"
     }
     return "Le fichier ne contient aucun jour à importer"
 }

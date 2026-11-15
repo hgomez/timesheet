@@ -71,12 +71,12 @@ func newTestDirectory(t *testing.T) (string, string) {
 func writeTestImport(t *testing.T, path string) {
     t.Helper()
     days := map[string]activity.DayEntry{}
-    holidays := activity.NewHolidayCalendar()
+    holidays := activity.NewPublicHolidayCalendar(activity.ZoneMetropole)
     for d := activity.NewDate(2025, time.January, 1); d.Month().Number() == 1; d = d.AddDays(1) {
         switch {
             case d.IsWeekend():
                 days[d.String()] = activity.DayEntry{AM: "WE", PM: "WE"}
-            case holidays.IsHoliday(d):
+            case holidays.IsPublicHoliday(d):
                 days[d.String()] = activity.DayEntry{AM: "JF", PM: "JF", Comment: "Jour de l’an"}
             case d.Weekday() == time.Monday:
                 days[d.String()] = activity.DayEntry{AM: "TP", PM: "TP"}

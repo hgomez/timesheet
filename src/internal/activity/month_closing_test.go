@@ -27,7 +27,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestValidationRequiresAClosedCompleteMonth(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     config := authorConfiguration()
     calendar := authorCalendar(t, "2026-09")
     today := day(t, "2026-11-08")
@@ -60,7 +60,7 @@ func TestValidationRequiresAClosedCompleteMonth(t *testing.T) {
 }
 
 func TestTrackingMayStartWithinAMonth(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     config := authorConfiguration()
     calendar := authorCalendar(t, "2023-11")
     calendar.Settings.Start = day(t, "2023-11-27")
@@ -71,7 +71,7 @@ func TestTrackingMayStartWithinAMonth(t *testing.T) {
     calendar.Days[day(t, "2023-11-25")] = DayEntry{AM: "CP", PM: "CP"}
     fillMonth(t, &calendar, month(t, "2023-12"), holidays)
     today := day(t, "2023-12-05")
-    book := NewBookkeeper(config, calendar, holidays)
+    book := NewBookkeeper(config, calendar)
     expectQuantity(t, "missing before the start", book.Indicators(month(t, "2023-11"), today).Missing, "0")
     expectQuantity(t, "codes before the start", book.Indicators(month(t, "2023-11"), today).ByCode["CP"], "0")
     if anomalies := book.Anomalies(month(t, "2023-11")); len(anomalies) != 0 {
@@ -93,7 +93,7 @@ func TestTrackingMayStartWithinAMonth(t *testing.T) {
 }
 
 func TestValidationFreezesTheProvisionalEntries(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     config := authorConfiguration()
     calendar := authorCalendar(t, "2026-09")
     calendar.Settings.Counters["CP"] = CounterSettings{Initial: q(t, "18.28")}
@@ -101,7 +101,7 @@ func TestValidationFreezesTheProvisionalEntries(t *testing.T) {
     fillMonth(t, &calendar, month(t, "2026-10"), holidays)
     calendar.Days[day(t, "2026-10-13")] = DayEntry{AM: "CP", PM: "CP", Comment: "Vacances"}
     today := day(t, "2026-11-08")
-    before := NewBookkeeper(config, calendar, holidays).Journal(month(t, "2026-11"))
+    before := NewBookkeeper(config, calendar).Journal(month(t, "2026-11"))
     validated, err := newClosing(config, calendar).Validate(month(t, "2026-09"), fixedNow(), today)
     if err != nil {
         t.Fatal(err)
@@ -118,7 +118,7 @@ func TestValidationFreezesTheProvisionalEntries(t *testing.T) {
             t.Fatalf("frozen entry without identity: %+v", entry)
         }
     }
-    after := NewBookkeeper(config, validated, holidays).Journal(month(t, "2026-11"))
+    after := NewBookkeeper(config, validated).Journal(month(t, "2026-11"))
     for _, id := range []string{"CP", "TPC"} {
         if !after.Balance(id, day(t, "2026-10-31")).Equal(before.Balance(id, day(t, "2026-10-31"))) {
             t.Fatalf("%s: frozen balance differs from the provisional one", id)
@@ -127,13 +127,13 @@ func TestValidationFreezesTheProvisionalEntries(t *testing.T) {
     expectQuantity(t, "validated CP", after.Validated("CP"), "21.44")
     changed := config.Clone()
     changed.Counters[3].Accrual.Amount = q(t, "3")
-    reworked := NewBookkeeper(changed, validated, holidays).Journal(month(t, "2026-11"))
+    reworked := NewBookkeeper(changed, validated).Journal(month(t, "2026-11"))
     expectQuantity(t, "rule change spares validated months", reworked.Balance("CP", day(t, "2026-10-31")), "21.44")
     expectQuantity(t, "rule change applies to open months", reworked.Balance("CP", day(t, "2026-11-30")), "24.44")
 }
 
 func TestReopenReversesOnlyTheLastValidatedMonth(t *testing.T) {
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     config := authorConfiguration()
     calendar := authorCalendar(t, "2026-09")
     fillMonth(t, &calendar, month(t, "2026-09"), holidays)
@@ -141,7 +141,7 @@ func TestReopenReversesOnlyTheLastValidatedMonth(t *testing.T) {
     today := day(t, "2026-11-08")
     calendar, _ = newClosing(config, calendar).Validate(month(t, "2026-09"), fixedNow(), today)
     calendar, _ = newClosing(config, calendar).Validate(month(t, "2026-10"), fixedNow(), today)
-    reference := NewBookkeeper(config, calendar, holidays).Journal(month(t, "2026-10")).Balance("TPC", day(t, "2026-10-31"))
+    reference := NewBookkeeper(config, calendar).Journal(month(t, "2026-10")).Balance("TPC", day(t, "2026-10-31"))
     if _, err := newClosing(config, calendar).Reopen(month(t, "2026-09"), "erreur", fixedNow()); !errors.Is(err, ErrNotLastValidated) {
         t.Fatalf("older month: %v", err)
     }
@@ -155,7 +155,7 @@ func TestReopenReversesOnlyTheLastValidatedMonth(t *testing.T) {
     if reopened.IsValidated(month(t, "2026-10")) || (len(reopened.Ledger) <= len(calendar.Ledger)) {
         t.Fatal("October still validated or no reversal written")
     }
-    journal := NewBookkeeper(config, reopened, holidays).Journal(month(t, "2026-10"))
+    journal := NewBookkeeper(config, reopened).Journal(month(t, "2026-10"))
     statement := NewCounterStatement(journal, config.Counters[6], month(t, "2026-10"))
     if (len(statement.Cancelled) == 0) || !statement.Provisional {
         t.Fatalf("statement: %+v", statement)
@@ -164,17 +164,17 @@ func TestReopenReversesOnlyTheLastValidatedMonth(t *testing.T) {
     if err != nil {
         t.Fatal(err)
     }
-    again := NewBookkeeper(config, revalidated, holidays).Journal(month(t, "2026-10")).Balance("TPC", day(t, "2026-10-31"))
+    again := NewBookkeeper(config, revalidated).Journal(month(t, "2026-10")).Balance("TPC", day(t, "2026-10-31"))
     if !again.Equal(reference) {
         t.Fatalf("revalidation changed the balance: %s != %s", again, reference)
     }
-    summary := NewSummary(NewBookkeeper(config, revalidated, holidays), NewBookkeeper(config, revalidated, holidays).Journal(month(t, "2026-12")), month(t, "2026-01"), month(t, "2026-12"), today)
+    summary := NewSummary(NewBookkeeper(config, revalidated), NewBookkeeper(config, revalidated).Journal(month(t, "2026-12")), month(t, "2026-01"), month(t, "2026-12"), today)
     expectQuantity(t, "TP credits once in October", summary.Rows[9].Credits["TPC"], "7/12")
 }
 
 func TestCalendarCloneSharesNothing(t *testing.T) {
     config := authorConfiguration()
-    holidays := NewHolidayCalendar()
+    holidays := NewPublicHolidayCalendar(ZoneMetropole)
     calendar := authorCalendar(t, "2026-09")
     fillMonth(t, &calendar, month(t, "2026-09"), holidays)
     validated, err := newClosing(config, calendar).Validate(month(t, "2026-09"), fixedNow(), day(t, "2026-11-08"))

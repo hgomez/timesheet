@@ -141,7 +141,7 @@ func TestTrackingMayStartWithinAMonth(t *testing.T) {
         t.Fatal("the days before the tracking start must be shown out of the tracking and refused as adjustment dates")
     }
     overrides := map[string]string{}
-    holidays := activity.NewHolidayCalendar()
+    holidays := activity.NewPublicHolidayCalendar(activity.ZoneMetropole)
     for d := activity.NewDate(2026, time.September, 15); d.Month().Number() == 9; d = d.AddDays(1) {
         overrides["day:" + d.String()] = "TT"
         if !holidays.IsWorkingDay(d) {
@@ -176,7 +176,7 @@ func TestMonthLifecycle(t *testing.T) {
     user := site.client().login("demo")
     _, _, body := user.get("/dashboard/activity/2026/09")
     overrides := map[string]string{}
-    holidays := activity.NewHolidayCalendar()
+    holidays := activity.NewPublicHolidayCalendar(activity.ZoneMetropole)
     for d := activity.NewDate(2026, time.September, 1); d.Month().Number() == 9; d = d.AddDays(1) {
         overrides["day:" + d.String()] = "TT"
         if !holidays.IsWorkingDay(d) {
@@ -407,6 +407,51 @@ func TestAdministratorChangesTheConfiguration(t *testing.T) {
     user := site.client().login("demo")
     if _, _, page := user.get("/dashboard/activity/2026/11"); !strings.Contains(page, `<option value="TRAINING">Formation</option>`) {
         t.Fatal("the new code is not offered")
+    }
+}
+
+func TestPublicHolidaysFollowTheZoneOfTheAccount(t *testing.T) {
+    site := newTestSite(t)
+    admin := site.client().login("root")
+    user := site.client().login("demo")
+    if page := user.page("/dashboard/activity/2026/04"); strings.Contains(page, "Vendredi saint") {
+        t.Fatal("Good Friday is not a public holiday of the metropole")
+    }
+    body := admin.page("/admin/settings")
+    zone := url.Values{"csrf": {admin.token(body)}, "revision": {admin.field(body, "revision")}, "action": {"public-holidays-update"}, "public_holidays": {"corse"}}
+    if status, _, page := admin.post("/admin/settings", zone); (status != http.StatusUnprocessableEntity) || !strings.Contains(page, "Calendrier des jours fériés inconnu.") {
+        t.Fatalf("unknown default zone: %d", status)
+    }
+    zone.Set("public_holidays", "fr-alsace-moselle")
+    if status, location, _ := admin.post("/admin/settings", zone); (status != http.StatusSeeOther) || (location != "/admin/settings") {
+        t.Fatalf("default zone: %d %s", status, location)
+    }
+    if page := admin.page("/admin/settings"); !strings.Contains(page, `<option value="fr-alsace-moselle" selected>Alsace-Moselle</option>`) {
+        t.Fatal("the default zone is not shown")
+    }
+    if page := user.page("/dashboard/activity/2026/04"); !strings.Contains(page, "Vendredi saint") {
+        t.Fatal("an account without its own zone follows the default zone")
+    }
+    page := user.page("/dashboard/settings")
+    if !strings.Contains(page, `<option value="" selected>Par défaut (Alsace-Moselle)</option>`) {
+        t.Fatal("the settings page names the default zone")
+    }
+    form := url.Values{"csrf": {user.token(page)}, "revision": {user.field(page, "revision")}, "configuration": {user.field(page, "configuration")}, "start": {user.field(page, "start")}, "enabled:CP": {"on"}, "public_holidays": {"corse"}}
+    for _, match := range regexp.MustCompile(`name="(color:[A-Za-z]+)" value="(#[0-9a-f]{6})"`).FindAllStringSubmatch(page, -1) {
+        form.Set(match[1], match[2])
+    }
+    if status, _, refused := user.post("/dashboard/settings", form); (status != http.StatusUnprocessableEntity) || !strings.Contains(refused, "Calendrier des jours fériés invalide.") {
+        t.Fatalf("unknown own zone: %d", status)
+    }
+    form.Set("public_holidays", "fr-metropole")
+    if status, _, _ := user.post("/dashboard/settings", form); status != http.StatusSeeOther {
+        t.Fatalf("own zone: %d", status)
+    }
+    if page := user.page("/dashboard/activity/2026/04"); strings.Contains(page, "Vendredi saint") {
+        t.Fatal("the own zone of the account prevails over the default zone")
+    }
+    if page := user.page("/dashboard/settings"); !strings.Contains(page, `<option value="fr-metropole" selected>Métropole</option>`) {
+        t.Fatal("the own zone is not shown")
     }
 }
 

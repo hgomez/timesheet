@@ -163,7 +163,7 @@ func (v *YearView) cell(ws *Workspace, d activity.Date, half activity.HalfDay) y
     title := d.Label() + ", " + half.Label() + " : " + dayType.Label()
     if code, known := ws.Config.Activity(entry.Code(half)); known && (dayType != activity.DayUntracked) {
         title = d.Label() + ", " + half.Label() + " : " + code.Label
-    } else if name, holiday := ws.Book.Holidays().Name(d); holiday {
+    } else if name, holiday := ws.Book.PublicHolidays().Name(d); holiday {
         title += " (" + name + ")"
     }
     if entry.Comment != "" {

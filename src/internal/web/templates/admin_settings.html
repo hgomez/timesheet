@@ -17,8 +17,21 @@
 {{define "title"}}Configuration{{end}}
 {{define "content"}}{{with .Data}}            <header class="page-header">
                 <h1>Configuration</h1>
-                <p>Codes d'activité, compteurs et couleurs par défaut.</p>
+                <p>Jours fériés, codes d'activité, compteurs et couleurs par défaut.</p>
             </header>
+            <section>
+                <h2>Jours fériés</h2>
+                <p>Le calendrier par défaut s'applique aux comptes qui n'en ont pas choisi un dans leurs réglages ; un changement ne s'applique qu'aux mois non validés.</p>
+                <form method="post" action="/admin/settings" class="config-item">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <input type="hidden" name="revision" value="{{.Revision}}">
+                    <fieldset>
+                        <legend>Calendrier des jours fériés</legend>
+                        <label class="field"><span class="field-name">Calendrier par défaut</span><select name="public_holidays">{{range .PublicHolidays}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+                        <p class="actions"><button type="submit" name="action" value="public-holidays-update">Enregistrer</button></p>
+                    </fieldset>
+                </form>
+            </section>
             <section>
                 <h2>Codes d'activité</h2>
                 <p>Chaque code alimente ou décompte un compteur de 0,5 j par demi-journée : un code qui alimente compte tous les jours, un code qui décompte seulement les jours ouvrés. Chaque code a sa couleur. Un code utilisé ne peut plus changer d'effet ni de compteur, ni être supprimé : archivez-le pour le retirer des listes de saisie.</p>

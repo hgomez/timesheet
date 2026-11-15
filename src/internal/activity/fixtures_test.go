@@ -69,14 +69,14 @@ func authorCalendar(t *testing.T, start string) Calendar {
     return calendar
 }
 
-func fillMonth(t *testing.T, calendar *Calendar, m Month, holidays *HolidayCalendar) {
+func fillMonth(t *testing.T, calendar *Calendar, m Month, holidays *PublicHolidayCalendar) {
     t.Helper()
     for d := m.First(); !d.After(m.Last()); d = d.AddDays(1) {
         code := "TT"
         switch {
             case d.IsWeekend():
                 code = "WE"
-            case holidays.IsHoliday(d):
+            case holidays.IsPublicHoliday(d):
                 code = "JF"
             case d.Weekday() == time.Monday:
                 code = "TP"
@@ -95,7 +95,7 @@ func expectQuantity(t *testing.T, what string, got Quantity, want string) {
 }
 
 func newClosing(config Configuration, calendar Calendar) *MonthClosing {
-    return NewMonthClosing(NewBookkeeper(config, calendar, NewHolidayCalendar()), NewIdentifierGenerator(rand.Reader))
+    return NewMonthClosing(NewBookkeeper(config, calendar), NewIdentifierGenerator(rand.Reader))
 }
 
 func fixedNow() time.Time {

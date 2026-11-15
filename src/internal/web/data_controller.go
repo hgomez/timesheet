@@ -131,7 +131,7 @@ func (c *DataController) Import(w http.ResponseWriter, r *http.Request) {
     }
     options := activity.NewImportOptions()
     options.Replace, options.Validate = r.PostFormValue("replace") != "", r.PostFormValue("validate") != ""
-    importer := activity.NewImporter(ws.Config, ws.Book.Holidays(), c.clock, activity.NewIdentifierGenerator(c.random), ws.Location)
+    importer := activity.NewImporter(ws.Config, c.clock, activity.NewIdentifierGenerator(c.random), ws.Location)
     report, err := importer.Run(ws.Calendar, imported, options, ws.Today, ws.Horizon())
     if err != nil {
         c.logger.Error("cannot import the data", "error", err.Error())

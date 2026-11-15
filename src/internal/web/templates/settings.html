@@ -17,7 +17,7 @@
 {{define "title"}}Réglages{{end}}
 {{define "content"}}{{with .Data}}            <header class="page-header">
                 <h1>Réglages</h1>
-                <p>Début du suivi, compteurs et couleurs des codes.</p>
+                <p>Début du suivi, jours fériés, compteurs et couleurs des codes.</p>
             </header>
             <section>
                 <h2>Suivi et compteurs</h2>
@@ -31,6 +31,11 @@
 {{- if .Locked}}
                         <p>Un mois est déjà validé : le début du suivi et les soldes initiaux ne sont plus modifiables, corrigez par un ajustement.</p>
 {{- end}}
+                    </fieldset>
+                    <fieldset>
+                        <legend>Jours fériés</legend>
+                        <label class="field"><span class="field-name">Calendrier des jours fériés</span><select name="public_holidays">{{range .PublicHolidays}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+                        <p>Un changement s'applique aux mois non validés.</p>
                     </fieldset>
                     <table>
                         <caption>Compteurs : activation, montant d'acquisition propre (vide pour le montant par défaut), soldes initiaux au début du suivi et couleurs des codes du compteur</caption>
