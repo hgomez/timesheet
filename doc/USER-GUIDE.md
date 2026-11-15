@@ -11,6 +11,7 @@ It is written for the people who use the application. Installing and running the
 - [CONCEPTS](#concepts)
 - [ACTIVITY CODES](#activity-codes)
 - [PAGES](#pages)
+- [SCREENSHOTS](#screenshots)
 - [ACCOUNTS](#accounts)
 - [FOR THE EMPLOYEE](#for-the-employee)
 - [FOR THE ADMINISTRATOR](#for-the-administrator)
@@ -67,6 +68,88 @@ The public holidays are built in, for thirteen zones: « Métropole », « Alsac
 - For an administrator, the header shows « Administration » left of « Tableau de bord ».
 - On the public pages, the arrow entering a door at the right of the header (« Se connecter » on hover) opens the login page « Connexion ».
 - The button of the header switches between the light and the dark theme. The choice is kept in the browser only.
+
+## SCREENSHOTS
+
+The screenshots show the account `demo` of the [example database](OPERATIONS.md#example-database).
+
+### Home
+
+The public home page « Timesheet », shown before login.
+
+![Home](timesheet-01-home.png)
+
+### Login
+
+The login page « Connexion »: login and password.
+
+![Login](timesheet-02-login.png)
+
+### « Tableau de bord »
+
+The balance of each counter today, its validated balance and its forecast at the end of its period, and the total of the days entered.
+
+![Tableau de bord](timesheet-03-dashboard.png)
+
+### « Activité »
+
+The grid of the month: a code for the morning and for the afternoon of each day, a comment, the validation of the month and its adjustments.
+
+![Activité](timesheet-04-activity.png)
+
+### « Mois »
+
+Consultation of a month: its totals, its calendar, its summary and the statement of each counter.
+
+![Mois](timesheet-05-month.png)
+
+### « Année »
+
+Consultation of a year: its totals, its calendar, the summary month by month with the row « Report N-1 », and one section per counter.
+
+![Année](timesheet-06-year.png)
+
+### « Mon profil »
+
+Identity, name shown in the menu, password and open sessions.
+
+![Mon profil](timesheet-07-my-profile.png)
+
+### « Réglages »
+
+Tracking start, calendar of public holidays, counters enabled, own accrual amounts, initial balances and colours of the codes.
+
+![Réglages](timesheet-08-my-settings.png)
+
+### « Données »
+
+Import of a file, export of your data and deletion of your data.
+
+![Données](timesheet-09-my-data.png)
+
+### « Serveur »
+
+For administrators: the software version and the settings of the server, read-only.
+
+![Serveur](timesheet-10-admin-server.png)
+
+### « Comptes »
+
+For administrators: the accounts, their state and sessions, and the creation of an account with a provisional password.
+
+![Comptes](timesheet-11-admin-accounts.png)
+
+### « Configuration »
+
+For administrators: the default calendar of public holidays, the activity codes and the counters.
+
+![Configuration](timesheet-12-admin-settings.png)
+
+### « Vous êtes déconnecté »
+
+The page shown once the session is closed.
+
+![Vous êtes déconnecté](timesheet-13-logout.png)
 
 ## ACCOUNTS
 

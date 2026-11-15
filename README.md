@@ -58,6 +58,7 @@ An existing history, kept in a spreadsheet for instance, can be converted to a J
 | Try it on your workstation | [Requirements](#requirements), then [Getting started](#getting-started) |
 | Try it with example data | [Example database](doc/OPERATIONS.md#example-database) |
 | Use it day after day | [User guide](doc/USER-GUIDE.md) |
+| See the pages | [Screenshots](doc/USER-GUIDE.md#screenshots) |
 | Bring an existing history in | [Importing](doc/OPERATIONS.md#importing) |
 | Build it, run the tests, build the package | [doc/BUILD.md](doc/BUILD.md) |
 | Install it as a service | [Debian package](doc/OPERATIONS.md#debian-package) |
@@ -80,7 +81,7 @@ An existing history, kept in a spreadsheet for instance, can be converted to a J
 .ci/    scripts run by the Makefile targets and by the continuous integration
 bin/    timesheet (built), timesheet.sh (runs the server on the configuration and the database of the repository)
 debian/ Debian packaging (package, systemd unit, post-installation script)
-doc/    ARCHITECTURE.md  BUILD.md  CODING.md  OPERATIONS.md  SECURITY.md  SPECIFICATIONS.md  USER-GUIDE.md  timesheet.png
+doc/    ARCHITECTURE.md  BUILD.md  CODING.md  OPERATIONS.md  SECURITY.md  SPECIFICATIONS.md  USER-GUIDE.md  timesheet.png  timesheet-*.png (screenshots)
 etc/    timesheet/timesheet.json (the server configuration, installed as is by the package)
 share/  timesheet/ (configuration template read by init, example database, import template)
 src/    Go sources
