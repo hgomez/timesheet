@@ -17,13 +17,60 @@
 
 package activity
 
+import (
+    "bytes"
+    "encoding/json"
+    "slices"
+)
+
 // ---------------------------------------------------------------------------
 // ImportSettings declaration
 // ---------------------------------------------------------------------------
 
 type ImportSettings struct {
-    Start    *Date                    `json:"start,omitempty"`
-    Counters map[string]ImportCounter `json:"counters,omitempty"`
+    Start    *Date                    `json:"start"`
+    Counters map[string]ImportCounter `json:"counters"`
+    order    []string
+}
+
+// ---------------------------------------------------------------------------
+// ImportSettings implementation
+// ---------------------------------------------------------------------------
+
+func (s ImportSettings) MarshalJSON() ([]byte, error) {
+    ids := s.order
+    if len(ids) == 0 {
+        for id := range s.Counters {
+            ids = append(ids, id)
+        }
+        slices.Sort(ids)
+    }
+    start, err := json.Marshal(s.Start)
+    if err != nil {
+        return nil, err
+    }
+    var data bytes.Buffer
+    data.WriteString(`{"start":`)
+    data.Write(start)
+    data.WriteString(`,"counters":{`)
+    for i, id := range ids {
+        key, err := json.Marshal(id)
+        if err != nil {
+            return nil, err
+        }
+        value, err := json.Marshal(s.Counters[id])
+        if err != nil {
+            return nil, err
+        }
+        if i > 0 {
+            data.WriteString(",")
+        }
+        data.Write(key)
+        data.WriteString(":")
+        data.Write(value)
+    }
+    data.WriteString("}}")
+    return data.Bytes(), nil
 }
 
 // ---------------------------------------------------------------------------

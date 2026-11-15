@@ -19,6 +19,7 @@ package activity
 
 import (
     "crypto/rand"
+    "strings"
     "testing"
     "time"
 )
@@ -37,9 +38,35 @@ func TestExportedFileGivesBackTheSameBalances(t *testing.T) {
     amount := q(t, "8/12")
     calendar.Settings.Counters["RTT"] = CounterSettings{Enabled: calendar.Settings.Counters["RTT"].Enabled, Amount: &amount}
     calendar.Adjustments = append(calendar.Adjustments, Adjustment{ID: "a1", Date: day(t, "2026-02-27"), Counter: "CP", Amount: q(t, "0.5"), Reason: "Alignement sur le bulletin de paie"})
-    data, err := NewImportFileOf(calendar).Encode()
+    data, err := NewImportFileOf(calendar, config).Encode()
     if err != nil {
         t.Fatal(err)
+    }
+    text := string(data)
+    position := 0
+    for _, rule := range config.Counters {
+        next := strings.Index(text, `"` + rule.ID + `": {`)
+        if next < position {
+            t.Fatalf("counter %s out of the order of the configuration", rule.ID)
+        }
+        position = next
+    }
+    for _, expected := range []string{`"CP": {
+        "enabled": true,
+        "amount": "2.08",
+        "initial": "0"
+      }`, `"RTT": {
+        "enabled": false,
+        "amount": "8/12",
+        "initial": "0"
+      }`, `"TPC": {
+        "enabled": true,
+        "amount": "7/12",
+        "initial": "0"
+      }`, `"comment": null`, `"adjustments": [`} {
+        if !strings.Contains(text, expected) {
+            t.Errorf("the export must write %s", expected)
+        }
     }
     exported, err := NewImportFile(data)
     if (err != nil) || (len(exported.Days) != len(calendar.Days)) || (len(exported.Adjustments) != 1) || (exported.Settings.Counters["RTT"].Amount.String() != "8/12") {

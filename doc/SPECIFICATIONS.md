@@ -2246,6 +2246,7 @@ Settings follow the rules of the [settings page](#settings-page):
 - `start` never after the date of an existing adjustment;
 - an absent `initial` keeps the stored initial balance, an absent `enabled` the stored flag;
 - an absent `amount` means the default amount;
+- a `null` value counts as an absent one;
 - `enabled` and `amount` apply from the first open month.
 
 ### Imported days
@@ -2330,9 +2331,11 @@ After a validation, importing the same file again fails: its days and adjustment
 `GET /dashboard/data/export` downloads the data of the viewer's own account in the import format:
 
 - `format` and `version`;
-- `settings`: the tracking start, and for every counter set by the account, `enabled` when chosen, `amount` when set, and `initial`;
-- `days`: every stored day entry, with its comment;
-- `adjustments`: every adjustment, open or frozen in a validated month, by date.
+- `settings`: the tracking start, and every counter of the configuration that is not archived, in the order of the configuration, each with its effective values: `enabled` (`true` or `false`, the choice of the account or else the default of the counter), `amount` (the own amount or else the default amount) and `initial`;
+- `days`: every stored day entry, by date, with `am`, `pm` and `comment` always written, `null` when empty;
+- `adjustments`: every adjustment, open or frozen in a validated month, by date; `[]` when there is none.
+
+Nothing is left implicit: every field is written, and no value depends on the defaults of the configuration. Imported again, `enabled` and `amount` therefore become choices of the account: a later change of the default amount no longer applies to it. Archived counters are left out, since the import refuses them.
 
 | Header | Value |
 | --- | --- |

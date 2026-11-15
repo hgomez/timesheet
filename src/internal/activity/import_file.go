@@ -33,9 +33,9 @@ import (
 type ImportFile struct {
     Format      string             `json:"format"`
     Version     int                `json:"version"`
-    Settings    *ImportSettings    `json:"settings,omitempty"`
+    Settings    *ImportSettings    `json:"settings"`
     Days        map[Date]DayEntry  `json:"days"`
-    Adjustments []ImportAdjustment `json:"adjustments,omitempty"`
+    Adjustments []ImportAdjustment `json:"adjustments"`
 }
 
 const (
@@ -72,12 +72,17 @@ func NewImportFile(data []byte) (ImportFile, error) {
     return imported, nil
 }
 
-func NewImportFileOf(calendar Calendar) ImportFile {
+func NewImportFileOf(calendar Calendar, config Configuration) ImportFile {
     start := calendar.Settings.Start
     settings := &ImportSettings{Start: &start, Counters: map[string]ImportCounter{}}
-    for id, stored := range calendar.Settings.Counters {
-        initial := stored.Initial
-        settings.Counters[id] = ImportCounter{Enabled: stored.Enabled, Amount: stored.Amount, Initial: &initial}
+    book := NewBookkeeper(config, calendar, NewHolidayCalendar())
+    for _, rule := range config.Counters {
+        if rule.Archived {
+            continue
+        }
+        enabled, amount, initial := book.Enabled(rule), book.Amount(rule), calendar.Settings.Counters[rule.ID].Initial.normal()
+        settings.Counters[rule.ID] = ImportCounter{Enabled: &enabled, Amount: &amount, Initial: &initial}
+        settings.order = append(settings.order, rule.ID)
     }
     days := map[Date]DayEntry{}
     for d, entry := range calendar.Days {

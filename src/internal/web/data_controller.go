@@ -86,7 +86,7 @@ func (c *DataController) Export(w http.ResponseWriter, r *http.Request) {
         c.errors.NotFound(w, r)
         return
     }
-    data, err := activity.NewImportFileOf(ws.Calendar).Encode()
+    data, err := activity.NewImportFileOf(ws.Calendar, ws.Config).Encode()
     if err != nil {
         c.logger.Error("cannot export the data", "error", err.Error())
         c.errors.Status(w, r, http.StatusInternalServerError)

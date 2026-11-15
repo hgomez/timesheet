@@ -22,9 +22,9 @@ package activity
 // ---------------------------------------------------------------------------
 
 type ImportCounter struct {
-    Enabled *bool     `json:"enabled,omitempty"`
-    Amount  *Quantity `json:"amount,omitempty"`
-    Initial *Quantity `json:"initial,omitempty"`
+    Enabled *bool     `json:"enabled"`
+    Amount  *Quantity `json:"amount"`
+    Initial *Quantity `json:"initial"`
 }
 
 // ---------------------------------------------------------------------------
