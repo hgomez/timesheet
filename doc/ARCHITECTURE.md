@@ -145,10 +145,10 @@ The column Kind says what the entity is:
 
 `Quantity`:
 
-- numerator and denominator are `int64`, always normalised;
+- numerator and denominator are `int64`, kept as written when read or built with `NewQuantity`; the sign is on the numerator;
 - every denominator divides `QuantityBase`, 63 000 000;
-- sums are made on the least common multiple of the denominators, with overflow detection;
-- it is read from `"2.08"` or `"7/12"` and written in a canonical form;
+- sums are made on the least common multiple of the denominators, with overflow detection, and give a canonical result: reduced, with a power of ten as denominator when the value is a decimal;
+- it is read from `"2.08"` or `"8/12"` and written back in the same form; comparisons (`Equal`, `Cmp`) work on the value;
 - `Format` displays `0,58` and `FormatDays` displays `1,5`.
 
 `NullableText` and `NullableTime` exist so that every field of a record is always written.

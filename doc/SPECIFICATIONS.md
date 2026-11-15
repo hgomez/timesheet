@@ -517,8 +517,11 @@ Every counter has a single balance.
 | Input | a decimal with at most six decimals, a comma or a point (`2.08`, `-1,5`), or a fraction (`7/12`) |
 | Denominator of a fraction | a divisor of 63 000 000 (2^6 × 3^2 × 5^6 × 7), for instance `7/12`, `1/3`, `1/7` |
 | Magnitude | at most 1 000 000 |
-| Storage | a string: `"2.08"`, `"7/12"` |
-| Display | rounded to two decimals with a comma: `7/12` is shown `0,58` |
+| Written form | a quantity read from a form, a file or the configuration template keeps the form it was written in: `8/12` stays `8/12`, `0.50` stays `0.50`; only the sign and a leading point are normalised (`+2` is `2`, `.5` is `0.5`) |
+| Computed form | the result of a computation (balance, total, sum of a day, rounding) is reduced, and written as a decimal when it is exact: `1/2` is `0.5`, `8/12 + 4/12` is `1`, a balance of `8/12` alone is `2/3` |
+| Comparison | equal values compare equal whatever their form: `8/12` equals `2/3` |
+| Storage | a string, in its written or computed form: `"2.08"`, `"8/12"`, `"0.5"` |
+| Display | rounded to two decimals with a comma: `7/12` is shown `0,58`; the fields of the settings and configuration pages show the written form |
 | Display of day counts | `1`, `0,5` |
 | Overflow | an arithmetic overflow stops the operation instead of returning a wrong balance |
 

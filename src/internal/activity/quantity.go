@@ -56,8 +56,43 @@ func NewQuantity(num int64, den int64) Quantity {
     if den < 0 {
         num, den = -num, -den
     }
-    divisor := Quantity{}.gcd(Quantity{}.magnitude(num), den)
-    return Quantity{num: num / divisor, den: den / divisor}
+    return Quantity{num: num, den: den}
+}
+
+func (q Quantity) canonical(num int64, den int64) Quantity {
+    reduced := NewQuantity(num, den)
+    divisor := q.gcd(q.magnitude(reduced.num), reduced.den)
+    reduced = Quantity{num: reduced.num / divisor, den: reduced.den / divisor}
+    scale := int64(1)
+    for digits := 0; digits <= maxQuantityDecimals; digits++ {
+        if (scale % reduced.den) == 0 {
+            scaled, ok := q.multiply(reduced.num, scale / reduced.den)
+            if !ok {
+                panic(ErrQuantityOverflow)
+            }
+            return Quantity{num: scaled, den: scale}
+        }
+        scale *= 10
+    }
+    return reduced
+}
+
+func (q Quantity) reduced() Quantity {
+    a := q.normal()
+    divisor := q.gcd(q.magnitude(a.num), a.den)
+    return Quantity{num: a.num / divisor, den: a.den / divisor}
+}
+
+func (q Quantity) decimals() (int, bool) {
+    a := q.normal()
+    scale := int64(1)
+    for digits := 0; digits <= maxQuantityDecimals; digits++ {
+        if a.den == scale {
+            return digits, true
+        }
+        scale *= 10
+    }
+    return 0, false
 }
 
 func NewQuantityFromText(text string) (Quantity, error) {
@@ -104,7 +139,7 @@ func (q Quantity) Add(other Quantity) Quantity {
     if !ok1 || !ok2 || ((left > 0) && (right > 0) && (sum < 0)) || ((left < 0) && (right < 0) && (sum >= 0)) {
         panic(ErrQuantityOverflow)
     }
-    return NewQuantity(sum, common)
+    return q.canonical(sum, common)
 }
 
 func (q Quantity) multiply(a int64, b int64) (int64, bool) {
@@ -155,7 +190,7 @@ func (q Quantity) Ceil() Quantity {
     if (a.num % a.den) > 0 {
         whole++
     }
-    return NewQuantity(whole, 1)
+    return q.canonical(whole, 1)
 }
 
 func (q Quantity) Equal(other Quantity) bool {
@@ -164,26 +199,22 @@ func (q Quantity) Equal(other Quantity) bool {
 
 func (q Quantity) String() string {
     a := q.normal()
-    if a.den == 1 {
-        return strconv.FormatInt(a.num, 10)
+    digits, decimal := q.decimals()
+    switch {
+        case !decimal:
+            return strconv.FormatInt(a.num, 10) + "/" + strconv.FormatInt(a.den, 10)
+        case digits == 0:
+            return strconv.FormatInt(a.num, 10)
     }
-    scale := int64(1)
-    for digits := 1; digits <= maxQuantityDecimals; digits++ {
-        scale *= 10
-        if (scale % a.den) == 0 {
-            scaled := q.magnitude(a.num) * (scale / a.den)
-            text := strconv.FormatInt(scaled, 10)
-            for len(text) <= digits {
-                text = "0" + text
-            }
-            sign := ""
-            if a.num < 0 {
-                sign = "-"
-            }
-            return sign + text[:len(text) - digits] + "." + text[len(text) - digits:]
-        }
+    text := strconv.FormatInt(q.magnitude(a.num), 10)
+    for len(text) <= digits {
+        text = "0" + text
     }
-    return strconv.FormatInt(a.num, 10) + "/" + strconv.FormatInt(a.den, 10)
+    sign := ""
+    if a.num < 0 {
+        sign = "-"
+    }
+    return sign + text[:len(text) - digits] + "." + text[len(text) - digits:]
 }
 
 func (q Quantity) Format() string {
@@ -209,12 +240,12 @@ func (q Quantity) FormatSigned() string {
 }
 
 func (q Quantity) FormatDays() string {
-    a := q.normal()
+    a := q.reduced()
     if a.den == 1 {
         return strconv.FormatInt(a.num, 10)
     }
     if a.den == 2 {
-        return strings.Replace(q.String(), ".", ",", 1)
+        return strings.Replace(q.canonical(a.num, a.den).String(), ".", ",", 1)
     }
     return q.Format()
 }

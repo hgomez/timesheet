@@ -27,7 +27,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestQuantityParsesDecimalsAndFractions(t *testing.T) {
-    cases := map[string]string{"-7/12": "-7/12", "+7/12": "7/12", "2.08": "2.08", "7/12": "7/12", "14/24": "7/12", "0": "0", "-1.5": "-1.5", "0.50": "0.5", "25/12": "25/12", "3/4": "0.75", "+2": "2", ".5": "0.5"}
+    cases := map[string]string{"-7/12": "-7/12", "+7/12": "7/12", "2.08": "2.08", "7/12": "7/12", "14/24": "14/24", "8/12": "8/12", "0": "0", "-1.5": "-1.5", "0.50": "0.50", "25/12": "25/12", "3/4": "3/4", "+2": "2", ".5": "0.5"}
     for text, canonical := range cases {
         if got := q(t, text).String(); got != canonical {
             t.Errorf("%s: got %s, want %s", text, got, canonical)
@@ -37,6 +37,24 @@ func TestQuantityParsesDecimalsAndFractions(t *testing.T) {
         if _, err := NewQuantityFromText(text); err == nil {
             t.Errorf("%q accepted", text)
         }
+    }
+}
+
+func TestQuantityKeepsItsWrittenFormAndComputesCanonically(t *testing.T) {
+    if !q(t, "8/12").Equal(q(t, "2/3")) || !q(t, "0.50").Equal(q(t, "1/2")) || (q(t, "8/12").Cmp(q(t, "2/3")) != 0) {
+        t.Fatal("equal values must compare equal whatever their written form")
+    }
+    if NewQuantity(8, 12) != q(t, "8/12") {
+        t.Fatal("NewQuantity must keep the written form")
+    }
+    written := map[string]Quantity{"1": q(t, "8/12").Add(q(t, "4/12")), "2/3": NewQuantity(0, 1).Add(q(t, "8/12")), "0.5": NewQuantity(0, 1).Add(NewQuantity(1, 2)), "0.25": q(t, "0.50").Sub(q(t, "0.25")), "-8/12": q(t, "8/12").Neg(), "3": q(t, "8/3").Ceil()}
+    for want, got := range written {
+        if got.String() != want {
+            t.Errorf("got %s, want %s", got, want)
+        }
+    }
+    if (q(t, "2/4").FormatDays() != "0,5") || (q(t, "4/2").FormatDays() != "2") || (q(t, "8/12").Format() != "0,67") {
+        t.Fatalf("display of written forms: %s %s %s", q(t, "2/4").FormatDays(), q(t, "4/2").FormatDays(), q(t, "8/12").Format())
     }
 }
 
