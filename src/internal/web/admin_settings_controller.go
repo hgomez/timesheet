@@ -36,7 +36,6 @@ type AdminSettingsController struct {
     repository Repository
     renderer   *Renderer
     errors     *ErrorPages
-    notices    *Notices
     logger     *slog.Logger
 }
 
@@ -82,7 +81,7 @@ const (
 // ---------------------------------------------------------------------------
 
 func NewAdminSettingsController(repository Repository, renderer *Renderer, errors *ErrorPages, logger *slog.Logger) *AdminSettingsController {
-    return &AdminSettingsController{repository: repository, renderer: renderer, errors: errors, notices: NewNotices(), logger: logger}
+    return &AdminSettingsController{repository: repository, renderer: renderer, errors: errors, logger: logger}
 }
 
 func (c *AdminSettingsController) Show(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +100,7 @@ func (c *AdminSettingsController) render(w http.ResponseWriter, r *http.Request,
     for _, rule := range config.Counters {
         record.Counters = append(record.Counters, counterRuleRecord{ID: rule.ID, Label: rule.Label, ShortLabel: rule.ShortLabel, Enabled: rule.EnabledByDefault, Amount: rule.Accrual.Amount.String(), Every: c.every(rule.Accrual.Every), Period: rule.PeriodStart.String(), CarryOver: rule.CarryOver, Archived: rule.Archived, Used: c.repository.CounterUsed(rule.ID)})
     }
-    c.renderer.Render(w, r, status, "admin_settings", PageModel{Section: "settings-admin", Notice: c.notices.Message(r.URL.Query().Get("notice")), Alert: alert, Data: record})
+    c.renderer.Render(w, r, status, "admin_settings", PageModel{Section: "settings-admin", Alert: alert, Data: record})
 }
 
 func (c *AdminSettingsController) counters(config activity.Configuration, selected string) []OptionRecord {
@@ -164,7 +163,7 @@ func (c *AdminSettingsController) Submit(w http.ResponseWriter, r *http.Request)
         return
     }
     c.logger.Info("configuration changed", "action", r.PostFormValue("action"), "by", string((&Viewer{}).From(r).Login))
-    http.Redirect(w, r, "/admin/settings?notice=configuration", http.StatusSeeOther)
+    c.renderer.Redirect(w, r, "/admin/settings", "configuration")
 }
 
 func (c *AdminSettingsController) refusal(err error) string {

@@ -99,7 +99,7 @@ func (h *guardedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     }
     exempt := (r.URL.Path == profilePath) || (r.URL.Path == "/dashboard/colors.css") || (r.URL.Path == "/logout")
     if viewer.MustChange && !exempt {
-        http.Redirect(w, r, profilePath + "?notice=change-password", http.StatusSeeOther)
+        http.Redirect(w, r, profilePath, http.StatusSeeOther)
         return
     }
     if r.Method == http.MethodPost {

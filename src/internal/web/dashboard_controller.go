@@ -37,7 +37,6 @@ type DashboardController struct {
     repository Repository
     renderer   *Renderer
     errors     *ErrorPages
-    notices    *Notices
     clock      activity.Clock
     random     io.Reader
     logger     *slog.Logger
@@ -56,7 +55,7 @@ const (
 // ---------------------------------------------------------------------------
 
 func NewDashboardController(loader *WorkspaceLoader, repository Repository, renderer *Renderer, errors *ErrorPages, clock activity.Clock, random io.Reader, logger *slog.Logger) *DashboardController {
-    return &DashboardController{loader: loader, repository: repository, renderer: renderer, errors: errors, notices: NewNotices(), clock: clock, random: random, logger: logger, dashboards: NewDashboardView(), months: NewMonthView(), years: NewYearView()}
+    return &DashboardController{loader: loader, repository: repository, renderer: renderer, errors: errors, clock: clock, random: random, logger: logger, dashboards: NewDashboardView(), months: NewMonthView(), years: NewYearView()}
 }
 
 func (c *DashboardController) Show(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +115,7 @@ func (c *DashboardController) render(w http.ResponseWriter, r *http.Request, ws 
     if ws.ReadOnly {
         section = "accounts"
     }
-    model := PageModel{Section: section, Notice: c.notices.Message(r.URL.Query().Get("notice")), Alert: alert, Data: c.months.Build(ws, page, m, submitted, problems)}
+    model := PageModel{Section: section, Alert: alert, Data: c.months.Build(ws, page, m, submitted, problems)}
     c.renderer.Render(w, r, status, page, model)
 }
 
@@ -185,7 +184,7 @@ func (c *DashboardController) Save(w http.ResponseWriter, r *http.Request) {
         return
     }
     c.logger.Info("month saved", "login", string(ws.Owner.Login), "month", m.String())
-    http.Redirect(w, r, ws.PagePath(PageActivity, m) + "?notice=saved", http.StatusSeeOther)
+    c.renderer.Redirect(w, r, ws.PagePath(PageActivity, m), "saved")
 }
 
 func (c *DashboardController) save(w http.ResponseWriter, r *http.Request, ws *Workspace, page string, calendar activity.Calendar, m activity.Month) bool {
@@ -233,7 +232,7 @@ func (c *DashboardController) Validate(w http.ResponseWriter, r *http.Request) {
         return
     }
     c.logger.Info("month validated", "login", string(ws.Owner.Login), "month", m.String())
-    http.Redirect(w, r, ws.PagePath(PageActivity, m) + "?notice=validated", http.StatusSeeOther)
+    c.renderer.Redirect(w, r, ws.PagePath(PageActivity, m), "validated")
 }
 
 func (c *DashboardController) Reopen(w http.ResponseWriter, r *http.Request) {
@@ -255,7 +254,7 @@ func (c *DashboardController) Reopen(w http.ResponseWriter, r *http.Request) {
         return
     }
     c.logger.Info("month reopened", "login", string(ws.Owner.Login), "month", m.String())
-    http.Redirect(w, r, ws.PagePath(PageActivity, m) + "?notice=reopened", http.StatusSeeOther)
+    c.renderer.Redirect(w, r, ws.PagePath(PageActivity, m), "reopened")
 }
 
 func (c *DashboardController) Adjust(w http.ResponseWriter, r *http.Request) {
@@ -289,7 +288,7 @@ func (c *DashboardController) Adjust(w http.ResponseWriter, r *http.Request) {
         return
     }
     c.logger.Info("adjustments changed", "login", string(ws.Owner.Login), "month", m.String(), "change", notice)
-    http.Redirect(w, r, ws.PagePath(PageActivity, m) + "?notice=" + notice, http.StatusSeeOther)
+    c.renderer.Redirect(w, r, ws.PagePath(PageActivity, m), notice)
 }
 
 func (c *DashboardController) addAdjustment(ws *Workspace, calendar *activity.Calendar, r *http.Request) (activity.Month, string) {

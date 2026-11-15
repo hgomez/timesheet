@@ -36,7 +36,6 @@ type SettingsController struct {
     repository Repository
     renderer   *Renderer
     errors     *ErrorPages
-    notices    *Notices
     logger     *slog.Logger
 }
 
@@ -71,7 +70,7 @@ type colorRecord struct {
 // ---------------------------------------------------------------------------
 
 func NewSettingsController(loader *WorkspaceLoader, repository Repository, renderer *Renderer, errors *ErrorPages, logger *slog.Logger) *SettingsController {
-    return &SettingsController{loader: loader, repository: repository, renderer: renderer, errors: errors, notices: NewNotices(), logger: logger}
+    return &SettingsController{loader: loader, repository: repository, renderer: renderer, errors: errors, logger: logger}
 }
 
 func (c *SettingsController) Show(w http.ResponseWriter, r *http.Request) {
@@ -101,8 +100,7 @@ func (c *SettingsController) render(w http.ResponseWriter, r *http.Request, ws *
         }
         record.Counters = append(record.Counters, item)
     }
-    notice := c.notices.Message(r.URL.Query().Get("notice"))
-    c.renderer.Render(w, r, status, "settings", PageModel{Section: "settings", Notice: notice, Alert: alert, Alerts: alerts, Data: record})
+    c.renderer.Render(w, r, status, "settings", PageModel{Section: "settings", Alert: alert, Alerts: alerts, Data: record})
 }
 
 func (c *SettingsController) Submit(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +208,7 @@ func (c *SettingsController) Submit(w http.ResponseWriter, r *http.Request) {
         return
     }
     c.logger.Info("settings saved", "login", string(ws.Owner.Login))
-    http.Redirect(w, r, settingsPath + "?notice=settings", http.StatusSeeOther)
+    c.renderer.Redirect(w, r, settingsPath, "settings")
 }
 
 func (c *SettingsController) quantity(text string) (activity.Quantity, error) {

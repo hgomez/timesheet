@@ -40,7 +40,6 @@ type AdminController struct {
     today      *Today
     renderer   *Renderer
     errors     *ErrorPages
-    notices    *Notices
     clock      activity.Clock
     random     io.Reader
     iterations int
@@ -77,7 +76,7 @@ type accountRecord struct {
 // ---------------------------------------------------------------------------
 
 func NewAdminController(repository Repository, sessions *Sessions, today *Today, renderer *Renderer, errors *ErrorPages, clock activity.Clock, random io.Reader, iterations int, logger *slog.Logger) *AdminController {
-    return &AdminController{repository: repository, sessions: sessions, today: today, renderer: renderer, errors: errors, notices: NewNotices(), clock: clock, random: random, iterations: iterations, logger: logger}
+    return &AdminController{repository: repository, sessions: sessions, today: today, renderer: renderer, errors: errors, clock: clock, random: random, iterations: iterations, logger: logger}
 }
 
 func (c *AdminController) record(viewer *Viewer, item account.Account) accountRecord {
@@ -104,7 +103,7 @@ func (c *AdminController) list(w http.ResponseWriter, r *http.Request, status in
     for _, item := range c.repository.Accounts() {
         record.Accounts = append(record.Accounts, c.record(viewer, item))
     }
-    c.renderer.Render(w, r, status, "admin_accounts", PageModel{Section: "accounts", Notice: c.notices.Message(r.URL.Query().Get("notice")), Alert: alert, Data: record})
+    c.renderer.Render(w, r, status, "admin_accounts", PageModel{Section: "accounts", Alert: alert, Data: record})
 }
 
 func (c *AdminController) Create(w http.ResponseWriter, r *http.Request) {
@@ -143,7 +142,7 @@ func (c *AdminController) Create(w http.ResponseWriter, r *http.Request) {
         return
     }
     c.logger.Info("account created", "login", string(login), "profile", string(profile), "by", string((&Viewer{}).From(r).Login))
-    http.Redirect(w, r, "/admin/accounts?notice=created", http.StatusSeeOther)
+    c.renderer.Redirect(w, r, "/admin/accounts", "created")
 }
 
 func (c *AdminController) Show(w http.ResponseWriter, r *http.Request) {
@@ -160,7 +159,7 @@ func (c *AdminController) show(w http.ResponseWriter, r *http.Request, status in
         c.errors.NotFound(w, r)
         return
     }
-    c.renderer.Render(w, r, status, "admin_account", PageModel{Section: "accounts", Notice: c.notices.Message(r.URL.Query().Get("notice")), Alert: alert, Data: c.record((&Viewer{}).From(r), item)})
+    c.renderer.Render(w, r, status, "admin_account", PageModel{Section: "accounts", Alert: alert, Data: c.record((&Viewer{}).From(r), item)})
 }
 
 func (c *AdminController) Update(w http.ResponseWriter, r *http.Request) {
@@ -184,7 +183,7 @@ func (c *AdminController) Update(w http.ResponseWriter, r *http.Request) {
             }
             c.sessions.CloseAccount(login, "")
             c.logger.Info("profile changed", "login", string(login), "profile", string(profile), "by", string(viewer.Login))
-            http.Redirect(w, r, "/admin/accounts/" + string(login) + "?notice=profile", http.StatusSeeOther)
+            c.renderer.Redirect(w, r, "/admin/accounts/" + string(login), "profile")
         case "reset":
             if login == viewer.Login {
                 c.show(w, r, http.StatusUnprocessableEntity, "Changez votre propre mot de passe depuis votre profil.")
@@ -202,7 +201,7 @@ func (c *AdminController) Update(w http.ResponseWriter, r *http.Request) {
             }
             c.sessions.CloseAccount(login, "")
             c.logger.Info("password reset", "login", string(login), "by", string(viewer.Login))
-            http.Redirect(w, r, "/admin/accounts/" + string(login) + "?notice=reset", http.StatusSeeOther)
+            c.renderer.Redirect(w, r, "/admin/accounts/" + string(login), "reset")
         case "name":
             name := strings.Join(strings.Fields(r.PostFormValue("name")), " ")
             if err := c.repository.SetName(login, name); err != nil {
@@ -215,7 +214,7 @@ func (c *AdminController) Update(w http.ResponseWriter, r *http.Request) {
                 return
             }
             c.logger.Info("name changed", "login", string(login), "by", string(viewer.Login))
-            http.Redirect(w, r, "/admin/accounts/" + string(login) + "?notice=name", http.StatusSeeOther)
+            c.renderer.Redirect(w, r, "/admin/accounts/" + string(login), "name")
         case "disable", "enable":
             state, notice := account.StateEnabled, "enabled"
             if r.PostFormValue("action") == "disable" {
@@ -233,7 +232,7 @@ func (c *AdminController) Update(w http.ResponseWriter, r *http.Request) {
                 c.sessions.CloseAccount(login, "")
             }
             c.logger.Info("account " + notice, "login", string(login), "by", string(viewer.Login))
-            http.Redirect(w, r, c.target(r, login, notice), http.StatusSeeOther)
+            c.renderer.Redirect(w, r, c.target(r, login), notice)
         case "sessions":
             c.sessions.CloseAccount(login, "")
             c.logger.Info("sessions closed", "login", string(login), "by", string(viewer.Login))
@@ -242,7 +241,7 @@ func (c *AdminController) Update(w http.ResponseWriter, r *http.Request) {
                 c.renderer.Render(w, viewer.Detach(r), http.StatusOK, "logged_out", PageModel{Section: "logout"})
                 return
             }
-            http.Redirect(w, r, c.target(r, login, "sessions"), http.StatusSeeOther)
+            c.renderer.Redirect(w, r, c.target(r, login), "sessions")
         case "delete":
             if (login == viewer.Login) || (r.PostFormValue("confirm") != string(item.Login)) {
                 c.show(w, r, http.StatusUnprocessableEntity, "Retapez exactement l'identifiant pour confirmer ; un administrateur ne peut pas supprimer son propre compte.")
@@ -254,17 +253,17 @@ func (c *AdminController) Update(w http.ResponseWriter, r *http.Request) {
             }
             c.sessions.CloseAccount(login, "")
             c.logger.Info("account deleted", "login", string(login), "by", string(viewer.Login))
-            http.Redirect(w, r, "/admin/accounts?notice=deleted", http.StatusSeeOther)
+            c.renderer.Redirect(w, r, "/admin/accounts", "deleted")
         default:
             c.errors.BadRequest(w, r)
     }
 }
 
-func (c *AdminController) target(r *http.Request, login account.Login, notice string) string {
+func (c *AdminController) target(r *http.Request, login account.Login) string {
     if r.PostFormValue("return") == "list" {
-        return "/admin/accounts?notice=" + notice
+        return "/admin/accounts"
     }
-    return "/admin/accounts/" + string(login) + "?notice=" + notice
+    return "/admin/accounts/" + string(login)
 }
 
 func (c *AdminController) message(err error) string {

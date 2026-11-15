@@ -46,15 +46,15 @@ type notFoundHandler struct {
 func NewSite(deps SiteDependencies) (*Site, error) {
     assets := NewEmbeddedAssets()
     today := NewToday(deps.Clock, deps.Server.Server.Location())
-    renderer, err := NewRenderer(assets.Templates(), today, deps.Logger)
-    if err != nil {
-        return nil, err
-    }
-    errors := NewErrorPages(renderer)
     sessions := NewSessions(deps.Clock, deps.Random, deps.Origins.Secure(), deps.Server.Sessions)
     if deps.Sessions != nil {
         sessions.Restore(deps.Sessions, deps.Logger)
     }
+    renderer, err := NewRenderer(assets.Templates(), today, sessions, deps.Logger)
+    if err != nil {
+        return nil, err
+    }
+    errors := NewErrorPages(renderer)
     guard := NewAuthGuard(sessions, deps.Repository, errors)
     loader := NewWorkspaceLoader(deps.Repository, today, activity.NewHolidayCalendar())
     address := NewClientAddress(deps.TrustedProxies, deps.LocalPrefixes)

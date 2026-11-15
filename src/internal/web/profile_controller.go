@@ -88,12 +88,8 @@ func (c *ProfileController) page(w http.ResponseWriter, r *http.Request, ws *Wor
         last := activity.NewDateOf(owner.LastLogin.In(ws.Location))
         record.LastLogin, record.LastLoginDate = last.Numeric(), last.String()
     }
-    if code := r.URL.Query().Get("notice"); (model.Notice == "") && (model.Warning == "") {
-        if c.notices.IsWarning(code) {
-            model.Warning = c.notices.Message(code)
-        } else {
-            model.Notice = c.notices.Message(code)
-        }
+    if owner.MustChangePassword && (model.Alert == "") {
+        model.Warning = c.notices.Message("change-password")
     }
     model.Section, model.Data = "profile", record
     c.renderer.Render(w, r, status, "profile", model)
@@ -168,7 +164,8 @@ func (c *ProfileController) Submit(w http.ResponseWriter, r *http.Request) {
     }
     c.logger.Info("password changed", "login", string(ws.Owner.Login))
     http.SetCookie(w, c.sessions.Cookie(SessionCookie, id, 0))
-    http.Redirect(w, r, profilePath + "?notice=password", http.StatusSeeOther)
+    c.sessions.SetNotice(c.sessions.Hash(id), "password")
+    http.Redirect(w, r, profilePath, http.StatusSeeOther)
 }
 
 func (c *ProfileController) closeSessions(w http.ResponseWriter, r *http.Request, ws *Workspace) {
@@ -190,7 +187,7 @@ func (c *ProfileController) saveName(w http.ResponseWriter, r *http.Request, ws 
         return
     }
     c.logger.Info("name changed", "login", string(ws.Owner.Login), "by", string(ws.Owner.Login))
-    http.Redirect(w, r, profilePath + "?notice=name", http.StatusSeeOther)
+    c.renderer.Redirect(w, r, profilePath, "name")
 }
 
 // ---------------------------------------------------------------------------

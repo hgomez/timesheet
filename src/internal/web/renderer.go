@@ -38,6 +38,8 @@ type Renderer struct {
     views    map[string]*template.Template
     families map[string]string
     clock    yearSource
+    sessions *Sessions
+    notices  *Notices
     logger   *slog.Logger
 }
 
@@ -51,8 +53,8 @@ const layoutFile = "layout.html"
 // Renderer implementation
 // ---------------------------------------------------------------------------
 
-func NewRenderer(templates fs.FS, clock yearSource, logger *slog.Logger) (*Renderer, error) {
-    r := &Renderer{views: map[string]*template.Template{}, families: map[string]string{}, clock: clock, logger: logger}
+func NewRenderer(templates fs.FS, clock yearSource, sessions *Sessions, logger *slog.Logger) (*Renderer, error) {
+    r := &Renderer{views: map[string]*template.Template{}, families: map[string]string{}, clock: clock, sessions: sessions, notices: NewNotices(), logger: logger}
     files, err := fs.Glob(templates, "*.html")
     if err != nil {
         return nil, err
@@ -86,6 +88,13 @@ func (r *Renderer) familiesOf(view string) []string {
     return []string{FamilyDashboard, FamilyAdmin}
 }
 
+func (r *Renderer) Redirect(w http.ResponseWriter, req *http.Request, path string, notice string) {
+    if viewer := (&Viewer{}).From(req); viewer != nil {
+        r.sessions.SetNotice(viewer.SessionKey, notice)
+    }
+    http.Redirect(w, req, path, http.StatusSeeOther)
+}
+
 func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, view string, model PageModel) {
     viewer := (&Viewer{}).From(req)
     family := r.families[view]
@@ -98,6 +107,13 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
         return
     }
     model.Chrome = Chrome{Family: family, Section: model.Section, Path: req.URL.Path, Year: r.clock.Year()}
+    if (viewer != nil) && (model.Notice == "") && (model.Warning == "") {
+        if code := r.sessions.TakeNotice(viewer.SessionKey); r.notices.IsWarning(code) {
+            model.Warning = r.notices.Message(code)
+        } else {
+            model.Notice = r.notices.Message(code)
+        }
+    }
     if viewer != nil {
         model.Chrome.Connected = true
         model.Chrome.Admin = viewer.IsAdmin()

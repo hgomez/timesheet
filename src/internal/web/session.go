@@ -32,6 +32,7 @@ type Session struct {
     csrf    string
     created time.Time
     seen    time.Time
+    notice  string
 }
 
 // ---------------------------------------------------------------------------

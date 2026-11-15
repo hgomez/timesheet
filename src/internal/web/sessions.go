@@ -174,6 +174,26 @@ func (s *Sessions) Lookup(id string) (account.Login, string, string, bool) {
     return session.login, session.csrf, key, true
 }
 
+func (s *Sessions) SetNotice(key string, code string) {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    if session, ok := s.sessions[key]; ok {
+        session.notice = code
+    }
+}
+
+func (s *Sessions) TakeNotice(key string) string {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    session, ok := s.sessions[key]
+    if !ok {
+        return ""
+    }
+    code := session.notice
+    session.notice = ""
+    return code
+}
+
 func (s *Sessions) Created(key string) time.Time {
     s.mu.Lock()
     defer s.mu.Unlock()

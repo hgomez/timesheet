@@ -123,7 +123,7 @@ func TestMenuShowsTheNameAndTheProfile(t *testing.T) {
         t.Fatal("without a name, the menu shows the login and the profile as its heading")
     }
     form := url.Values{"csrf": {user.token(page)}, "action": {"name"}, "name": {"  Marie   Curie "}}
-    if status, location, _ := user.post("/dashboard/profile", form); (status != http.StatusSeeOther) || (location != "/dashboard/profile?notice=name") {
+    if status, location, _ := user.post("/dashboard/profile", form); (status != http.StatusSeeOther) || (location != "/dashboard/profile") {
         t.Fatalf("name: %d %s", status, location)
     }
     if page := user.page("/dashboard/"); !strings.Contains(page, `<strong>Marie Curie</strong>`) || !strings.Contains(page, `<span class="avatar" aria-hidden="true">MC</span>`) {
@@ -146,6 +146,37 @@ func TestInitialsComeFromTheFirstAndLastWords(t *testing.T) {
         if initials := renderer.initials(label); initials != expected {
             t.Errorf("%q: %q, want %q", label, initials, expected)
         }
+    }
+}
+
+func TestNoticesFollowTheActionOnceWithoutAnyParameter(t *testing.T) {
+    site := newTestSite(t)
+    user := site.client().login("demo")
+    other := site.client().login("demo")
+    page := user.page("/dashboard/profile")
+    form := url.Values{"csrf": {user.token(page)}, "action": {"name"}, "name": {"Marie Curie"}}
+    if status, location, _ := user.post("/dashboard/profile", form); (status != http.StatusSeeOther) || (location != "/dashboard/profile") {
+        t.Fatalf("name: %d %s", status, location)
+    }
+    notice := `<p role="status">Le nom a été enregistré.</p>`
+    if !strings.Contains(other.page("/dashboard/profile"), "Marie Curie") || strings.Contains(other.page("/dashboard/profile"), notice) {
+        t.Fatal("the notice belongs to the session that acted")
+    }
+    if !strings.Contains(user.page("/dashboard/profile"), notice) {
+        t.Fatal("the page that follows the action must show its notice")
+    }
+    if strings.Contains(user.page("/dashboard/profile"), notice) {
+        t.Fatal("the notice must be shown once")
+    }
+    if strings.Contains(user.page("/dashboard/profile?notice=name"), notice) {
+        t.Fatal("a notice must never come from the URL")
+    }
+    change := url.Values{"csrf": {user.token(page)}, "action": {"password"}, "current": {testPassword}, "password": {"another horse battery"}, "confirm": {"another horse battery"}}
+    if status, location, _ := user.post("/dashboard/profile", change); (status != http.StatusSeeOther) || (location != "/dashboard/profile") {
+        t.Fatalf("password: %d %s", status, location)
+    }
+    if !strings.Contains(user.page("/dashboard/profile"), `<p role="status">Le mot de passe a été changé.</p>`) {
+        t.Fatal("the notice must follow the new session opened by a password change")
     }
 }
 

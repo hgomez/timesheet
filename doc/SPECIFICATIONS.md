@@ -159,7 +159,7 @@ The number of extra days comes from the employment contract: the application doe
 | login | The identifier of an account; also the act of logging in. |
 | missing half-day | An empty half-day of a tracked day before today, shown « Non renseigné ». |
 | notice | A paragraph `<p role="status">`, in green at the top of the page, confirming a successful action ([Main content](#main-content)). |
-| notice code | The code given in `?notice=` after a successful action ([Notices](#notices)). |
+| notice code | The code of the notice kept in the session by a successful action, for the next page ([Notices](#notices)). |
 | open month | A month that is not validated. |
 | operator | A person with shell access to the host that runs the service. |
 | options | The `--name=value` arguments of the command line. |
@@ -268,8 +268,8 @@ The messages are in [Account page](#account-page).
 ### Provisional password
 
 1. An account created by an `ADMIN`, or whose password an `ADMIN` resets, gets a provisional password and the flag `must_change_password`.
-2. Until the password is changed, every connected route allowed to the profile redirects (303) to `/dashboard/profile?notice=change-password`, for `GET` too. The settings page is redirected too.
-3. On that page, the password form is marked « (obligatoire) ».
+2. Until the password is changed, every connected route allowed to the profile redirects (303) to `/dashboard/profile`, for `GET` too. The settings page is redirected too.
+3. On that page, the password form is marked « (obligatoire) », and the warning `change-password` is shown at the top while the password stays provisional.
 
 Routes that are not redirected: `/dashboard/profile`, `/dashboard/colors.css` and `/logout`.
 
@@ -993,7 +993,7 @@ The panel is a `<nav aria-label="Compte">`, the same on every page of the dashbo
 | notice | the action succeeded | `<p role="status">`, details in `<ul class="notice-details">` | green (`--success`) |
 
 - They come in this order: alert, warning, notice.
-- Notices and warnings read from `?notice=` are listed in [Notices](#notices).
+- The notices and warnings that follow a redirection are listed in [Notices](#notices).
 - Field-level refusals of a grid or a form (an invalid half-day, a counter row) stay next to their field, in addition to the alert.
 - Then comes the content, which opens with a page header `<header class="page-header">` holding the `h1` and a line of explanation.
 - Sections are cards.
@@ -1374,7 +1374,7 @@ The section « Identité » lists:
 | White space | every run of white space, tabs and line breaks included, is collapsed to one space |
 | Empty | allowed: the name becomes « non renseigné » |
 | Request | `action=name` |
-| Success | 303 to `/dashboard/profile?notice=name` |
+| Success | 303 to `/dashboard/profile`, notice `name` |
 
 ### Password change
 
@@ -1749,7 +1749,7 @@ The refusals below come in the order in which the server checks them: a request 
 | 6 | 405 | known path, another method (`OPTIONS` included), with the header `Allow` | page « Méthode non autorisée », « Cette adresse n'accepte pas cette méthode. » |
 | 7 | 303 to `/login` | connected route without a valid session; a POST after the session expired is not saved | none |
 | 8 | 403 | `USER` on a route reserved to `ADMIN` | page « Accès refusé », « Cette page est réservée aux administrateurs. » |
-| 9 | 303 to `/dashboard/profile?notice=change-password` | account with a provisional password, outside the exempt routes ([Provisional password](#provisional-password)) | none |
+| 9 | 303 to `/dashboard/profile` | account with a provisional password, outside the exempt routes ([Provisional password](#provisional-password)) | none |
 | 10 | 400 | form that cannot be read, a body beyond `server.max_body_bytes` (256 KiB by default) included | page « Requête invalide », « La requête ne peut pas être traitée. » |
 | 11 | 403 | POST whose CSRF token does not match its session; login posted without the login cookie of its form or with another token (the cookie lasts `login.form_lifetime`, one hour by default, from the last display of the form in that browser; the browser then drops it) | page « Accès refusé », « Le formulaire a expiré ou n'est pas valide. Rechargez la page et recommencez. » |
 | 12 | 429 | login, or check of the current password in the profile page, while the address is blocked by the throttle; with `Retry-After` | page « Trop de tentatives », « Patientez quelques instants avant de réessayer. » |
@@ -1769,7 +1769,14 @@ Every error page offers « Revenir à l'accueil ». The answers of rows 2 to 17 
 
 ## NOTICES
 
-A notice code is read from `?notice=` and shown as a notice `<p role="status">`, in green, except `change-password`, shown as a warning, in yellow. An unknown code shows nothing.
+A successful action that redirects (303) keeps the code of its notice in the session of the browser, never in the URL:
+
+1. the page that follows shows it, at the top, as a notice `<p role="status">`, in green, then forgets it: a reload or another tab does not show it again;
+2. another session of the same account does not see it;
+3. a password change keeps it in the new session that it opens;
+4. a parameter `?notice=` in a URL is ignored.
+
+The code `change-password` is not kept: the profile page shows it as a warning, in yellow, as long as the password is provisional. The notice is held in memory only, not in the [session file](#session-file).
 
 | Code | Message | Shown after |
 | --- | --- | --- |

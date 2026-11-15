@@ -318,7 +318,7 @@ A write runs these steps under one `sync.RWMutex`:
 
 | Entity | Kind | Role |
 | --- | --- | --- |
-| `Session` | value | Session in memory: login, CSRF token, creation, last activity |
+| `Session` | value | Session in memory: login, CSRF token, creation, last activity, notice waiting for the next page |
 | `Sessions` | service | Sessions keyed by the SHA-256 of their identifier, with a CSRF token per session, kept in memory and saved through a `SessionArchive` so that they survive a restart |
 | `SessionArchive` | interface | Port to the session file, implemented by `store.SessionFile` |
 | `Viewer` | record | Connected account of a request, attached to the request context |
@@ -328,7 +328,7 @@ A write runs these steps under one `sync.RWMutex`:
 
 | Entity | Kind | Role |
 | --- | --- | --- |
-| `Renderer` | service | Parses each view with `layout.html` and the partial of its page family, and renders a page |
+| `Renderer` | service | Parses each view with `layout.html` and the partial of its page family, and renders a page; `Redirect` keeps the notice of an action in the session, and `Render` shows it once on the next page |
 | `PageModel` | record | What a view receives: chrome, section, notice, warning and alert with their details, CSRF token, data |
 | `Chrome` | record | Chrome of the page: viewer, initials, CSRF token of the menu forms, current path, year |
 | `ErrorPages` | service | Error pages (404, 403, other statuses) |
