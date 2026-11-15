@@ -131,7 +131,7 @@ The number of extra days comes from the employment contract: the application doe
 | accrual | A credit given by the rule of a counter, every month or every year. |
 | adjustment | A signed quantity entered by an employee on a counter at a date, with a reason ([Adjustments](#adjustments)). Also the kind `adjustment` of ledger entries made by the rules. |
 | administrator | A person whose account has the profile `ADMIN`. |
-| alert | A paragraph `<p role="alert">` telling why a request was refused. |
+| alert | A paragraph `<p role="alert">`, in red at the top of the page, telling why a request was refused ([Main content](#main-content)). |
 | anomaly | A problem of a stored day entry, listed above the grid ([Validation](#validation)). |
 | balance | The value of a counter: the sum of its entries. |
 | cancelled entry | A ledger entry that a reversal cancels. |
@@ -158,7 +158,7 @@ The number of extra days comes from the employment contract: the application doe
 | legal holiday | One of the eleven national holidays of [Legal holidays](#legal-holidays). |
 | login | The identifier of an account; also the act of logging in. |
 | missing half-day | An empty half-day of a tracked day before today, shown « Non renseigné ». |
-| notice | A paragraph `<p role="status">` confirming a successful action. |
+| notice | A paragraph `<p role="status">`, in green at the top of the page, confirming a successful action ([Main content](#main-content)). |
 | notice code | The code given in `?notice=` after a successful action ([Notices](#notices)). |
 | open month | A month that is not validated. |
 | operator | A person with shell access to the host that runs the service. |
@@ -188,6 +188,7 @@ The number of extra days comes from the employment contract: the application doe
 | user | The person using the application; `USER` is the profile of a person who is not an administrator. |
 | user settings | The settings of an account: tracking start, counters, colours ([User settings](#user-settings)). |
 | validated month | A month whose entries are frozen ([Validation](#validation)). |
+| warning | A paragraph `<p role="status" class="is-warning">`, in yellow at the top of the page, pointing out what to check or to do ([Main content](#main-content)). |
 | worked day | A day entered `TT`. |
 | working day | A day from Monday to Friday that is not a legal holiday, whatever is entered. |
 | zeroing | The adjustment that brings the balance of a counter to zero at its period start. |
@@ -983,8 +984,17 @@ The panel is a `<nav aria-label="Compte">`, the same on every page of the dashbo
 
 ### Main content
 
-- Notices are `<p role="status">` ([Notices](#notices)).
-- Alerts are `<p role="alert">`, followed by a plain list when they have details.
+- The result of an action is always shown at the top of `<main>`, before the page header, on every page, in three levels with the usual colours:
+
+| Level | Meaning | Markup | Colour |
+| --- | --- | --- | --- |
+| alert | the action is refused or failed | `<p role="alert">`, details in `<ul class="alert-details">` | red (`--danger`) |
+| warning | the action is done or possible, with points to check | `<p role="status" class="is-warning">`, details in `<ul class="warning-details">` | yellow (`--warning`) |
+| notice | the action succeeded | `<p role="status">`, details in `<ul class="notice-details">` | green (`--success`) |
+
+- They come in this order: alert, warning, notice.
+- Notices and warnings read from `?notice=` are listed in [Notices](#notices).
+- Field-level refusals of a grid or a form (an invalid half-day, a counter row) stay next to their field, in addition to the alert.
 - Then comes the content, which opens with a page header `<header class="page-header">` holding the `h1` and a line of explanation.
 - Sections are cards.
 - The login, logout and logged-out pages show a single centred card: logo, `h1`, explanation, form.
@@ -1759,7 +1769,7 @@ Every error page offers « Revenir à l'accueil ». The answers of rows 2 to 17 
 
 ## NOTICES
 
-A notice code is read from `?notice=` and shown as a notice `<p role="status">`. An unknown code shows nothing.
+A notice code is read from `?notice=` and shown as a notice `<p role="status">`, in green, except `change-password`, shown as a warning, in yellow. An unknown code shows nothing.
 
 | Code | Message | Shown after |
 | --- | --- | --- |

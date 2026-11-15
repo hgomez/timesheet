@@ -311,7 +311,7 @@ body > main > section > h2 {
     border-bottom: 1px solid var(--border);
 }
 
-main > [role="status"], main > [role="alert"], main > .alert-details {
+main > [role="status"], main > [role="alert"], main > .alert-details, main > .warning-details, main > .notice-details {
     border: 1px solid var(--border);
     border-left-width: 4px;
     border-radius: var(--radius);
@@ -319,9 +319,14 @@ main > [role="status"], main > [role="alert"], main > .alert-details {
     margin-bottom: var(--space-5);
 }
 
-main > [role="status"] {
+main > [role="status"], main > .notice-details {
     background: var(--success-soft);
     border-left-color: var(--success);
+}
+
+main > [role="status"].is-warning, main > .warning-details {
+    background: var(--warning-soft);
+    border-left-color: var(--warning);
 }
 
 main > [role="alert"], main > .alert-details, .anomalies {
@@ -329,7 +334,7 @@ main > [role="alert"], main > .alert-details, .anomalies {
     border-left-color: var(--danger);
 }
 
-main > .alert-details {
+main > .alert-details, main > .warning-details, main > .notice-details {
     padding-left: var(--space-6);
 }
 

@@ -293,6 +293,15 @@ func TestAccountDatesFollowTheServerTimeZone(t *testing.T) {
     if page := admin.page("/admin/accounts/carol"); !strings.Contains(page, `<dd><time datetime="2026-11-09">09/11/2026</time></dd>`) {
         t.Fatal("the creation at 00:30 in Paris must be dated 09/11/2026")
     }
+    carol := site.client()
+    _, _, body := carol.get("/login")
+    carol.post("/login", url.Values{"csrf": {carol.token(body)}, "login": {"carol"}, "password": {"provisional horse 2026"}})
+    if status, location, _ := carol.get("/dashboard/"); (status != http.StatusSeeOther) || (location != "/dashboard/profile?notice=change-password") {
+        t.Fatalf("provisional password: %d %s", status, location)
+    }
+    if page := carol.page("/dashboard/profile?notice=change-password"); !strings.Contains(page, `<p role="status" class="is-warning">Choisissez un nouveau mot de passe avant de continuer.</p>`) {
+        t.Fatal("the request of a new password must be a warning")
+    }
 }
 
 func TestAdministratorDisablesAndDeletesAnAccount(t *testing.T) {

@@ -329,7 +329,7 @@ A write runs these steps under one `sync.RWMutex`:
 | Entity | Kind | Role |
 | --- | --- | --- |
 | `Renderer` | service | Parses each view with `layout.html` and the partial of its page family, and renders a page |
-| `PageModel` | record | What a view receives: chrome, section, notice, alerts, CSRF token, data |
+| `PageModel` | record | What a view receives: chrome, section, notice, warning and alert with their details, CSRF token, data |
 | `Chrome` | record | Chrome of the page: viewer, initials, CSRF token of the menu forms, current path, year |
 | `ErrorPages` | service | Error pages (404, 403, other statuses) |
 | `Notices` | service | Fixed table from a notice code to its message |

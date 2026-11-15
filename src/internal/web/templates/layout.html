@@ -33,15 +33,32 @@
     <body class="{{.Chrome.Family}}">
 {{template "header" .}}
         <main>
-{{- if .Notice}}
-            <p role="status">{{.Notice}}</p>
-{{- end}}
 {{- if .Alert}}
             <p role="alert">{{.Alert}}</p>
 {{- end}}
 {{- if .Alerts}}
             <ul class="alert-details">
 {{- range .Alerts}}
+                <li>{{.}}</li>
+{{- end}}
+            </ul>
+{{- end}}
+{{- if .Warning}}
+            <p role="status" class="is-warning">{{.Warning}}</p>
+{{- end}}
+{{- if .Warnings}}
+            <ul class="warning-details">
+{{- range .Warnings}}
+                <li>{{.}}</li>
+{{- end}}
+            </ul>
+{{- end}}
+{{- if .Notice}}
+            <p role="status">{{.Notice}}</p>
+{{- end}}
+{{- if .Details}}
+            <ul class="notice-details">
+{{- range .Details}}
                 <li>{{.}}</li>
 {{- end}}
             </ul>

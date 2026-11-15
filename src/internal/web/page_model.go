@@ -22,13 +22,16 @@ package web
 // ---------------------------------------------------------------------------
 
 type PageModel struct {
-    Chrome  Chrome
-    Section string
-    Notice  string
-    Alert   string
-    Alerts  []string
-    CSRF    string
-    Data    any
+    Chrome   Chrome
+    Section  string
+    Notice   string
+    Details  []string
+    Warning  string
+    Warnings []string
+    Alert    string
+    Alerts   []string
+    CSRF     string
+    Data     any
 }
 
 // ---------------------------------------------------------------------------

@@ -77,6 +77,10 @@ func (c *ProfileController) Show(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *ProfileController) render(w http.ResponseWriter, r *http.Request, ws *Workspace, status int, alert string) {
+    c.page(w, r, ws, status, PageModel{Alert: alert})
+}
+
+func (c *ProfileController) page(w http.ResponseWriter, r *http.Request, ws *Workspace, status int, model PageModel) {
     owner := ws.Owner
     created := activity.NewDateOf(owner.Created.In(ws.Location))
     record := profileRecord{Login: string(owner.Login), Name: owner.Name, Profile: owner.Profile.Label(), Created: created.Numeric(), CreatedDate: created.String(), LastLogin: "jamais", Sessions: c.sessions.Count(owner.Login), MustChange: owner.MustChangePassword}
@@ -84,8 +88,15 @@ func (c *ProfileController) render(w http.ResponseWriter, r *http.Request, ws *W
         last := activity.NewDateOf(owner.LastLogin.In(ws.Location))
         record.LastLogin, record.LastLoginDate = last.Numeric(), last.String()
     }
-    notice := c.notices.Message(r.URL.Query().Get("notice"))
-    c.renderer.Render(w, r, status, "profile", PageModel{Section: "profile", Notice: notice, Alert: alert, Data: record})
+    if code := r.URL.Query().Get("notice"); (model.Notice == "") && (model.Warning == "") {
+        if c.notices.IsWarning(code) {
+            model.Warning = c.notices.Message(code)
+        } else {
+            model.Notice = c.notices.Message(code)
+        }
+    }
+    model.Section, model.Data = "profile", record
+    c.renderer.Render(w, r, status, "profile", model)
 }
 
 func (c *ProfileController) Submit(w http.ResponseWriter, r *http.Request) {

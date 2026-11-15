@@ -31,6 +31,10 @@ func NewNotices() *Notices {
     return &Notices{}
 }
 
+func (n *Notices) IsWarning(code string) bool {
+    return code == "change-password"
+}
+
 func (n *Notices) Message(code string) string {
     switch code {
         case "saved":
