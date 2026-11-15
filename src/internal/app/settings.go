@@ -45,6 +45,7 @@ type Settings struct {
     tlsCert        string
     tlsKey         string
     profile        string
+    provisional    bool
     from           string
     to             string
     dryRun         bool
@@ -81,6 +82,7 @@ func NewSettings(args []string) (*Settings, error) {
     flags.StringVar(&s.tlsCert, "tls-cert", "", "")
     flags.StringVar(&s.tlsKey, "tls-key", "", "")
     flags.StringVar(&s.profile, "profile", "USER", "")
+    flags.BoolVar(&s.provisional, "provisional", false, "")
     flags.StringVar(&s.from, "from", "", "")
     flags.StringVar(&s.to, "to", "", "")
     flags.BoolVar(&s.dryRun, "dry-run", false, "")
@@ -138,7 +140,7 @@ func (s *Settings) check() error {
                 return NewUsageError(s.command + ": wrong number of arguments")
             }
     }
-    allowed := map[string][]string{"init": {"template"}, "run": {"listen", "origin", "trusted-proxy", "tls-cert", "tls-key"}, "user add": {"profile"}, "import": {"from", "to", "dry-run", "replace", "validate"}}
+    allowed := map[string][]string{"init": {"template"}, "run": {"listen", "origin", "trusted-proxy", "tls-cert", "tls-key"}, "user add": {"profile", "provisional"}, "import": {"from", "to", "dry-run", "replace", "validate"}}
     for name := range s.explicit {
         if (name == "database") || (name == "config") || (name == "log-level") {
             continue
@@ -266,6 +268,10 @@ func (s *Settings) TLSPair() (string, string) {
 
 func (s *Settings) Profile() string {
     return s.profile
+}
+
+func (s *Settings) Provisional() bool {
+    return s.provisional
 }
 
 func (s *Settings) Period() (string, string) {

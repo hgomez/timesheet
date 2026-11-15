@@ -1,0 +1,7 @@
+*
+!.ci/make-build.sh
+!.ci/make-install.sh
+!bin/timesheet-entrypoint.sh
+!etc/timesheet/timesheet.json
+!share/timesheet/
+!src/

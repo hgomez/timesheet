@@ -49,6 +49,7 @@ This README is the entry point: what the application does, how to try it from th
 | Bring an existing history in | [Importing](doc/OPERATIONS.md#importing) |
 | Build it, run the tests, build the package | [doc/BUILD.md](doc/BUILD.md) |
 | Install it as a service | [Debian package](doc/OPERATIONS.md#debian-package) |
+| Run it in a container | [Container](doc/OPERATIONS.md#container) |
 | Change the address, the host names, the time zone, the sessions or the limits | [Server configuration](doc/OPERATIONS.md#server-configuration) |
 | Put it behind a reverse proxy | [Network and security](doc/OPERATIONS.md#network-and-security) |
 | Upgrade an installation | [Upgrade](doc/OPERATIONS.md#upgrade) |
@@ -79,8 +80,8 @@ var/    lib/timesheet/ (database of the repository, given with --database, its l
 | Document | Content |
 | --- | --- |
 | [doc/USER-GUIDE.md](doc/USER-GUIDE.md) | Concepts, activity codes, pages and profiles; the tasks of the employee and of the administrator; the labels shown on screen. |
-| [doc/BUILD.md](doc/BUILD.md) | Requirements, `make` targets, installation of the files, Debian package. |
-| [doc/OPERATIONS.md](doc/OPERATIONS.md) | Commands, server configuration, network, logs, import, example database, Debian package, backup, recovery, upgrade, troubleshooting. |
+| [doc/BUILD.md](doc/BUILD.md) | Requirements, `make` targets, installation of the files, Debian package, container image. |
+| [doc/OPERATIONS.md](doc/OPERATIONS.md) | Commands, server configuration, network, logs, import, example database, Debian package, container, backup, recovery, upgrade, troubleshooting. |
 | [doc/SPECIFICATIONS.md](doc/SPECIFICATIONS.md) | The functional reference: glossary, profiles, entries, counters and bookkeeping, pages, routes, database schema, server configuration, command line, import format, logs, limits, personal data, simplifications, migration notes. |
 | [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) | Packages, entities, HTTP chain, concurrency, persistence, lifecycle. Start with [Packages](doc/ARCHITECTURE.md#packages). |
 | [doc/SECURITY.md](doc/SECURITY.md) | Threat model, sessions, passwords, login throttling, transport, data protection, accepted risks. |
@@ -97,7 +98,7 @@ The password prompt without echo needs Linux. Elsewhere, `user add` and `user pa
 
 ## GETTING STARTED
 
-This section goes from the sources to a running server on your workstation. To install the Debian package instead, see [Debian package](doc/OPERATIONS.md#debian-package).
+This section goes from the sources to a running server on your workstation. To install the Debian package instead, see [Debian package](doc/OPERATIONS.md#debian-package); to run a container, see [Container](doc/OPERATIONS.md#container).
 
 - Run every command from the root of the repository.
 - `<login>` is the login you choose: 2 to 32 characters among lower-case letters, digits, dots, dashes and underscores, starting with a letter or a digit.
@@ -175,12 +176,13 @@ Then follow the [User guide](doc/USER-GUIDE.md).
 
 ## BUILD
 
-`make` builds `bin/timesheet` and `make check` runs the tests. The other targets, the requirements and the Debian package are described in [doc/BUILD.md](doc/BUILD.md).
+`make` builds `bin/timesheet` and `make check` runs the tests. The other targets, the requirements, the Debian package and the container image are described in [doc/BUILD.md](doc/BUILD.md).
 
 ## RUN
 
 - From the repository: `bin/timesheet.sh` from any directory, or `bin/timesheet run --database=var/lib/timesheet/timesheet-database.json --config=etc/timesheet/timesheet.json` from the root (see [Getting started](#getting-started)).
 - As a service: build the Debian package, install it, then create the first administrator (see [Debian package](doc/OPERATIONS.md#debian-package)).
+- In a container: build the image with `docker build -t timesheet .`, then run it with a volume for the database; its first start creates the database and an administrator, `admin` or `TIMESHEET_USERNAME`, whose password, `Tms@Admin%26` or `TIMESHEET_PASSWORD`, must be changed at the first login (see [Container](doc/OPERATIONS.md#container)).
 
 Everything else about running the server is in [doc/OPERATIONS.md](doc/OPERATIONS.md): server configuration, network and reverse proxy, logs, import, backup and restore, recovery, upgrade and troubleshooting.
 

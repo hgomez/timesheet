@@ -1,6 +1,6 @@
 # BUILD
 
-This document describes how to build Timesheet from its sources: the program, its tests, the installation of its files and the Debian package.
+This document describes how to build Timesheet from its sources: the program, its tests, the installation of its files, the Debian package and the container image.
 
 It is written for whoever builds the software. How the build scripts are written is in [CODING.md](CODING.md#makefile); how to run the result is in [OPERATIONS.md](OPERATIONS.md).
 
@@ -12,6 +12,7 @@ It is written for whoever builds the software. How the build scripts are written
 - [INSTALL THE FILES](#install-the-files)
 - [CLEAN](#clean)
 - [BUILD THE DEBIAN PACKAGE](#build-the-debian-package)
+- [BUILD THE CONTAINER IMAGE](#build-the-container-image)
 - [VERSION](#version)
 
 ## REQUIREMENTS
@@ -21,8 +22,9 @@ It is written for whoever builds the software. How the build scripts are written
 | Build the program | Go 1.24 or later, and `make`. |
 | Run the tests | `gcc` as well: the race detector needs cgo. |
 | Build the Debian package | A Debian system with `build-essential`, `debhelper`, `devscripts`, `golang` and `git`. |
+| Build the container image | Docker, or another builder of `Dockerfile` images, and access to the registry of the images `golang:1.24-alpine3.22` and `alpine:3.22`. |
 
-The program has no dependency besides the Go standard library: nothing is downloaded during the build.
+The program has no dependency besides the Go standard library: nothing is downloaded during the build, except the base images of the container image.
 
 Run every command of this document from the root of the repository.
 
@@ -100,6 +102,22 @@ Never run `make mrproper` without a backup of the database and a commit of your 
 - The package installs the server configuration of the repository as is: its `database.path` is the database of the package.
 - `<version>` is the first entry of `debian/changelog`.
 - Installing and running the package is described in [OPERATIONS.md](OPERATIONS.md#debian-package).
+
+## BUILD THE CONTAINER IMAGE
+
+1. From the root of the repository:
+
+   ```sh
+   docker build -t timesheet .
+   ```
+
+2. The build runs in two stages:
+   - in `golang:1.24-alpine3.22`, `.ci/make-build.sh` and `.ci/make-install.sh` build and install the files into a staging tree, as `make` and `make install` do; `bin/timesheet-entrypoint.sh` is added as `/usr/bin/timesheet-entrypoint.sh`, and `config set` makes the server configuration listen on `0.0.0.0:8080`;
+   - `alpine:3.22` receives these files, the time zones (`tzdata`) and the system account `timesheet` (uid and gid 10001).
+3. The image does not run the tests: run `make check` before.
+
+- The image is built from the working tree, uncommitted changes included. `.dockerignore` sends only the sources, the build and installation scripts, the entry point, the server configuration and `share/timesheet/`: never the database under `var/lib/timesheet/`, nor `.git`, so `version` prints only the release number.
+- Running the image is described in [OPERATIONS.md](OPERATIONS.md#container).
 
 ## VERSION
 

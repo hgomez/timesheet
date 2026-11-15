@@ -43,7 +43,7 @@ func TestUsageAndArguments(t *testing.T) {
     if run := runCommand(t, "", "help"); (run.code != ExitOK) || !strings.Contains(run.stdout, "import LOGIN FILE") {
         t.Fatalf("help: %+v", run)
     }
-    for _, args := range [][]string{{"bogus"}, {"user"}, {"user", "add"}, {"run", "--profile=ADMIN"}, {"run", "--tls-cert=x"}, {"import", "a"}, {"run", "--trusted-proxy=nope"}, {"import", "a", "b", "--from=2026-10", "--to=2026-09"}, {"user", "list", "--database="}, {"user", "list", "--database=dir/"}} {
+    for _, args := range [][]string{{"bogus"}, {"user"}, {"user", "add"}, {"run", "--profile=ADMIN"}, {"run", "--provisional"}, {"run", "--tls-cert=x"}, {"import", "a"}, {"run", "--trusted-proxy=nope"}, {"import", "a", "b", "--from=2026-10", "--to=2026-09"}, {"user", "list", "--database="}, {"user", "list", "--database=dir/"}} {
         if run := runCommand(t, "", args...); run.code != ExitUsage {
             t.Errorf("%v: code %d", args, run.code)
         }
@@ -85,6 +85,25 @@ func TestInitAndAccounts(t *testing.T) {
         t.Fatalf("config show: %s", run.stdout)
     }
     _ = directory
+}
+
+func TestUserAddProvisional(t *testing.T) {
+    _, database := newTestDirectory(t)
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
+    runCommand(t, "", "init", template, database)
+    if run := runCommand(t, "correct horse battery", "user", "add", "admin", "--profile=ADMIN", "--provisional", database); run.code != ExitOK {
+        t.Fatalf("user add --provisional: %+v", run)
+    }
+    if run := runCommand(t, "correct horse battery", "user", "add", "olivier", database); run.code != ExitOK {
+        t.Fatalf("user add: %+v", run)
+    }
+    opened := openTestDatabase(t, database)
+    if admin, _, _ := opened.Account(account.Login("admin")); !admin.MustChangePassword {
+        t.Fatal("a provisional account must change its password")
+    }
+    if user, _, _ := opened.Account(account.Login("olivier")); user.MustChangePassword {
+        t.Fatal("an account created without --provisional must not change its password")
+    }
 }
 
 func TestImportReadsTheJSONFile(t *testing.T) {

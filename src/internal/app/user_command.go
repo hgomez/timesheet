@@ -131,7 +131,7 @@ func (c *UserCommand) add(out io.Writer, database *store.Database, login account
     }
     now := c.clock.Now()
     today := activity.NewDateOf(now.In(c.server.Server.Location()))
-    created := account.Account{Login: login, Profile: profile, State: account.StateEnabled, Password: hash, Created: now.UTC().Truncate(time.Second)}
+    created := account.Account{Login: login, Profile: profile, State: account.StateEnabled, Password: hash, MustChangePassword: c.settings.Provisional(), Created: now.UTC().Truncate(time.Second)}
     if err := database.CreateAccount(created, activity.NewCalendar(today.Month().First())); err != nil {
         return err
     }

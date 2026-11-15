@@ -45,7 +45,7 @@ Other documents hold the rest:
 ### Expected deployment
 
 - A handful of accounts.
-- Usually a single host, or a server behind a reverse proxy.
+- Usually a single host, or a server behind a reverse proxy, installed from the Debian package or run in a container.
 
 ### Actors
 
@@ -107,11 +107,12 @@ Each row is a known limit that the application does not remove. The column "Boun
 | Group members can delete or replace the files. | The database directory is writable by its group. | A warning is logged. | Remove the group write right. See [Files](#files). |
 | Another user can block the program. | The database is in a sticky directory shared with other users. | That user creates the lock or session file first. | Use a directory of the service account. |
 | An administrator with a public password. | The example database is served on a network or used as a real database. | Its account `demo`, profile `ADMIN`, has the documented password `demonstration`. | Use it only on the loopback, in a copy; never as a real database. See [Example database](OPERATIONS.md#example-database). |
+| An administrator with a default password. | A container starts on a new database without `TIMESHEET_PASSWORD`. | Its administrator, `admin` unless `TIMESHEET_USERNAME` names another login, has the documented password `Tms@Admin%26`, provisional: the first login must change it, but whoever logs in first takes the account. | Give `TIMESHEET_PASSWORD` at the first start, or log in and change the password before the port is reachable from the network. See [Container](OPERATIONS.md#container). |
 | A permanent password known to the operator. | `user add` or `user passwd` set the password. | The operator typed it. | Ask the user to change it from the profile page (« Mon profil »). |
 | The session file gives the CSRF tokens. | Someone reads the session file. | It does not give the means to use a session. | Protect it like the database. |
 | The database and the backups are not encrypted. | root, the service account or a holder of a backup reads the file. | Every comment and absence reason is readable in clear. | File modes, protected backups. See [Data protection](#data-protection). |
 | Login timing differs for some accounts. | A stored hash has a number of iterations other than `passwords.iterations`. | The decoy hash uses the configured number. | Change `passwords.iterations` rarely; a password change rewrites the hash with the configured number. |
-| The operator weakens a setting. | Whoever can write the server configuration lowers a duration, a delay or a limit. | Every setting is bounded by the program: at least 600 000 iterations, an initial login delay of at least 100 ms, sessions of at most 30 days, at most 16 384 sessions in all, HSTS of at least 24 h. The file is owned by root on a package. | Protect the file like the binary; read `config show --config=<file>` after a change. |
+| The operator weakens a setting. | Whoever can write the server configuration lowers a duration, a delay or a limit. | Every setting is bounded by the program: at least 600 000 iterations, an initial login delay of at least 100 ms, sessions of at most 30 days, at most 16 384 sessions in all, HSTS of at least 24 h. The file is owned by root on a package; in the container image, it belongs to the service account, so that `config set` works through `docker exec`. | Protect the file like the binary; read `config show --config=<file>` after a change. |
 | A security fix of Go needs a rebuild. | A vulnerability is fixed in the Go standard library. | The binary is statically linked. | Rebuild and reinstall the binary or the package. |
 
 Glossary of the terms of this table:
@@ -189,7 +190,8 @@ The pages and routes of each profile are in [Profiles and accounts](SPECIFICATIO
 | --- | --- | --- |
 | Account creation in the administration pages | Provisional | The user must change it at the next login. |
 | Password reset in the administration pages | Provisional | The user must change it at the next login. |
-| `user add` or `user passwd` | Permanent | Known to the operator until the user changes it. |
+| `user add --provisional`, which the container image runs for its administrator at its first start | Provisional | The user must change it at the next login. |
+| `user add` without `--provisional`, or `user passwd` | Permanent | Known to the operator until the user changes it. |
 
 The rule of the forced change is defined in [Profiles and accounts](SPECIFICATIONS.md#profiles-and-accounts).
 

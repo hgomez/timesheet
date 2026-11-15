@@ -78,6 +78,7 @@ func NewUsage(program string) *Usage {
             }},
             {title: "Options of user add", options: [][2]string{
                 {"--profile=<profile>", "USER or ADMIN (default USER)"},
+                {"--provisional", "the password must be changed at the first login"},
             }},
             {title: "Options of import", options: [][2]string{
                 {"--from=<YYYY-MM>", "first imported month"},

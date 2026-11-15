@@ -176,11 +176,11 @@ In a file with a build constraint, `//go:build ...` is the very first line, foll
 | Files | Syntax | Checked by |
 | --- | --- | --- |
 | `.go` files | `/* … */` block, as above | review |
-| `Makefile`, `bin/timesheet.sh`, the scripts and the configuration of `.ci/`, `debian/timesheet.service` | the same text in `#` comments | review |
+| `Makefile`, `bin/timesheet.sh`, `bin/timesheet-entrypoint.sh`, `Dockerfile`, the scripts and the configuration of `.ci/`, `debian/timesheet.service` | the same text in `#` comments | review |
 | Style sheets (`.css`) and scripts (`.js`) of `internal/web` | the same `/* … */` block at the very top, followed by a blank line | `TestWebSourcesStartWithTheLicenceHeader`, file name included |
 | Templates (`.html`) of `internal/web` | the same block inside a template comment, `{{- /* … */ -}}`, on the first lines, which keeps it out of the pages sent | `TestWebSourcesStartWithTheLicenceHeader`, file name included |
 
-`debian/postinst` has section banners but no licence header; `debian/rules` has neither.
+`debian/postinst` has section banners but no licence header; `debian/rules` and `.dockerignore` have neither.
 
 ### Indentation
 
@@ -201,7 +201,7 @@ In a file with a build constraint, `//go:build ...` is the very first line, foll
 | Files | Allowed |
 | --- | --- |
 | Go | The licence header; the section banners (`// ---…`) and their titles; the directives `//go:build` and `//go:embed` |
-| `Makefile`, `bin/timesheet.sh`, the files of `.ci/`, `debian/timesheet.service` | The licence header; the section banners with their titles |
+| `Makefile`, `bin/timesheet.sh`, `bin/timesheet-entrypoint.sh`, `Dockerfile`, the files of `.ci/`, `debian/timesheet.service` | The licence header; the section banners with their titles |
 | CSS, JavaScript, templates | The licence header and nothing else: no `//`, no other `/* */`, no `<!-- -->`, no other `{{/* */}}`; a style sheet has no section title |
 
 ### Checks
@@ -704,6 +704,15 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 - `debian/postinst` reads the database path with `timesheet config show database.path --config=/etc/timesheet/timesheet.json`; it never fails on an unreadable configuration, a configuration without database or a failed `init`, and creates the database only at a plain absolute path inside `/var/lib/timesheet`.
 - The unit runs `timesheet run --config=/etc/timesheet/timesheet.json`: the database comes from that file.
 - How to build the package is described in [BUILD.md](BUILD.md#build-the-debian-package), how to install and run it in [OPERATIONS.md](OPERATIONS.md#debian-package).
+
+### Container image
+
+- `Dockerfile`, at the repository root, has two stages, `golang:1.24-alpine3.22` then `alpine:3.22`, each image pinned to its version.
+- The build stage runs `.ci/make-build.sh`, then `.ci/make-install.sh` with `DESTDIR=/stage`, adds `bin/timesheet-entrypoint.sh` as `/usr/bin/timesheet-entrypoint.sh`, and sets `server.listen` to `0.0.0.0:8080` with `config set`: the image installs the same files as the package.
+- The runtime stage installs `tzdata`, since the binary does not embed the time zones, and creates the account `timesheet`, uid and gid 10001; it runs as that account, with the volumes `/var/lib/timesheet` and `/etc/timesheet`.
+- `.dockerignore` excludes everything, then lets in only what the build reads: never `var/lib/timesheet/`, which holds a real database, nor `.git`.
+- `bin/timesheet-entrypoint.sh` adds `--config=/etc/timesheet/timesheet.json` to every command; before `run`, when the database is missing, it runs `init` and `user add <login> --profile=ADMIN --provisional`, with the login of `TIMESHEET_USERNAME` or `admin`, and `TIMESHEET_PASSWORD` or the default password, and stops on the first failure ([Bootstrap](SPECIFICATIONS.md#bootstrap)).
+- How to build the image is described in [BUILD.md](BUILD.md#build-the-container-image), how to run it in [OPERATIONS.md](OPERATIONS.md#container).
 
 ### Building the package
 

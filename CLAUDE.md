@@ -63,6 +63,6 @@ bin/timesheet run --listen=127.0.0.1:9000 --config=<tmp>/timesheet.json
 - [doc/CODING.md](doc/CODING.md): [summary of the checks](doc/CODING.md#summary-of-the-checks), dependencies, files, comments, style, naming, security rules, templates, JavaScript, styles, [tests](doc/CODING.md#tests), [checks before a commit](doc/CODING.md#checks-before-a-commit), formatting, [changing the schema](doc/CODING.md#changing-the-schema), Makefile, packaging, [documentation](doc/CODING.md#documentation), commits.
 - [doc/SECURITY.md](doc/SECURITY.md): [threat model](doc/SECURITY.md#threat-model), accepted risks, authorization, [passwords](doc/SECURITY.md#passwords), forms and origins (CSRF), login throttling, trusted proxies, [sessions](doc/SECURITY.md#sessions), files, [transport](doc/SECURITY.md#transport), logs, data protection.
 - [doc/USER-GUIDE.md](doc/USER-GUIDE.md): concepts, codes, pages, profiles, daily tasks of the employee and of the administrator, labels on screen.
-- [doc/BUILD.md](doc/BUILD.md): requirements, `make` targets, installation of the files, Debian package.
-- [doc/OPERATIONS.md](doc/OPERATIONS.md): commands, server configuration, network, logs, import, example database, Debian package, backup, recovery, upgrade, troubleshooting.
+- [doc/BUILD.md](doc/BUILD.md): requirements, `make` targets, installation of the files, Debian package, container image.
+- [doc/OPERATIONS.md](doc/OPERATIONS.md): commands, server configuration, network, logs, import, example database, Debian package, container, backup, recovery, upgrade, troubleshooting.
 - [README.md](README.md): entry point, features, first start from the sources.

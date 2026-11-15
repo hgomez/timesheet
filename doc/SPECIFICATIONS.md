@@ -9,8 +9,8 @@ Every change of behaviour, screen, label, route, form field, computation rule, d
 | Document | Content |
 | --- | --- |
 | [README.md](../README.md) | Entry point, first start from the sources |
-| [BUILD.md](BUILD.md) | Requirements, `make` targets, Debian package |
-| [OPERATIONS.md](OPERATIONS.md) | Commands, server configuration, network, logs, import, package, backup, recovery and upgrade procedures, troubleshooting |
+| [BUILD.md](BUILD.md) | Requirements, `make` targets, Debian package, container image |
+| [OPERATIONS.md](OPERATIONS.md) | Commands, server configuration, network, logs, import, package, container, backup, recovery and upgrade procedures, troubleshooting |
 | [USER-GUIDE.md](USER-GUIDE.md) | Concepts, daily tasks of the employee and of the administrator, labels shown on screen |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Packages and import direction, entities, HTTP chain, flows, concurrency, persistence, lifecycle |
 | [CODING.md](CODING.md) | How the code, the templates, the styles and the tests are written |
@@ -275,7 +275,7 @@ The messages are in [Account page](#account-page).
 
 Routes that are not redirected: `/dashboard/profile`, `/dashboard/colors.css` and `/logout`.
 
-Accounts created on the command line do not have the flag, and `user passwd` clears it.
+Accounts created on the command line have the flag only with `--provisional` ([`timesheet user add`](#timesheet-user-add)), and `user passwd` clears it.
 
 ### Closing of sessions
 
@@ -2020,7 +2020,7 @@ timesheet init
 timesheet run [--listen=...] [--origin=...] [--trusted-proxy=...] [--tls-cert=... --tls-key=...]
 timesheet config show [KEY]
 timesheet config set KEY VALUE [KEY VALUE...]
-timesheet user add LOGIN [--profile=USER|ADMIN]
+timesheet user add LOGIN [--profile=USER|ADMIN] [--provisional]
 timesheet user profile LOGIN USER|ADMIN
 timesheet user passwd LOGIN
 timesheet user del LOGIN
@@ -2049,7 +2049,7 @@ timesheet help | version
 - A database file name cannot be `.` or `..`, nor end with `.lock`, `.sessions` or `.tmp` in any case, the suffixes of the lock, session and temporary files written next to it ([Lock](#lock)).
 - A relative database path, given by `--database` or by `database.path`, is relative to the current directory; the commands turn it into an absolute path before opening the file.
 - From the sources, the database of the repository is given explicitly: `--database=var/lib/timesheet/timesheet-database.json`, with `--config=etc/timesheet/timesheet.json`, whose `database.path` is the database of the package.
-- The unit and the commands of the Debian package give `--config=/etc/timesheet/timesheet.json` ([OPERATIONS.md](OPERATIONS.md#two-installations)).
+- The unit and the commands of the Debian package give `--config=/etc/timesheet/timesheet.json` ([OPERATIONS.md](OPERATIONS.md#two-installations)); in the container image, its entry point adds it to every command ([OPERATIONS.md, Container](OPERATIONS.md#container)).
 - A command that opens the database while neither `--database` nor `database.path` gives it is a usage error (exit 2): `timesheet: <command>: no database: give --database or set database.path in --config`. So are `config show` or `config set` without `--config` (`timesheet: config show: --config is required`), and `init` without `--template`.
 
 ### Exit codes
@@ -2077,6 +2077,8 @@ An error is printed on the standard error as `timesheet: <message>`. An error fo
 The server also starts before step 2, without any account: it then warns, and step 2 is done with the server stopped.
 
 The procedure, with the paths of an installed package, is in [OPERATIONS.md, Install](OPERATIONS.md#install) and [README.md, First start](../README.md#first-start).
+
+The container image does steps 1 and 2 at its first start, before `run`, when the database named by its server configuration does not exist yet: `init`, then `user add <login> --profile=ADMIN --provisional`, with the login of `TIMESHEET_USERNAME`, or else `admin`, and the password of `TIMESHEET_PASSWORD`, or else the default password `Tms@Admin%26`. The account must change its password at its first login ([Provisional password](#provisional-password)). When the database exists, nothing is created; when `init` or `user add` fails, the container stops with exit 1. The procedure is in [OPERATIONS.md, Container](OPERATIONS.md#container).
 
 ### Passwords
 
@@ -2189,7 +2191,7 @@ Change `server.origins` together with `server.listen`: a request whose `Host` is
 - Reads the server configuration first, for the path of the database, the time zone, the limit of accounts and the iterations of the hash.
 - Refuses a login already taken (exit 1), before reading the password.
 - Reads the password ([Passwords](#passwords)).
-- The account does not have to change its password.
+- The account does not have to change its password, unless `--provisional` is given: the password is then provisional ([Provisional password](#provisional-password)).
 - Prints `Account <login> created (<profile>).`.
 
 ### `timesheet user profile`

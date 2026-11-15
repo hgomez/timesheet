@@ -1,6 +1,6 @@
 # OPERATIONS
 
-This document describes how to install, configure, expose, monitor, back up, upgrade and repair a Timesheet server.
+This document describes how to install, configure, expose, monitor, back up, upgrade and repair a Timesheet server, from the sources, the Debian package or the container image.
 
 It is written for the operator, the person who runs the server and has a shell on its host. Building the program and the package is described in [BUILD.md](BUILD.md); the first start from the sources in the [README](../README.md#getting-started); the daily use in the [User guide](USER-GUIDE.md).
 
@@ -14,6 +14,7 @@ It is written for the operator, the person who runs the server and has a shell o
 - [IMPORTING](#importing)
 - [EXAMPLE DATABASE](#example-database)
 - [DEBIAN PACKAGE](#debian-package)
+- [CONTAINER](#container)
 - [BACKUP AND RESTORE](#backup-and-restore)
 - [RECOVERY](#recovery)
 - [UPGRADE](#upgrade)
@@ -25,6 +26,8 @@ Every procedure below gives two forms:
 
 - the repository form: the binary `bin/timesheet`, run from the repository root by your own user;
 - the package form: the binary `timesheet` of the [Debian package](#debian-package), run as root or as the account `timesheet`.
+
+The container image is a third form, described in its own section: [Container](#container).
 
 | Item | Repository | Package |
 | --- | --- | --- |
@@ -348,6 +351,91 @@ A drop-in written for a former version, with an `ExecStart=` that passes `--conf
 ### Remove
 
 Removing or purging the package keeps `/var/lib/timesheet` and the account `timesheet`.
+
+## CONTAINER
+
+### What the image holds
+
+The image is built as described in [BUILD.md](BUILD.md#build-the-container-image). It holds:
+
+- `/usr/bin/timesheet`, and the configuration template, the example database and the import template in `/usr/share/timesheet/`;
+- the server configuration `/etc/timesheet/timesheet.json`, the file of the repository with `server.listen` set to `0.0.0.0:8080`: its origins stay `http://127.0.0.1:8080` and `http://localhost:8080`, its database `/var/lib/timesheet/timesheet-database.json`;
+- the entry point `/usr/bin/timesheet-entrypoint.sh`, which adds `--config=/etc/timesheet/timesheet.json` to the command given to the container, `run` by default.
+
+| Item | Container |
+| --- | --- |
+| Account | `timesheet`, uid and gid 10001; the working directory is `/var/lib/timesheet` |
+| Volumes | `/var/lib/timesheet` (database, sessions and lock, mode 0700) and `/etc/timesheet` (server configuration, owned by the account `timesheet`) |
+| Port | 8080 |
+| Variables | `TIMESHEET_USERNAME` and `TIMESHEET_PASSWORD`, the login (`admin` by default) and the password (`Tms@Admin%26` by default) of the administrator, read only at the first start ([First start](#first-start)) |
+| Logs | the standard error of `run`: `docker logs timesheet` |
+
+### First start
+
+Before `run`, when the database of the server configuration does not exist, the entry point creates it with `init`, then an administrator with `user add <login> --profile=ADMIN --provisional` ([Bootstrap](SPECIFICATIONS.md#bootstrap)). Its login is the variable `TIMESHEET_USERNAME` when given, otherwise `admin`; its password is the variable `TIMESHEET_PASSWORD` when given, otherwise the default password `Tms@Admin%26`, which must be changed at the first login. When the database exists, the entry point creates nothing.
+
+1. Start the container, published on the loopback only:
+
+   ```sh
+   docker run -d --name timesheet -p 127.0.0.1:8080:8080 -v timesheet-data:/var/lib/timesheet -v timesheet-config:/etc/timesheet timesheet
+   ```
+
+   To choose the login of the administrator, add `-e TIMESHEET_USERNAME='<login>'`; to choose its password, add `-e TIMESHEET_PASSWORD='<password>'` (12 characters at least, 6 of them distinct, different from the login).
+
+2. Check the log: `docker logs timesheet` shows `Database created: …` and `Account admin created (ADMIN).`. The line `Now create an administrator: …` printed by `init` is already done by the entry point.
+3. Open `http://localhost:8080`, log in with the login and the password of step 1, and choose a new password in « Mon profil »: every other page is redirected there until then.
+4. Only then publish the port beyond the loopback ([Configuration of the container](#configuration-of-the-container)). Until the first login, whoever reaches the port with the default password takes the account ([Accepted risks](SECURITY.md#accepted-risks)).
+5. If you gave `TIMESHEET_PASSWORD`, recreate the container without it (`docker rm -f timesheet`, then step 1 without `-e`): the volumes keep the data, and the variable stays readable with `docker inspect` otherwise. `TIMESHEET_USERNAME` is no longer read once the database exists.
+
+- Without a volume on `/var/lib/timesheet`, Docker creates an anonymous volume, removed by `docker rm -v`: the database goes with it.
+- A host directory instead of the volume `timesheet-data` must belong to the uid 10001, without any right for the group or others: `install -d -o 10001 -g 10001 -m 0700 /srv/timesheet`, as root, then `-v /srv/timesheet:/var/lib/timesheet`.
+- When `TIMESHEET_USERNAME` is not a valid login, or `TIMESHEET_PASSWORD` is too weak, `user add` refuses it and the container stops with exit 1, leaving a database without account. The next start runs the server, which logs `no administrator account`: create the administrator as in [Commands in the container](#commands-in-the-container), or remove the volume (`docker rm timesheet`, `docker volume rm timesheet-data`) and start again.
+
+### Configuration of the container
+
+Change the settings with `config set` in the running container, then restart it:
+
+```sh
+docker exec timesheet timesheet config set server.origins http://timesheet.example:8080 --config=/etc/timesheet/timesheet.json
+docker restart timesheet
+```
+
+- `server.listen` stays `0.0.0.0:8080`, the port inside the container. `server.origins` are the addresses typed in the browser, with the port published on the host: `-p 9000:8080` opened as `http://localhost:9000` needs the origin `http://localhost:9000`. Any other host name gets « Hôte inconnu » (421).
+- The default `server.trusted_proxies` trust the private ranges, which hold the Docker networks and the address through which Docker forwards a connection to a published port. Set the address of your reverse proxy, or `config set server.trusted_proxies ''` without proxy ([Client address and trusted proxies](SECURITY.md#client-address-and-trusted-proxies)).
+- The options of `run` can also follow the name of the image: `docker run … timesheet run --origin=https://timesheet.example.org`.
+- « Today » follows `server.timezone`, not the time zone of the container.
+- The configuration lives in the volume `timesheet-config`: a new image keeps it.
+
+### Commands in the container
+
+The commands that do not need the server stopped run in the container, with `--config`:
+
+```sh
+docker exec timesheet timesheet user list --config=/etc/timesheet/timesheet.json
+```
+
+The others ([Commands](#commands)) run in a container of their own on the same volumes, the server stopped; the entry point then adds `--config` itself, and `-it` gives the password prompt without echo:
+
+```sh
+docker stop timesheet
+docker run --rm -it -v timesheet-data:/var/lib/timesheet -v timesheet-config:/etc/timesheet timesheet user add <login> --profile=ADMIN
+docker start timesheet
+```
+
+To import, mount the file, readable by the uid 10001: add `-v "$PWD/<file>.json:/import.json:ro"` and give the command `import <login> /import.json`.
+
+### Back up and upgrade the container
+
+- Back up while it runs: `docker cp timesheet:/var/lib/timesheet/timesheet-database.json <backup>`.
+- Restore with the container stopped, through the account of the image, so that the file keeps its owner and the mode 0600, then start it again:
+
+  ```sh
+  docker stop timesheet
+  docker run --rm -i -v timesheet-data:/var/lib/timesheet --entrypoint sh timesheet -c 'umask 077 && cat > /var/lib/timesheet/timesheet-database.json' < <backup>
+  docker start timesheet
+  ```
+
+- Upgrade: back up, rebuild the image ([BUILD.md](BUILD.md#build-the-container-image)), remove the container (`docker rm -f timesheet`), then start it again as in step 1 of [First start](#first-start), with the same volumes. The [migration notes](SPECIFICATIONS.md#migration-notes) apply as to any installation.
 
 ## BACKUP AND RESTORE
 
