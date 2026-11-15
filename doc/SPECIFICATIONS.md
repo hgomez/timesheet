@@ -2586,7 +2586,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 - Its tracking start is 2023-11-27; every day is entered from that date to 2026-12-31.
 - The months from November 2023 to October 2026 are validated, each on its last day at 23:59:59 in `Europe/Paris`; the later months are open.
 - `CP` and `RTT` are enabled with their default amounts, `TPC` is disabled; the complementary part-time days of the history are entered as `RTT`; three adjustments complete the balances of `CP`.
-- It was made from a real history, anonymized: the identity is replaced, the comments are reduced to « Vacances », the names of the holidays, « Conférence », « Congé » and « Absence », and the reasons of the adjustments are neutral. The calendar is kept.
+- It was made from a real history, anonymized: the identity is replaced, the comments are reduced to « Vacances », the names of the holidays and « Absence », and the reasons of the adjustments are neutral. The calendar is kept.
 - To use it, copy it with the mode 0600 into a directory of your own and give the copy with `--database` ([OPERATIONS.md](OPERATIONS.md#example-database)).
 - Its password is public: it is never served on a network nor used as a real database.
 - A test loads it: same configuration as the template, the account `demo` and its password, months validated from November 2023 to October 2026. A change of the [database](#database) schema updates it.
