@@ -29,9 +29,9 @@
                             <p class="balance{{if .Negative}} is-negative{{end}}">{{.Today}} <small>à ce jour</small></p>
                             <dl>
                                 <dt>Validé</dt>
-                                <dd>{{.Validated}}</dd>
+                                <dd{{if .NegativeLast}} class="is-negative"{{end}}>{{.Validated}}</dd>
                                 <dt>Prévision au <time datetime="{{.ForecastDay}}">{{.ForecastDate}}</time></dt>
-                                <dd>{{.Forecast}}</dd>
+                                <dd{{if .NegativeEnd}} class="is-negative"{{end}}>{{.Forecast}}</dd>
                             </dl>
                         </article>
                     </li>

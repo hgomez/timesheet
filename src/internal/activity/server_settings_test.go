@@ -55,6 +55,13 @@ func TestServerSettingsValidationNamesTheField(t *testing.T) {
             t.Errorf("%s: got %v", path, err)
         }
     }
+    for _, listen := range []string{"127.0.0.1:99999", "127.0.0.1:-1", "127.0.0.1:no-such-service"} {
+        server := NewDefaultServerSettings().Clone()
+        server.Listen = listen
+        if err := server.Validate(); !errors.Is(err, ErrInvalidConfiguration) || !strings.Contains(err.Error(), "server.listen: a port") {
+            t.Errorf("%s: got %v", listen, err)
+        }
+    }
     emptied := NewDefaultServerSettings().Clone()
     emptied.TrustedProxies = nil
     if data, err := json.Marshal(emptied); (err != nil) || !strings.Contains(string(data), `"trusted_proxies":[]`) || !strings.Contains(string(data), `"tls_cert":null`) || !strings.Contains(string(data), `"keep_alive_timeout":"1m"`) {

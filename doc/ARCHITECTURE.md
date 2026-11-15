@@ -234,6 +234,8 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | `ImportCounter` | record | Settings of one counter in the import file |
 | `ImportAdjustment` | record | Adjustment in the import file |
 | `Importer` | service | Applies an import file to a calendar, with its `ImportOptions` (replace, validate, period) |
+| `ImportOptions` | record | Options of an import: replace, validate, first and last month (`NewImportOptions`: the whole range of years) |
+| `ImportMissing` | record | Missing half-days of one imported month: the month and its dates |
 | `ImportReport` | record | Result of an import: next calendar, problems, warnings, days read, missing half-days, months validated, month where the validation stopped |
 | `ImportProblem` | value | Problem or warning of an import, with its English text (`Text`, command line) and its French text (`Label`, pages) |
 
@@ -543,12 +545,12 @@ The reasons are given in [SECURITY.md, Threat model](SECURITY.md#threat-model).
 ### Month save
 
 1. The controller loads the calendar of the account, with its revision.
-2. It rebuilds the day entries of the month from the form.
-3. It checks each entry with `Bookkeeper.CheckEntry`.
-4. It saves the whole calendar, giving the store the revision it loaded.
-5. The revision read from the form must equal that revision, so that a save never replaces a newer calendar with a stale copy.
+2. It compares the revision read from the form with that revision before anything else (400 when unreadable, 409 when stale), so that a refused page never hands a fresh revision to a stale tab.
+3. It rebuilds the day entries of the month from the form.
+4. It checks each entry with `Bookkeeper.CheckEntry`.
+5. It saves the whole calendar, giving the store the revision it loaded, so that a save never replaces a newer calendar with a stale copy.
 
-The configuration page and the settings page follow the same revision check.
+The settings page compares the account revision the same way, before its own checks; the data page gives the store the revision of the page. The configuration page compares the configuration revision before writing.
 
 ### Validation and reopening
 
@@ -605,7 +607,7 @@ The content of the template is specified in [SPECIFICATIONS.md, Configuration te
 2. `Application` reads it with `ServerFile` before any command but `help`, `version` and the `config` commands, which read it themselves.
 3. `Settings.ResolveDatabase` takes the database path from `database.path` unless `--database` is given, and makes it absolute.
 4. `Application` hands the configuration to the commands, which open the database with `store.NewDatabase(path, logger, database.max_bytes, limits)` and hash with `passwords.iterations`.
-5. `run` builds the `http.Server` from the section `server`, and gives the whole configuration to the web layer through `SiteDependencies.Server`: `NewSessions` takes the section `sessions`, `NewLoginThrottle` the section `login`, `NewRequestLimits` and `NewSecurityHeaders` the sizes and HSTS, the login controller the life of its form, the configuration page every value.
+5. `run` builds the `http.Server` from the section `server`, and gives the whole configuration to the web layer through `SiteDependencies.Server`: `NewSessions` takes the section `sessions`, `NewLoginThrottle` the section `login`, `NewRequestLimits` and `NewSecurityHeaders` the sizes and HSTS, the login controller the life of its form, the server page (`AdminServerController`) every value.
 6. The database never holds it.
 
 Its settings are specified in [SPECIFICATIONS.md, Server configuration](SPECIFICATIONS.md#server-configuration).

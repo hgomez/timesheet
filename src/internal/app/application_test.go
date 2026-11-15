@@ -439,7 +439,7 @@ func TestConfigSetChecksThePortOfTheAddress(t *testing.T) {
     }
 }
 
-func TestImportSkipsAnAdjustmentRepeatedInTheFile(t *testing.T) {
+func TestImportKeepsRepeatedAdjustmentsAndSkipsStoredOnes(t *testing.T) {
     directory, database := newTestDirectory(t)
     template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
@@ -447,11 +447,17 @@ func TestImportSkipsAnAdjustmentRepeatedInTheFile(t *testing.T) {
     file := filepath.Join(directory, "twice.json")
     adjustment := `{"date": "2026-11-03", "counter": "CP", "amount": "1", "reason": "bulletin"}`
     writeTestFile(t, file, `{"format": "timesheet-import", "version": 1, "days": {}, "adjustments": [` + adjustment + `, ` + adjustment + `]}`)
-    if run := runCommand(t, "", "import", "olivier", file, database); (run.code != ExitOK) || !strings.Contains(run.stdout, "already present, ignored") {
+    if run := runCommand(t, "", "import", "olivier", file, database); (run.code != ExitOK) || strings.Contains(run.stdout, "already present, ignored") {
         t.Fatalf("repeated adjustment: %+v", run)
     }
-    if _, calendar, _ := openTestDatabase(t, database).Account("olivier"); len(calendar.Adjustments) != 1 {
+    if _, calendar, _ := openTestDatabase(t, database).Account("olivier"); len(calendar.Adjustments) != 2 {
         t.Fatalf("adjustments: %+v", calendar.Adjustments)
+    }
+    if run := runCommand(t, "", "import", "olivier", file, database); (run.code != ExitOK) || (strings.Count(run.stdout, "already present, ignored") != 2) {
+        t.Fatalf("file imported again: %+v", run)
+    }
+    if _, calendar, _ := openTestDatabase(t, database).Account("olivier"); len(calendar.Adjustments) != 2 {
+        t.Fatalf("adjustments after a second import: %+v", calendar.Adjustments)
     }
 }
 

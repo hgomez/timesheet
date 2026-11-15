@@ -22,7 +22,6 @@ import (
     "fmt"
     "io"
     "log/slog"
-    "net"
     "strings"
 
     "timesheet/internal/activity"
@@ -58,9 +57,6 @@ func (c *ConfigCommand) Run(out io.Writer) error {
     keys := []string{}
     for i := 0; i < len(arguments); i += 2 {
         key, value := arguments[i], arguments[i + 1]
-        if err := c.check(key, value); err != nil {
-            return err
-        }
         if err := configuration.Set(key, value); err != nil {
             return c.unknown(err, key)
         }
@@ -88,18 +84,6 @@ func (c *ConfigCommand) show(out io.Writer, file *ServerFile, configuration acti
     }
     _, err = out.Write(data)
     return err
-}
-
-func (c *ConfigCommand) check(key string, value string) error {
-    if key != "server.listen" {
-        return nil
-    }
-    if _, port, err := net.SplitHostPort(value); err == nil {
-        if _, err := net.LookupPort("tcp", port); err != nil {
-            return fmt.Errorf("%w: server.listen: a port from 0 to 65535 or a service name is expected", activity.ErrInvalidConfiguration)
-        }
-    }
-    return nil
 }
 
 func (c *ConfigCommand) unknown(err error, key string) error {

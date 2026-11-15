@@ -40,11 +40,20 @@ class MonthSheetPage {
             return;
         }
         for (const half of halves) {
-            if ([...half.options].some((option) => option.value === whole.value)) {
+            if (this.offers(half, whole.value)) {
                 half.value = whole.value;
                 this.paint(half);
             }
         }
+    }
+
+    offers(select, value) {
+        for (const option of select.options) {
+            if (option.value === value) {
+                return true;
+            }
+        }
+        return false;
     }
 
     edit(whole, half) {

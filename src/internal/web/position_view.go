@@ -36,6 +36,8 @@ type positionRecord struct {
     ForecastDate string
     ForecastDay  string
     Negative     bool
+    NegativeLast bool
+    NegativeEnd  bool
 }
 
 // ---------------------------------------------------------------------------
@@ -53,7 +55,7 @@ func (v *PositionView) Build(book *activity.Bookkeeper, journal *activity.Journa
         if !book.Enabled(rule) && position.Today.IsZero() {
             continue
         }
-        record := positionRecord{Counter: rule.Label, ShortLabel: rule.ShortLabel, Today: position.Today.Format(), Validated: position.Validated.Format(), Forecast: position.Forecast.Format(), ForecastDate: position.ForecastDate.Numeric(), ForecastDay: position.ForecastDate.String(), Negative: position.Today.Sign() < 0}
+        record := positionRecord{Counter: rule.Label, ShortLabel: rule.ShortLabel, Today: position.Today.Format(), Validated: position.Validated.Format(), Forecast: position.Forecast.Format(), ForecastDate: position.ForecastDate.Numeric(), ForecastDay: position.ForecastDate.String(), Negative: position.Today.Sign() < 0, NegativeLast: position.Validated.Sign() < 0, NegativeEnd: position.Forecast.Sign() < 0}
         records = append(records, record)
     }
     return records

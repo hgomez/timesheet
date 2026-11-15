@@ -64,7 +64,7 @@ func TestDataImportChecksThenSavesAndValidates(t *testing.T) {
     if strings.Index(page, "<h2>Importer des données</h2>") > strings.Index(page, "<h2>Exporter mes données</h2>") {
         t.Fatal("the import must come before the export")
     }
-    form := url.Values{"csrf": {user.token(page)}, "action": {"check"}, "validate": {"on"}}
+    form := url.Values{"csrf": {user.token(page)}, "revision": {user.field(page, "revision")}, "action": {"check"}, "validate": {"on"}}
     status, _, body := user.upload("/dashboard/data/import", form, "septembre.json", septemberImport(t))
     notice := `<p role="status">Vérification réussie : le fichier peut être importé. Rien n&#39;a été enregistré.</p>`
     if (status != http.StatusOK) || !strings.Contains(body, notice) || !strings.Contains(body, `<ul class="notice-details">`) || !strings.Contains(body, "<li>30 jour(s) lu(s), de septembre 2026 à septembre 2026.</li>") || !strings.Contains(body, "<li>Mois validés : de septembre 2026 à septembre 2026 (1).</li>") || strings.Contains(body, "Validation arrêtée") || (strings.Index(body, notice) > strings.Index(body, "<h1>Données</h1>")) {
@@ -92,8 +92,9 @@ func TestDataImportChecksThenSavesAndValidates(t *testing.T) {
 func TestDataImportRefusesBadRequests(t *testing.T) {
     site := newTestSite(t)
     user := site.client().login("demo")
-    token := user.token(user.page("/dashboard/data"))
-    form := url.Values{"csrf": {token}, "action": {"import"}}
+    page := user.page("/dashboard/data")
+    token := user.token(page)
+    form := url.Values{"csrf": {token}, "revision": {user.field(page, "revision")}, "action": {"import"}}
     if status, _, body := user.upload("/dashboard/data/import", form, "", ""); (status != http.StatusUnprocessableEntity) || !strings.Contains(body, "Choisissez un fichier à importer.") {
         t.Errorf("no file: %d", status)
     }
@@ -110,7 +111,15 @@ func TestDataImportRefusesBadRequests(t *testing.T) {
     if status, _, body := user.upload("/dashboard/data/import", form, "septembre.json", septemberImport(t)); (status != http.StatusUnprocessableEntity) || !strings.Contains(body, "01/09/2026 : une saisie existe déjà") {
         t.Errorf("existing entries: %d", status)
     }
+    stale := form.Get("revision")
     form.Set("replace", "on")
+    if status, _, body := user.upload("/dashboard/data/import", form, "septembre.json", septemberImport(t)); (status != http.StatusConflict) || !strings.Contains(body, "Les données ont changé entre-temps") {
+        t.Errorf("stale revision: %d", status)
+    }
+    form.Set("revision", user.field(user.page("/dashboard/data"), "revision"))
+    if form.Get("revision") == stale {
+        t.Fatal("the import must raise the revision of the page")
+    }
     if status, _, _ := user.upload("/dashboard/data/import", form, "septembre.json", strings.Replace(septemberImport(t), "Vacances", "Congé d'été", 1)); status != http.StatusSeeOther {
         t.Errorf("replace: %d", status)
     }
@@ -120,8 +129,11 @@ func TestDataImportRefusesBadRequests(t *testing.T) {
     if status, _, _ := user.upload("/dashboard/data/import", url.Values{"action": {"check"}}, "septembre.json", septemberImport(t)); status != http.StatusForbidden {
         t.Errorf("no token: %d", status)
     }
-    if status, _, _ := user.upload("/dashboard/data/import", url.Values{"csrf": {token}, "action": {"other"}}, "septembre.json", septemberImport(t)); status != http.StatusBadRequest {
+    if status, _, _ := user.upload("/dashboard/data/import", url.Values{"csrf": {token}, "revision": {form.Get("revision")}, "action": {"other"}}, "septembre.json", septemberImport(t)); status != http.StatusBadRequest {
         t.Errorf("unknown action: %d", status)
+    }
+    if status, _, _ := user.upload("/dashboard/data/import", url.Values{"csrf": {token}, "action": {"check"}}, "septembre.json", septemberImport(t)); status != http.StatusBadRequest {
+        t.Errorf("no revision: %d", status)
     }
     if status, _, _ := user.upload("/dashboard/data/import", url.Values{"csrf": {token}, "action": {"check"}}, "large.json", strings.Repeat("x", 300 << 10)); status != http.StatusBadRequest {
         t.Errorf("body over the limit: %d", status)
@@ -131,8 +143,15 @@ func TestDataImportRefusesBadRequests(t *testing.T) {
 func TestDataImportWarnsInYellow(t *testing.T) {
     site := newTestSite(t)
     user := site.client().login("demo")
-    form := url.Values{"csrf": {user.token(user.page("/dashboard/data"))}, "action": {"check"}}
-    status, _, body := user.upload("/dashboard/data/import", form, "octobre.json", `{"format": "timesheet-import", "version": 1, "days": {"2026-10-01": {"am": "TT", "pm": "TT"}}, "adjustments": [{"date": "2026-10-30", "counter": "CP", "amount": "1", "reason": "bulletin"}, {"date": "2026-10-30", "counter": "CP", "amount": "1", "reason": "bulletin"}]}`)
+    page := user.page("/dashboard/data")
+    october := `{"format": "timesheet-import", "version": 1, "days": {"2026-10-01": {"am": "TT", "pm": "TT"}}, "adjustments": [{"date": "2026-10-30", "counter": "CP", "amount": "1", "reason": "bulletin"}]}`
+    form := url.Values{"csrf": {user.token(page)}, "revision": {user.field(page, "revision")}, "action": {"import"}, "replace": {"on"}}
+    if status, _, _ := user.upload("/dashboard/data/import", form, "octobre.json", october); status != http.StatusSeeOther {
+        t.Fatalf("first import: %d", status)
+    }
+    form.Set("revision", user.field(user.page("/dashboard/data"), "revision"))
+    form.Set("action", "check")
+    status, _, body := user.upload("/dashboard/data/import", form, "octobre.json", october)
     if (status != http.StatusOK) || !strings.Contains(body, `<p role="status" class="is-warning">Points à vérifier :</p>`) || !strings.Contains(body, `<ul class="warning-details">`) || !strings.Contains(body, "<li>Ajustement du 30/10/2026 déjà présent, ignoré</li>") || !strings.Contains(body, "<li>Demi-journées non renseignées en octobre 2026 : 02/10/2026") {
         t.Fatalf("warnings: %d %s", status, body)
     }
@@ -145,16 +164,20 @@ func TestDataResetErasesTheWholeTracking(t *testing.T) {
     if !strings.Contains(page, `<form method="post" action="/dashboard/data/reset">`) || !strings.Contains(page, `<button type="submit" class="danger">Supprimer mes données</button>`) || (strings.Index(page, "<h2>Exporter mes données</h2>") > strings.Index(page, "<h2>Supprimer mes données</h2>")) {
         t.Fatal("the profile page must end with the deletion of the data")
     }
-    user.upload("/dashboard/data/import", url.Values{"csrf": {user.token(page)}, "action": {"import"}, "validate": {"on"}}, "septembre.json", septemberImport(t))
+    user.upload("/dashboard/data/import", url.Values{"csrf": {user.token(page)}, "revision": {user.field(page, "revision")}, "action": {"import"}, "validate": {"on"}}, "septembre.json", septemberImport(t))
+    if status, _, body := user.post("/dashboard/data/reset", url.Values{"csrf": {user.token(page)}, "revision": {user.field(page, "revision")}, "confirm": {"demo"}}); (status != http.StatusConflict) || !strings.Contains(body, "Les données ont changé entre-temps") {
+        t.Errorf("deletion from a stale page: %d", status)
+    }
+    page = user.page("/dashboard/data")
     for _, confirm := range []string{"", "Demo", "root"} {
-        if status, _, body := user.post("/dashboard/data/reset", url.Values{"csrf": {user.token(page)}, "confirm": {confirm}}); (status != http.StatusUnprocessableEntity) || !strings.Contains(body, "Retapez exactement votre identifiant") {
+        if status, _, body := user.post("/dashboard/data/reset", url.Values{"csrf": {user.token(page)}, "revision": {user.field(page, "revision")}, "confirm": {confirm}}); (status != http.StatusUnprocessableEntity) || !strings.Contains(body, "Retapez exactement votre identifiant") {
             t.Errorf("confirmation %q: %d", confirm, status)
         }
     }
     if _, calendar, _ := site.database.Account("demo"); (len(calendar.Days) != 30) || !calendar.IsValidated(activity.NewMonth(2026, time.September)) {
         t.Fatal("a refused deletion must keep the data")
     }
-    if status, location, _ := user.post("/dashboard/data/reset", url.Values{"csrf": {user.token(page)}, "confirm": {"demo"}}); (status != http.StatusSeeOther) || (location != "/dashboard/data") {
+    if status, location, _ := user.post("/dashboard/data/reset", url.Values{"csrf": {user.token(page)}, "revision": {user.field(page, "revision")}, "confirm": {"demo"}}); (status != http.StatusSeeOther) || (location != "/dashboard/data") {
         t.Fatalf("deletion: %d %s", status, location)
     }
     _, calendar, _ := site.database.Account("demo")
@@ -175,7 +198,8 @@ func TestDataResetErasesTheWholeTracking(t *testing.T) {
 func TestDataExportGivesBackTheSameBalances(t *testing.T) {
     site := newTestSite(t)
     user := site.client().login("demo")
-    form := url.Values{"csrf": {user.token(user.page("/dashboard/data"))}, "action": {"import"}, "validate": {"on"}}
+    page := user.page("/dashboard/data")
+    form := url.Values{"csrf": {user.token(page)}, "revision": {user.field(page, "revision")}, "action": {"import"}, "validate": {"on"}}
     user.upload("/dashboard/data/import", form, "septembre.json", septemberImport(t))
     status, header, body := user.download("/dashboard/data/export")
     if (status != http.StatusOK) || (header.Get("Content-Type") != "application/json; charset=utf-8") || (header.Get("Content-Disposition") != `attachment; filename="timesheet-demo-2026-11-08.json"`) || (header.Get("Cache-Control") != "no-store") {
@@ -186,7 +210,8 @@ func TestDataExportGivesBackTheSameBalances(t *testing.T) {
         t.Fatalf("exported file: %v %+v", err, exported.Settings)
     }
     admin := site.client().login("root")
-    form = url.Values{"csrf": {admin.token(admin.page("/dashboard/data"))}, "action": {"import"}, "validate": {"on"}}
+    page = admin.page("/dashboard/data")
+    form = url.Values{"csrf": {admin.token(page)}, "revision": {admin.field(page, "revision")}, "action": {"import"}, "validate": {"on"}}
     if status, _, page := admin.upload("/dashboard/data/import", form, "export.json", body); status != http.StatusSeeOther {
         t.Fatalf("import of the export: %d %s", status, page)
     }

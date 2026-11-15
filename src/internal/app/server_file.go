@@ -115,7 +115,8 @@ func (f *ServerFile) Save(configuration activity.ServerConfiguration) error {
         return err
     }
     name := temp.Name()
-    if _, err := temp.Write(data); err == nil {
+    _, err = temp.Write(data)
+    if err == nil {
         err = temp.Chmod(serverFileMode)
     }
     if err == nil {
@@ -129,8 +130,17 @@ func (f *ServerFile) Save(configuration activity.ServerConfiguration) error {
     }
     if err != nil {
         os.Remove(name)
+        return err
     }
-    return err
+    f.syncDirectory(directory)
+    return nil
+}
+
+func (f *ServerFile) syncDirectory(directory string) {
+    if dir, err := os.Open(directory); err == nil {
+        dir.Sync()
+        dir.Close()
+    }
 }
 
 // ---------------------------------------------------------------------------

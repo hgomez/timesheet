@@ -183,10 +183,6 @@ func (v *YearView) letter(t activity.DayType) string {
     return ""
 }
 
-func (v *YearView) Title(year int) string {
-    return "Année " + strconv.Itoa(year)
-}
-
 // ---------------------------------------------------------------------------
 // End-Of-File
 // ---------------------------------------------------------------------------

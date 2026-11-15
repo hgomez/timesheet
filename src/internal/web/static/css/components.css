@@ -1032,6 +1032,10 @@ body > footer .brand {
     box-shadow: inset 0 -3px 0 var(--accent);
 }
 
+.calendar td.is-commented.day-missing {
+    box-shadow: inset 0 -3px 0 var(--accent), inset 0 0 0 2px var(--warning);
+}
+
 .facts {
     display: grid;
     grid-template-columns: minmax(0, max-content) minmax(0, 1fr);

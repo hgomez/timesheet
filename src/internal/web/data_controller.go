@@ -44,6 +44,7 @@ type DataController struct {
 }
 
 type dataRecord struct {
+    Revision   int64
     ImportPath string
     ExportPath string
     ResetPath  string
@@ -76,7 +77,7 @@ func (c *DataController) Show(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *DataController) page(w http.ResponseWriter, r *http.Request, ws *Workspace, status int, model PageModel) {
-    model.Section, model.Data = "data", dataRecord{ImportPath: dataImportPath, ExportPath: dataExportPath, ResetPath: dataResetPath}
+    model.Section, model.Data = "data", dataRecord{Revision: ws.Calendar.Revision, ImportPath: dataImportPath, ExportPath: dataExportPath, ResetPath: dataResetPath}
     c.renderer.Render(w, r, status, "data", model)
 }
 
@@ -109,7 +110,8 @@ func (c *DataController) Import(w http.ResponseWriter, r *http.Request) {
         return
     }
     action := r.PostFormValue("action")
-    if (action != actionCheck) && (action != actionImport) {
+    revision, err := strconv.ParseInt(r.PostFormValue("revision"), 10, 64)
+    if ((action != actionCheck) && (action != actionImport)) || (err != nil) {
         c.errors.BadRequest(w, r)
         return
     }
@@ -145,14 +147,14 @@ func (c *DataController) Import(w http.ResponseWriter, r *http.Request) {
         return
     }
     if action == actionCheck {
-        if !c.store(w, r, ws, c.repository.CheckCalendar(ws.Owner.Login, ws.Calendar.Revision, report.Calendar)) {
+        if !c.store(w, r, ws, c.repository.CheckCalendar(ws.Owner.Login, revision, report.Calendar)) {
             return
         }
         model.Notice = "Vérification réussie : le fichier peut être importé. Rien n'a été enregistré."
         c.page(w, r, ws, http.StatusOK, model)
         return
     }
-    if !c.store(w, r, ws, c.repository.SaveCalendar(ws.Owner.Login, ws.Calendar.Revision, report.Calendar)) {
+    if !c.store(w, r, ws, c.repository.SaveCalendar(ws.Owner.Login, revision, report.Calendar)) {
         return
     }
     c.logger.Info("import saved", "login", string(ws.Owner.Login), "days", len(report.Dates), "adjustments", report.Adjustments, "validated", len(report.Validated))
@@ -165,11 +167,16 @@ func (c *DataController) Reset(w http.ResponseWriter, r *http.Request) {
         c.errors.NotFound(w, r)
         return
     }
+    revision, err := strconv.ParseInt(r.PostFormValue("revision"), 10, 64)
+    if err != nil {
+        c.errors.BadRequest(w, r)
+        return
+    }
     if r.PostFormValue("confirm") != string(ws.Owner.Login) {
         c.page(w, r, ws, http.StatusUnprocessableEntity, PageModel{Alert: "Retapez exactement votre identifiant pour confirmer la suppression de vos données."})
         return
     }
-    if !c.store(w, r, ws, c.repository.SaveCalendar(ws.Owner.Login, ws.Calendar.Revision, activity.NewCalendar(ws.Today.Month().First()))) {
+    if !c.store(w, r, ws, c.repository.SaveCalendar(ws.Owner.Login, revision, activity.NewCalendar(ws.Today.Month().First()))) {
         return
     }
     c.logger.Info("data erased", "login", string(ws.Owner.Login))

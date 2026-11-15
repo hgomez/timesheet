@@ -32,10 +32,10 @@ type CountersView struct {
 }
 
 type counterBookRecord struct {
-    Label   string
-    Rule    string
-    Recap   []counterRecapRecord
-    Lines   []statementLineRecord
+    Label string
+    Rule  string
+    Recap []counterRecapRecord
+    Lines []statementLineRecord
 }
 
 type counterRecapRecord struct {

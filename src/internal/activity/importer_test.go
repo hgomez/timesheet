@@ -142,6 +142,20 @@ func TestImportedPublicHolidaysAreChecked(t *testing.T) {
     }
 }
 
+func TestImportedAdjustmentWithoutDateIsRefused(t *testing.T) {
+    importer := NewImporter(authorConfiguration(), NewManualClock(time.Date(2026, time.April, 15, 10, 0, 0, 0, time.UTC)), NewIdentifierGenerator(rand.Reader), time.UTC)
+    for _, adjustment := range []string{`{"counter": "CP", "amount": "1", "reason": "x"}`, `{"date": null, "counter": "CP", "amount": "1", "reason": "x"}`} {
+        imported, err := NewImportFile([]byte(`{"format": "timesheet-import", "version": 1, "days": {"2026-01-02": {"am": "TT", "pm": "TT"}}, "adjustments": [` + adjustment + `]}`))
+        if err != nil {
+            t.Fatal(err)
+        }
+        report, err := importer.Run(authorCalendar(t, "2026-01"), imported, NewImportOptions(), day(t, "2026-04-15"), month(t, "2027-04"))
+        if (err != nil) || (len(report.Problems) != 1) || (report.Adjustments != 1) || (report.Problems[0].Text() != "adjustment without a date") || (report.Problems[0].Label() != "Ajustement sans date") {
+            t.Errorf("%s: %v %+v", adjustment, err, report.Problems)
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // End-Of-File
 // ---------------------------------------------------------------------------

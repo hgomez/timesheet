@@ -38,8 +38,11 @@ type ImportAdjustment struct {
 // ---------------------------------------------------------------------------
 
 func (a ImportAdjustment) Problems(config Configuration, calendar Calendar, horizon Month) []ImportProblem {
+    if a.Date.IsZero() {
+        return []ImportProblem{{Kind: importAdjustmentDate}}
+    }
     m := a.Date.Month()
-    if a.Date.IsZero() || !calendar.Tracks(a.Date) || calendar.IsValidated(m) || m.After(horizon) {
+    if !calendar.Tracks(a.Date) || calendar.IsValidated(m) || m.After(horizon) {
         return []ImportProblem{{Date: a.Date, Kind: importAdjustmentOutside}}
     }
     rule, known := config.Counter(a.Counter)
@@ -54,15 +57,6 @@ func (a ImportAdjustment) Problems(config Configuration, calendar Calendar, hori
         problems = append(problems, ImportProblem{Date: a.Date, Kind: importAdjustmentReason})
     }
     return problems
-}
-
-func (a ImportAdjustment) Exists(calendar Calendar, rule CounterRule) bool {
-    for _, existing := range calendar.Adjustments {
-        if (existing.Date == a.Date) && (existing.Counter == rule.ID) && existing.Amount.Equal(a.Amount) && (existing.Reason == a.Reason) {
-            return true
-        }
-    }
-    return false
 }
 
 func (a ImportAdjustment) Adjustment(id string, rule CounterRule) Adjustment {

@@ -114,6 +114,8 @@ func (s ServerSettings) Validate() error {
     check := NewSettingCheck("server")
     if _, port, err := net.SplitHostPort(s.Listen); (err != nil) || (port == "") {
         return check.Fail("listen", "an address host:port is expected")
+    } else if _, err := net.LookupPort("tcp", port); err != nil {
+        return check.Fail("listen", "a port from 0 to 65535 or a service name is expected")
     }
     if len(s.Origins) == 0 {
         return check.Fail("origins", "at least one origin is expected")

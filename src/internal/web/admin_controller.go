@@ -53,12 +53,12 @@ type accountsRecord struct {
 }
 
 type accountRecord struct {
-    Login     string
-    Name      string
-    Disabled  bool
-    State     string
-    Profile   string
-    Admin     bool
+    Login         string
+    Name          string
+    Disabled      bool
+    State         string
+    Profile       string
+    Admin         bool
     Created       string
     CreatedDate   string
     LastLogin     string

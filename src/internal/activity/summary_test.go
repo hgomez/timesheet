@@ -78,7 +78,7 @@ func TestSummaryFollowsTheWorkbookLayout(t *testing.T) {
         }
         expectQuantity(t, row.Month.String() + " invariant", sum, strconv.Itoa(row.Month.Days()))
     }
-    if following.Rows[0].State != RowProvisional || following.Rows[1].State != RowFuture {
+    if (following.Rows[0].State != RowProvisional) || (following.Rows[1].State != RowFuture) {
         t.Fatalf("states: %s %s", following.Rows[0].State, following.Rows[1].State)
     }
     expectQuantity(t, "future months show the forecast credit", following.Rows[1].Credits["CP"], "2.08")

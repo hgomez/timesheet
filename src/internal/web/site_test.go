@@ -443,10 +443,23 @@ func TestPublicHolidaysFollowTheZoneOfTheAccount(t *testing.T) {
     if status, _, refused := user.post("/dashboard/settings", form); (status != http.StatusUnprocessableEntity) || !strings.Contains(refused, "Calendrier des jours fériés invalide.") {
         t.Fatalf("unknown own zone: %d", status)
     }
+    start := form.Get("start")
+    form.Set("public_holidays", "fr-guyane")
+    form.Set("start", "not a date")
+    if status, _, refused := user.post("/dashboard/settings", form); (status != http.StatusUnprocessableEntity) || !strings.Contains(refused, `<option value="fr-guyane" selected>Guyane</option>`) {
+        t.Fatalf("a refused form must keep the other values posted: %d", status)
+    }
+    form.Set("start", start)
     form.Set("public_holidays", "fr-metropole")
     if status, _, _ := user.post("/dashboard/settings", form); status != http.StatusSeeOther {
         t.Fatalf("own zone: %d", status)
     }
+    form.Set("public_holidays", "")
+    form.Set("start", "not a date")
+    if status, _, _ := user.post("/dashboard/settings", form); status != http.StatusConflict {
+        t.Fatalf("stale settings form with an invalid value: %d", status)
+    }
+    form.Set("start", start)
     if page := user.page("/dashboard/activity/2026/04"); strings.Contains(page, "Vendredi saint") {
         t.Fatal("the own zone of the account prevails over the default zone")
     }
@@ -543,6 +556,19 @@ func TestStaleOrPartialFormsAreRefused(t *testing.T) {
     if _, calendar, _ := site.database.Account("demo"); len(calendar.Days) != 1 {
         t.Fatal("a partial grid emptied the month")
     }
+    current := user.monthForm(user.page("/dashboard/activity/2026/10"), map[string]string{})
+    current.Set("revision", "+" + current.Get("revision"))
+    if status, _, _ := user.post("/dashboard/activity/2026/10", current); status != http.StatusSeeOther {
+        t.Fatalf("current revision written with a sign: %d", status)
+    }
+    whole.Set("am:2026-10-10", "CP")
+    whole.Set("comment:2026-10-05", "")
+    if status, _, _ := user.post("/dashboard/activity/2026/10", whole); status != http.StatusConflict {
+        t.Fatalf("stale grid with an invalid entry: %d", status)
+    }
+    if _, calendar, _ := site.database.Account("demo"); calendar.Days[activity.NewDate(2026, time.October, 5)].Comment != "kept" {
+        t.Fatal("a stale grid overwrote the saved entry")
+    }
     adjust := url.Values{"csrf": {user.token(body)}, "revision": {user.field(body, "revision")}, "date": {"2026-10-05"}, "counter": {"CP"}, "amount": {"1"}, "reason": {"test"}}
     if status, _, _ := user.post("/dashboard/adjustments", adjust); status != http.StatusBadRequest {
         t.Fatalf("adjustment without action: %d", status)
@@ -566,6 +592,9 @@ func TestNegativeBalancesAreMarkedInTheStatements(t *testing.T) {
     }
     if _, _, page := user.get("/dashboard/year/2026"); strings.Count(page, `<td class="is-negative">-3,00</td>`) < 3 {
         t.Fatal("the recap and the ledger of the year do not mark their negative balances")
+    }
+    if page := user.page("/dashboard/"); !strings.Contains(page, `<dd class="is-negative">-3,00</dd>`) {
+        t.Fatal("the dashboard does not mark a negative forecast")
     }
 }
 

@@ -50,6 +50,7 @@ const (
     importStartMoved
     importAdjustmentPresent
     importPublicHolidaysUnknown
+    importAdjustmentDate
 )
 
 // ---------------------------------------------------------------------------
@@ -95,6 +96,8 @@ func (p ImportProblem) Text() string {
             return "adjustment of " + date + " already present, ignored"
         case importPublicHolidaysUnknown:
             return "public holidays: zone " + p.Detail + " unknown"
+        case importAdjustmentDate:
+            return "adjustment without a date"
     }
     return "no day to import"
 }
@@ -138,6 +141,8 @@ func (p ImportProblem) Label() string {
             return "Ajustement du " + date + " déjà présent, ignoré"
         case importPublicHolidaysUnknown:
             return "Calendrier des jours fériés " + p.Detail + " inconnu"
+        case importAdjustmentDate:
+            return "Ajustement sans date"
     }
     return "Le fichier ne contient aucun jour à importer"
 }

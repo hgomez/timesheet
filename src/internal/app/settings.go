@@ -157,7 +157,7 @@ func (s *Settings) check() error {
         }
     }
     if s.explicit["database"] && !activity.ValidDatabasePath(s.database) {
-        return NewUsageError("--database names a file whose name does not start with a dot")
+        return NewUsageError("--database names a file, not a directory, whose name does not start with a dot")
     }
     if (s.config == "") || strings.HasSuffix(s.config, "/") {
         return NewUsageError("--config names a file")

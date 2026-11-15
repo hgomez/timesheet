@@ -40,7 +40,7 @@ func TestThrottleBudgetNeverBlocksAFirstAttempt(t *testing.T) {
         throttle.End(key, false)
     }
     over := netip.MustParsePrefix("10.0.0.5/32")
-    if allowed, wait := throttle.Begin(over); allowed || (wait < 4 * time.Minute) {
+    if allowed, wait := throttle.Begin(over); allowed || (wait < (4 * time.Minute)) {
         t.Fatalf("an address failing over budget must wait the longest delay: %v %v", allowed, wait)
     }
     legit := netip.MustParsePrefix("10.0.1.1/32")
@@ -64,7 +64,7 @@ func TestThrottleSuccessKeepsEarlierFailures(t *testing.T) {
     clock.Advance(10 * time.Minute)
     throttle.Begin(key)
     throttle.End(key, false)
-    if _, wait := throttle.Begin(key); wait < 8 * time.Second {
+    if _, wait := throttle.Begin(key); wait < (8 * time.Second) {
         t.Fatalf("a success must not reset the delay: %v", wait)
     }
     clock.Advance(2 * time.Hour)
@@ -111,7 +111,7 @@ func TestThrottleDelaysFollowTheirSettings(t *testing.T) {
         waits = append(waits, wait)
         clock.Advance(wait)
     }
-    if (waits[0] != 300 * time.Millisecond) || (waits[1] != 600 * time.Millisecond) || (waits[len(waits) - 1] != time.Hour) {
+    if (waits[0] != (300 * time.Millisecond)) || (waits[1] != (600 * time.Millisecond)) || (waits[len(waits) - 1] != time.Hour) {
         t.Fatalf("the delay doubles from its first value up to its ceiling, without overflow: %v", waits)
     }
 }

@@ -35,11 +35,6 @@ type ImportReport struct {
     StopReason  error
 }
 
-type ImportMissing struct {
-    Month Month
-    Dates []Date
-}
-
 // ---------------------------------------------------------------------------
 // ImportReport implementation
 // ---------------------------------------------------------------------------

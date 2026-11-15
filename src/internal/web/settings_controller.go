@@ -125,6 +125,15 @@ func (c *SettingsController) Submit(w http.ResponseWriter, r *http.Request) {
         c.render(w, r, ws, http.StatusConflict, "La configuration a changé entre-temps. Vérifiez puis recommencez.")
         return
     }
+    revision, err := strconv.ParseInt(r.PostFormValue("revision"), 10, 64)
+    if err != nil {
+        c.errors.BadRequest(w, r)
+        return
+    }
+    if revision != ws.Calendar.Revision {
+        c.render(w, r, ws, http.StatusConflict, "Les données ont changé entre-temps. Vérifiez puis recommencez.")
+        return
+    }
     calendar := ws.Calendar.Clone()
     problems := []string{}
     if !calendar.HasHistory() {
@@ -193,19 +202,12 @@ func (c *SettingsController) Submit(w http.ResponseWriter, r *http.Request) {
     }
     calendar.Settings.Colors = colors
     if len(problems) > 0 {
-        c.render(w, r, ws, http.StatusUnprocessableEntity, "Réglages non enregistrés.", problems...)
+        posted := *ws
+        posted.Calendar, posted.Book = calendar, activity.NewBookkeeper(ws.Config, calendar)
+        c.render(w, r, &posted, http.StatusUnprocessableEntity, "Réglages non enregistrés.", problems...)
         return
     }
-    revision, err := strconv.ParseInt(r.PostFormValue("revision"), 10, 64)
-    if err != nil {
-        c.errors.BadRequest(w, r)
-        return
-    }
-    err = activity.ErrStaleRevision
-    if revision == ws.Calendar.Revision {
-        err = c.repository.SaveCalendar(ws.Owner.Login, ws.Calendar.Revision, calendar)
-    }
-    if err != nil {
+    if err := c.repository.SaveCalendar(ws.Owner.Login, ws.Calendar.Revision, calendar); err != nil {
         if errors.Is(err, activity.ErrStaleRevision) {
             if fresh, found := c.loader.Own(r); found {
                 c.render(w, r, fresh, http.StatusConflict, "Les données ont changé entre-temps. Vérifiez puis recommencez.")

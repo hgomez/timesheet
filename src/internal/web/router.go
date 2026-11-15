@@ -39,7 +39,6 @@ type methodDispatcher struct {
     pattern string
 }
 
-
 // ---------------------------------------------------------------------------
 // Router implementation
 // ---------------------------------------------------------------------------
@@ -57,10 +56,6 @@ func (r *Router) Handle(method string, pattern string, handler http.Handler) {
         r.mux.Handle(pattern, &methodDispatcher{router: r, pattern: pattern})
     }
     r.handlers[pattern][method] = handler
-}
-
-func (r *Router) Mux() *http.ServeMux {
-    return r.mux
 }
 
 func (r *Router) Routes() []Route {

@@ -617,8 +617,6 @@ These rules hold in Go and JavaScript.
 | An operand that is itself a binary expression of another precedence is written in parentheses | `(a * b) + c`, `(err != nil) \|\| ok` |
 | Operators of the same precedence chain without parentheses | `a + b - c` |
 
-Six test lines still break the parentheses rule and are to be fixed: `src/internal/activity/summary_test.go:81`, `src/internal/web/login_throttle_test.go:43`, `:67` and `:114`, `src/internal/app/application_test.go:583` and `:600`.
-
 ### switch and select
 
 `case` and `default` clauses are indented one level inside their `switch` or `select`, and their statements one more level:
@@ -682,7 +680,7 @@ Steps of a change:
 | `all` | none | Same as `build` |
 | `build` | `make-build.sh` | Compiles a static binary (`CGO_ENABLED=0 go build -trimpath`) straight into `bin/timesheet` |
 | `check` | `make-check.sh` | Runs `go test -race ./...` with `CGO_ENABLED=1`; needs gcc |
-| `install` | `make-install.sh`, with `DESTDIR` | Copies `bin/timesheet` to `$(DESTDIR)/usr/bin` (mode 755), the configuration template and the import template to `$(DESTDIR)/usr/share/timesheet` (mode 644), and the server configuration to `$(DESTDIR)/etc/timesheet` (mode 644), replacing the one already there. It does not depend on `build`, so that an installation as root never compiles, and it fails when the binary is missing |
+| `install` | `make-install.sh`, with `DESTDIR` | Copies `bin/timesheet` to `$(DESTDIR)/usr/bin` (mode 755), the configuration template, the import template and the example database to `$(DESTDIR)/usr/share/timesheet` (mode 644), and the server configuration to `$(DESTDIR)/etc/timesheet` (mode 644), replacing the one already there. It does not depend on `build`, so that an installation as root never compiles, and it fails when the binary is missing |
 | `clean` | `make-clean.sh` | Runs `go clean` on the packages, empties `.cache/` (compiled packages and test results, so the next build starts from scratch) and removes the binary |
 | `mrproper` | none | Runs `git clean -f -d -x`, which deletes every untracked and ignored file, the database under `var/lib/timesheet/` included |
 
@@ -702,7 +700,7 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 
 - The packaging lives in `debian/`.
 - `debian/rules` only calls `dh`, and skips `dh_dwz`, which fails on a Go binary.
-- The package takes its files from `make install`: the binary, the configuration template, the import template and the server configuration `/etc/timesheet/timesheet.json`, the file of the repository as is, which debhelper registers as a configuration file.
+- The package takes its files from `make install`: the binary, the configuration template, the import template, the example database and the server configuration `/etc/timesheet/timesheet.json`, the file of the repository as is, which debhelper registers as a configuration file.
 - `debian/postinst` reads the database path with `timesheet config show database.path`; it never fails on an unreadable configuration, and creates the database only inside `/var/lib/timesheet`.
 - The unit runs `timesheet run --config=/etc/timesheet/timesheet.json`: the database comes from that file.
 - How to build the package is described in [BUILD.md](BUILD.md#build-the-debian-package), how to install and run it in [OPERATIONS.md](OPERATIONS.md#debian-package).

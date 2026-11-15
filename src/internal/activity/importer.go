@@ -36,11 +36,11 @@ type Importer struct {
     location    *time.Location
 }
 
-type ImportOptions struct {
-    Replace  bool
-    Validate bool
-    From     Month
-    To       Month
+type adjustmentKey struct {
+    date    Date
+    counter string
+    amount  Quantity
+    reason  string
 }
 
 const maxImportedDays = 366
@@ -53,10 +53,6 @@ var ErrMonthNotImported = errors.New("this month was not imported")
 
 func NewImporter(config Configuration, clock Clock, identifiers *IdentifierGenerator, location *time.Location) *Importer {
     return &Importer{config: config, clock: clock, identifiers: identifiers, location: location}
-}
-
-func NewImportOptions() ImportOptions {
-    return ImportOptions{From: NewMonth(MinYear, time.January), To: NewMonth(MaxYear, time.December)}
 }
 
 func (i *Importer) Run(calendar Calendar, imported ImportFile, options ImportOptions, today Date, horizon Month) (ImportReport, error) {
@@ -77,7 +73,7 @@ func (i *Importer) Run(calendar Calendar, imported ImportFile, options ImportOpt
     adjustments := []ImportAdjustment{}
     for _, adjustment := range imported.Adjustments {
         adjustment.Reason = strings.TrimSpace(adjustment.Reason)
-        if !adjustment.Date.Month().Before(options.From) && !adjustment.Date.Month().After(options.To) {
+        if adjustment.Date.IsZero() || (!adjustment.Date.Month().Before(options.From) && !adjustment.Date.Month().After(options.To)) {
             adjustments = append(adjustments, adjustment)
         }
     }
@@ -113,6 +109,10 @@ func (i *Importer) Run(calendar Calendar, imported ImportFile, options ImportOpt
         }
         next.Days[d] = entry
     }
+    present := map[adjustmentKey]int{}
+    for _, stored := range next.Adjustments {
+        present[i.key(stored.Date, stored.Counter, stored.Amount, stored.Reason)]++
+    }
     for _, adjustment := range adjustments {
         found := adjustment.Problems(i.config, next, horizon)
         report.Problems = append(report.Problems, found...)
@@ -120,7 +120,8 @@ func (i *Importer) Run(calendar Calendar, imported ImportFile, options ImportOpt
             continue
         }
         rule, _ := i.config.Counter(adjustment.Counter)
-        if adjustment.Exists(next, rule) {
+        if key := i.key(adjustment.Date, adjustment.Counter, adjustment.Amount, adjustment.Reason); present[key] > 0 {
+            present[key]--
             report.Warnings = append(report.Warnings, ImportProblem{Date: adjustment.Date, Kind: importAdjustmentPresent})
             continue
         }
@@ -139,6 +140,10 @@ func (i *Importer) Run(calendar Calendar, imported ImportFile, options ImportOpt
         report.Calendar = i.validate(&report, next, today)
     }
     return report, nil
+}
+
+func (i *Importer) key(date Date, counter string, amount Quantity, reason string) adjustmentKey {
+    return adjustmentKey{date: date, counter: counter, amount: amount.reduced(), reason: reason}
 }
 
 func (i *Importer) apply(calendar *Calendar, settings *ImportSettings) []ImportProblem {

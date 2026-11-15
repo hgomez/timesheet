@@ -540,10 +540,10 @@ Every counter has a single balance.
 | Rule | Value |
 | --- | --- |
 | Arithmetic | exact rationals, never floats |
-| Input | a decimal with at most six decimals, a comma or a point (`2.08`, `-1,5`), or a fraction (`7/12`) |
+| Input | a decimal with at most six decimals, or a fraction (`7/12`); the forms of the pages accept a comma or a point (`2.08`, `-1,5`), files (database, configuration template, import) a point only |
 | Denominator of a fraction | a divisor of 63 000 000 (2^6 × 3^2 × 5^6 × 7), for instance `7/12`, `1/3`, `1/7` |
 | Magnitude | at most 1 000 000 |
-| Written form | a quantity read from a form, a file or the configuration template keeps the form it was written in: `8/12` stays `8/12`, `0.50` stays `0.50`; only the sign and a leading point are normalised (`+2` is `2`, `.5` is `0.5`) |
+| Written form | a quantity read from a form, a file or the configuration template keeps the form it was written in: `8/12` stays `8/12`, `0.50` stays `0.50`; only the sign, leading zeros and a leading or trailing point are normalised (`+2` is `2`, `.5` is `0.5`, `0001` and `1.` are `1`) |
 | Computed form | the result of a computation (balance, total, sum of a day, rounding) is reduced, and written as a decimal when it is exact: `1/2` is `0.5`, `8/12 + 4/12` is `1`, a balance of `8/12` alone is `2/3` |
 | Comparison | equal values compare equal whatever their form: `8/12` equals `2/3` |
 | Storage | a string, in its written or computed form: `"2.08"`, `"8/12"`, `"0.5"` |
@@ -1220,6 +1220,8 @@ The section then holds a legend of the codes and of the half-day states, and the
 | Any of them | the account would grow beyond its [size limits](#size-of-an-account) | 413 | « Les données de ce compte atteignent la taille maximale autorisée. » |
 | Any of them | the database file would grow beyond `database.max_bytes` (64 MiB by default), or another write error | 500 | page « Erreur interne » |
 
+A save of the grid checks its revision right after the month: a stale page gets 409 even when some of its entries are invalid, so that the page shown after a refusal never carries a newer revision than the entries it shows.
+
 ## MONTH PAGE
 
 - Route `/dashboard/month/{year}/{month}`, entry « Mois » of the main navigation (`/dashboard/month` redirects to the current month).
@@ -1447,9 +1449,11 @@ The section « Suivi et compteurs » holds one form:
 | --- | --- | --- |
 | unreadable revision of the configuration or of the account | 400 | page « Requête invalide » |
 | the configuration changed since the form was shown | 409 | « La configuration a changé entre-temps. Vérifiez puis recommencez. » |
-| invalid values | 422 | « Réglages non enregistrés. », followed by one line per problem |
 | the account changed since the form was shown | 409 | « Les données ont changé entre-temps. Vérifiez puis recommencez. » |
+| invalid values | 422 | « Réglages non enregistrés. », followed by one line per problem |
 | the account would grow beyond its size limits | 413 | « Les données de ce compte atteignent la taille maximale autorisée. » |
+
+Both revisions are checked before the values: a stale form gets 409 even with invalid values.
 
 The problems listed under « Réglages non enregistrés. » are:
 
@@ -1459,6 +1463,8 @@ The problems listed under « Réglages non enregistrés. » are:
 - « \<compteur> : montant d'acquisition invalide. »;
 - « \<compteur> : solde initial invalide (entre -366 et 366). »;
 - « \<libellé du code> : couleur invalide. ».
+
+On a 422, the page keeps the values posted; a refused value is shown as stored (the tracking start, an initial balance), or empty (an own amount, a zone shown « Par défaut »), or as the default colour.
 
 ## DATA PAGE
 
@@ -1483,7 +1489,7 @@ The report is spread over the three levels of messages:
 | --- | --- | --- |
 | alert (red) | « L'import est refusé : rien n'a été enregistré. Corrigez le fichier puis recommencez. » | the problems, in the French texts of [Errors](#errors), each with its date written `jj/mm/aaaa` |
 | warning (yellow) | « Points à vérifier : » | the warnings « Date de début avancée du \<date> au \<date> » and « Ajustement du \<date> déjà présent, ignoré »; month by month, « Demi-journées non renseignées en \<mois> : \<dates>. »; « Validation arrêtée en \<mois>. \<raison> » when a month cannot be validated, the reason being « Ce mois n'est pas dans le fichier. » or the reason of [Refusals of the activity page](#refusals-of-the-activity-page) |
-| notice (green), « Vérifier » only | « Vérification réussie : le fichier peut être importé. Rien n'a été enregistré. » | « Réglages lus : date de début au \<date>, \<n> compteur(s). » when the file has `settings`; « \<n> jour(s) lu(s), de \<mois> à \<mois>. »; « \<n> ajustement(s) lu(s). »; with « Valider les mois importés », « Mois validés : de \<mois> à \<mois> (\<n>). » |
+| notice (green), « Vérifier » only | « Vérification réussie : le fichier peut être importé. Rien n'a été enregistré. » | « Réglages lus : date de début au \<date>, \<n> compteur(s). » when the file has `settings`; « \<n> jour(s) lu(s), de \<mois> à \<mois>. » when it has days; « \<n> ajustement(s) lu(s). » when it has adjustments; with « Valider les mois importés », « Mois validés : de \<mois> à \<mois> (\<n>). » |
 
 The missing half-days and the validation are computed only when there is no problem.
 
@@ -1502,7 +1508,7 @@ The missing half-days and the validation are computed only when there is no prob
 
 | Case | Status | Message |
 | --- | --- | --- |
-| `action` other than `check` or `import` | 400 | page « Requête invalide » |
+| `action` other than `check` or `import`, or unreadable revision | 400 | page « Requête invalide » |
 | body beyond `server.max_body_bytes` | 400 | page « Requête invalide » |
 | no file | 422 | « Choisissez un fichier à importer. » |
 | file that cannot be decoded (not JSON, unknown field, wrong `format` or `version`, beyond 8 MiB) | 422 | « Le fichier n'est pas un import valide : un objet JSON au format timesheet-import, version 1, sans champ inconnu. » |
@@ -1811,7 +1817,7 @@ The label of the code (grid) or its identifier (year calendar) is always written
 | `/admin/accounts/{login}/month/{year}/{month}` | GET | ADMIN | read-only month page of the account |
 | `/admin/accounts/{login}/year/{year}` | GET | ADMIN | read-only year page of the account |
 | `/admin/settings` | GET | ADMIN | [configuration page](#configuration-page) |
-| `/admin/settings` | POST | ADMIN | changes the configuration: `action=activity-add`, `activity-update`, `activity-delete`, `counter-add`, `counter-update` or `counter-delete`; any other `action` gets 400 |
+| `/admin/settings` | POST | ADMIN | changes the configuration: `action=public-holidays-update`, `activity-add`, `activity-update`, `activity-delete`, `counter-add`, `counter-update` or `counter-delete`; any other `action` gets 400 |
 | `/static/{path...}` | GET | public | embedded CSS, JavaScript and SVG |
 
 ### Access
@@ -1955,10 +1961,12 @@ Every form posts `application/x-www-form-urlencoded` data, except the import of 
 
 | Form | Field | Control | Content |
 | --- | --- | --- | --- |
+| Import | `revision` | hidden | the account revision of the page |
 | Import | `file` | « Fichier d'import », file, `.json` | the file to import |
 | Import | `replace` | « Remplacer les jours déjà saisis », checkbox | replaces the entries already made at the dates of the file |
 | Import | `validate` | « Valider les mois importés », checkbox | validates the imported months afterwards |
 | Import | `action` | button « Vérifier » or « Importer » | `check` or `import` |
+| Deletion of the data | `revision` | hidden | the account revision of the page |
 | Deletion of the data | `confirm` | « Retapez votre identifiant pour confirmer », text, 32 characters | the login, retyped |
 
 ### Fields of the administration
@@ -2044,11 +2052,11 @@ timesheet help | version
 | Code | Meaning | Cases |
 | --- | --- | --- |
 | 0 | success | the command did its work; `help`, `version`, no command, `-h`, `--help` |
-| 1 | error | an invalid or out-of-bounds setting value for `config set`, or two linked values that do not agree; an invalid server configuration, for every command that reads it; an invalid `--profile` or profile argument, or an invalid `--origin` or `--listen`, which are checked once the database is open; an invalid login; an unknown account; a login taken; the last administrator; a refused import; a weak password or two different passwords; the database missing, existing already for `init`, locked by the server, malformed or insecure; `run` without an enabled `ADMIN`; `run` unable to listen or to set up TLS |
+| 1 | error | an invalid or out-of-bounds setting value for `config set`, or two linked values that do not agree; an invalid server configuration, for every command that reads it; an invalid `--profile` or profile argument, or an invalid `--origin` or `--listen`, which are checked once the database is open; an invalid login; an unknown account; a login taken; the last administrator; a refused import; a weak password or two different passwords; the database missing, existing already for `init`, locked by the server, malformed or insecure; `run` unable to listen or to set up TLS |
 | 2 | usage error | an unknown command, option or key of `config show` or `config set`; `config`, `user` or `session` without subcommand; a wrong number of arguments, `config set` without a value for each key included; an option that does not apply to the command; a malformed value of `--from`, `--to`, `--log-level` or `--trusted-proxy`; an empty `--origin=` or `--trusted-proxy=`; `--from` after `--to`; `--tls-cert` without `--tls-key`, or the reverse; an invalid `--database` or `--config` |
 | 128 + signal | password prompt interrupted | 129 for SIGHUP, 130 for SIGINT, 131 for SIGQUIT, 143 for SIGTERM; the terminal echo is restored |
 
-An error is printed on the standard error as `timesheet: <message>`. An error found while reading the options and the arguments is followed by `Try 'timesheet help' for more information.`, except `--from` after `--to`, which prints only `timesheet: --from after --to`.
+An error is printed on the standard error as `timesheet: <message>`. An error found while reading the options and the arguments is followed by `Try 'timesheet help' for more information.`, except the checks of the months of `import`, which print only their line: `timesheet: invalid --from`, `timesheet: invalid --to` or `timesheet: --from after --to`.
 
 ### Help and version
 
@@ -2086,9 +2094,9 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 | `session clear` | yes | yes | yes |
 | `import`, `--dry-run` included | yes | yes | yes |
 | `config show`, `config set` | no | no | no |
+| `help`, `version` | no | no | no |
 
 - Every command but `help` and `version` reads the [server configuration](#server-configuration) first; the commands that open the database take its path, its size limit, the limits of the accounts and the iterations of the password hashes from it.
-| `help`, `version` | no | no | no |
 
 - The lock is `.<file name>.lock` next to the database ([Database](#database)).
 - A command that needs the lock while the server runs fails with exit 1: `the file is used by another process`, followed by `(stop the server or use /admin/accounts)` for the `user` commands and `(stop the server first)` for `session clear` and `import`.
@@ -2251,7 +2259,7 @@ Imports days, adjustments and settings into an account ([Import](#import)).
 
 - The file is 8 MiB at most.
 - It is decoded strictly: unknown fields and data after the object are refused.
-- As for the database, the standard decoder matches field names without regard to case and keeps the last of repeated keys, a repeated date included.
+- As for the database, the standard decoder matches field names without regard to case and keeps the last of repeated keys, merging two repeated objects or maps key by key, a repeated date included.
 
 ### Import template
 
@@ -2298,12 +2306,13 @@ Settings follow the rules of the [settings page](#settings-page):
 ### Imported adjustments
 
 - Each imported adjustment is checked like one entered in the activity page ([Adjustments](#adjustments)).
+- The date is mandatory: an adjustment without one is refused, whatever `--from` and `--to`.
 - The date must fall in an open month of the tracking, not before the tracking start, within the planning horizon.
 - The counter must exist and not be archived.
 - The quantity is signed, non-zero, between -366 and 366.
 - The reason is mandatory, one line, 200 characters at most; it is trimmed.
 - It receives an identifier.
-- An adjustment identical to a stored one or to an earlier one of the same file (date, counter, amount, reason) is skipped with a warning, so that a file can be imported again with `--replace`.
+- An adjustment identical to a stored one (date, counter, amount, reason) is skipped with a warning, so that a file can be imported again with `--replace`. Identical adjustments count one by one: a file holding the same adjustment twice adds both to an account that has none, and skips both when the account already holds two.
 
 ### Moved tracking start
 
@@ -2314,7 +2323,7 @@ Settings follow the rules of the [settings page](#settings-page):
 ### Errors
 
 - Every problem is listed, prefixed with `error: `, then the command exits with 1 and nothing is written.
-- Problems of days and adjustments carry their date; problems of settings do not.
+- Problems of days and adjustments carry their date, except an adjustment without one; problems of settings do not.
 - A file with no day and no adjustment within `--from` and `--to`, and no `settings`, is refused (`no day to import`). A file holding only `"settings": {}` is accepted.
 - The command line writes the messages in English, except the refusals of the grid and the labels of counters, which are the French texts of the pages. The data page writes them in French, and adds « Le fichier ne contient aucun jour à importer » for `no day to import`.
 
@@ -2325,6 +2334,7 @@ Settings follow the rules of the [settings page](#settings-page):
 | Day already entered, without `--replace` | `<date>: an entry already exists (use --replace)` | « \<jj/mm/aaaa> : une saisie existe déjà (cochez « Remplacer les jours déjà saisis ») » |
 | Day refused by the grid rules | `<date>: <problem>`, the problem being the French text of [Refusals of the activity page](#refusals-of-the-activity-page) | « \<jj/mm/aaaa> : \<problème> » |
 | File starting before a validated tracking start | `the file starts before the tracking start, already validated` | « Le fichier commence avant la date de début, déjà validée » |
+| Adjustment without a date | `adjustment without a date` | « Ajustement sans date » |
 | Adjustment outside an open tracked month | `adjustment of <date>: the date must fall in an open month, from the tracking start` | « Ajustement du \<jj/mm/aaaa> : la date doit tomber dans un mois ouvert, à partir de la date de début » |
 | Adjustment on an unknown or archived counter | `adjustment of <date>: counter "<ID>" unknown or archived` | « Ajustement du \<jj/mm/aaaa> : compteur "\<ID>" inconnu ou archivé » |
 | Adjustment quantity | `adjustment of <date>: a non-zero quantity between -366 and 366 is expected` | « Ajustement du \<jj/mm/aaaa> : une quantité non nulle entre -366 et 366 est attendue » |
@@ -2343,9 +2353,9 @@ The command prints, in this order:
 
 1. the warnings, prefixed with `warning: ` (`tracking start moved from <date> to <date>`, `adjustment of <date> already present, ignored`);
 2. `Settings read: tracking start <date>, <n> counter(s).` when the file has `settings`;
-3. `<n> day(s) read, from <month> to <month>.`;
+3. `<n> day(s) read, from <month> to <month>.` when the file has days;
 4. month by month, `missing entries in <month>: <dates>`: the days before today with a half-day or both left without entry, weekends and holidays included;
-5. `<n> adjustment(s) read.`;
+5. `<n> adjustment(s) read.` when the file has adjustments;
 6. with `--validate`, `<month> validated.` per month, or `validation stopped at <month>: <reason>`;
 7. `Dry run: nothing was written.` with `--dry-run`, otherwise `Import saved.`.
 
@@ -2381,7 +2391,7 @@ Nothing is left implicit: every field is written, and no value depends on the de
 | `Cache-Control` | `no-store` |
 
 - The file is indented with two spaces; quantities keep their written form.
-- It does not hold the history of the months (validations, reopenings) nor the ledger: they are computed again. Imported into an empty account with « Valider les mois importés », it gives the same balances, the months being validated on their last day.
+- It does not hold the history of the months (validations, reopenings) nor the ledger: they are computed again. Imported into an empty account with « Valider les mois importés », it gives the same balances, the months being validated on their last day. This holds while the history follows the current rules: a code or a counter archived after use, a consuming counter disabled after use, or an adjustment on an archived counter make the import refused; an own amount changed after a validation, or day entries stored before the tracking start (kept when the start moved later), give other balances, the history being computed again with the current settings.
 - It can be imported again with the command `import`, or from the data page within `server.max_body_bytes`.
 
 ### Source data
@@ -2455,7 +2465,7 @@ The configuration of the example is shortened to one code and one counter; `rule
 | `colors` of the settings | the account never changed a colour |
 | `public_holidays` of the settings | the account follows the default zone of the configuration |
 
-- `public_holidays` of the configuration is the identifier of a [zone](#public-holidays); an older database without it follows `fr-metropole` ([Migration notes](#migration-notes)).
+- `public_holidays` of the configuration is the identifier of a [zone](#public-holidays); an older database without it, or with an empty one, follows `fr-metropole` ([Migration notes](#migration-notes)).
 - `state` is mandatory: `enabled` for an active account, `disabled` for a disabled one.
 - `profile` is `USER` or `ADMIN`.
 - `status` of a month is `open` or `validated`; the `action` of a month event is `validated` or `reopened`.
@@ -2484,7 +2494,7 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 
 | Object | Checks |
 | --- | --- |
-| File | strict decoding: unknown fields and data after the object refused; the standard decoder matches field names without regard to case and keeps the last of repeated keys; `version` as in [Schema version](#schema-version); `database.max_bytes` at most (64 MiB by default) |
+| File | strict decoding: unknown fields and data after the object refused; the standard decoder matches field names without regard to case and keeps the last of repeated keys, merging two repeated objects or maps key by key; `version` as in [Schema version](#schema-version); `database.max_bytes` at most (64 MiB by default) |
 | Configuration | the rules of [Validation before writing](#validation-before-writing) |
 | Accounts | logins valid and unique; profiles, states, names (one line, 60 characters at most, no surrounding space); password hashes with 1 000 to 1 200 000 iterations |
 | Settings | tracking start; a known zone of public holidays or `null`; counters that exist; own amounts and initial balances within their bounds; colours `#rrggbb` of codes that exist |
@@ -2691,7 +2701,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 ### Reading
 
 - Every command reads the file first, except `help` and `version`: `run`, `init`, `user`, `session clear` and `import` before opening the database, `config show` and `config set` to print or change it.
-- The file is read strictly: unknown fields and data after the object are refused, and it is 1 MiB at most. As for the database, the standard decoder matches field names without regard to case and keeps the last of repeated keys.
+- The file is read strictly: unknown fields and data after the object are refused, and it is 1 MiB at most. As for the database, the standard decoder matches field names without regard to case and keeps the last of repeated keys, merging two repeated objects or maps key by key.
 - An invalid file stops the command (exit 1) with the path of the faulty setting, for instance `server.listen: an address host:port is expected` or `sessions.idle_timeout: a duration from 5m to 168h is expected`.
 - A missing file is not an error: the defaults apply. They are also the values of the file shipped in the repository.
 - In an existing file, `server.listen`, `server.origins` and `server.timezone` are mandatory, and an absent `server.trusted_proxies` trusts no proxy. Every other absent key takes its default.
@@ -2713,7 +2723,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 - The file holds no secret and is never written by the server.
 - It can be read by anyone (mode 0644) and edited by hand.
 - `config set` rewrites it after validating the new values ([`timesheet config show` and `timesheet config set`](#timesheet-config-show-and-timesheet-config-set)).
-- The configuration page shows the settings read at the start of the server, read-only ([Server settings shown](#server-settings-shown)).
+- The server page shows the settings read at the start of the server, read-only ([Server settings shown](#server-settings-shown)).
 
 ### Default trusted proxies
 
@@ -2810,7 +2820,7 @@ The path of the database moved from the default of `--database` into the key `da
 
 The zones of public holidays added the key `public_holidays` to the configuration, to the settings of each account and to the import format, without raising the schema `version`, which is still 1.
 
-- Nothing to do: a database without `configuration.public_holidays` follows the zone `fr-metropole`, the former calendar, and an account without `settings.public_holidays` follows the default zone. The keys are written at the next change.
+- Nothing to do: a database without `configuration.public_holidays` follows the zone `fr-metropole`, the former calendar, and an account without `settings.public_holidays` follows the default zone. At the next write, an account gets `"public_holidays": null`, and the configuration `"public_holidays": ""`, still read as `fr-metropole`, until an administrator saves a default zone in the configuration page.
 - An older binary refuses a database written since, with `json: unknown field "public_holidays"`: restore the backup taken before the upgrade, or delete the keys by hand.
 - An import file with `public_holidays` is refused by an older binary for the same reason.
 
@@ -2892,7 +2902,7 @@ time=2026-11-13T16:40:12.345+01:00 level=INFO msg=request client=203.0.113.9 pee
 | `sessions closed` | INFO | `login`, `by` | the sessions of an account closed from the administration |
 | `account deleted` | INFO | `login`, `by` | an account deleted from the web |
 | `configuration changed` | INFO | `action`, `by` | a change of the configuration |
-| `cannot save the name`, `cannot save the calendar`, `cannot save the settings`, `cannot save the configuration` | ERROR | `error` | a write failed (500) |
+| `cannot save the name`, `cannot save the calendar`, `cannot save the settings`, `cannot save the configuration`, `cannot export the data`, `cannot import the data` | ERROR | `error` | a write failed (500) |
 | `handler panic` | ERROR | `path`, `panic` | a page failed unexpectedly (500) |
 | `template rendering failed` | ERROR | `error` | a page could not be rendered |
 | messages of the standard HTTP server | WARN, DEBUG for TLS handshake errors | | errors of connections |

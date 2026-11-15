@@ -145,6 +145,13 @@ func (c *DashboardController) Save(w http.ResponseWriter, r *http.Request) {
         c.render(w, r, ws, PageActivity, http.StatusConflict, m, nil, nil, "Ce mois n'est pas modifiable : il est validé, précède le début du suivi ou dépasse l'horizon de planification de 24 mois.")
         return
     }
+    if revision, err := strconv.ParseInt(r.PostFormValue("revision"), 10, 64); err != nil {
+        c.errors.BadRequest(w, r)
+        return
+    } else if revision != ws.Calendar.Revision {
+        c.render(w, r, ws, PageActivity, http.StatusConflict, m, nil, nil, "Les données ont changé entre-temps (autre onglet ?). Rechargez la page avant de recommencer.")
+        return
+    }
     submitted := map[activity.Date]activity.DayEntry{}
     problems := map[activity.Date][]string{}
     calendar := ws.Calendar.Clone()
@@ -154,11 +161,7 @@ func (c *DashboardController) Save(w http.ResponseWriter, r *http.Request) {
         }
         key := d.String()
         if _, posted := r.PostForm["comment:" + key]; !posted {
-            if r.PostFormValue("revision") == strconv.FormatInt(ws.Calendar.Revision, 10) {
-                c.errors.BadRequest(w, r)
-            } else {
-                c.save(w, r, ws, PageActivity, calendar, m)
-            }
+            c.errors.BadRequest(w, r)
             return
         }
         entry := activity.DayEntry{AM: r.PostFormValue("am:" + key), PM: r.PostFormValue("pm:" + key), Comment: strings.TrimSpace(r.PostFormValue("comment:" + key))}

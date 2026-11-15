@@ -61,7 +61,7 @@ The public holidays are built in, for thirteen zones: « Métropole », « Alsac
 | « Données » | Import of a file, export of your data in the same format, deletion of your data to start the tracking again. Its menu entry is « Mes données ». |
 | « Administration » | For administrators: the software version and the server settings, read-only (« Serveur »), the accounts (« Comptes ») and the configuration of the default calendar of public holidays, the activity codes and the counters (« Configuration »). |
 
-- The menu under the user's name shows the profile and leads to « Mon profil » and « Mes réglages ». It also logs out (« Se déconnecter »).
+- The menu under the user's name shows the profile and leads to « Mon profil », « Mes réglages » and « Mes données ». It also logs out (« Se déconnecter »).
 - For an administrator, the header shows « Administration » left of « Tableau de bord ».
 - On the public pages, the arrow entering a door at the right of the header (« Se connecter » on hover) opens the login page « Connexion ».
 - The button of the header switches between the light and the dark theme. The choice is kept in the browser only.
@@ -155,7 +155,7 @@ An adjustment can be deleted while its month is open.
 4. Click « Importer » to save. Validated months are never changed: a file that touches one is refused.
 5. In the section « Exporter mes données », below, « Exporter » saves a file `timesheet-<login>-<date>.json`: your settings, your days with their comments and your adjustments, in the import format. It does not hold the history of the validations.
 
-The file is limited to 256 KiB by default; a larger file is imported by the administrator with the command `import` ([Importing](OPERATIONS.md#importing)).
+The file is limited to 256 KiB by default; a larger file is imported by the operator, who has a shell on the server, with the command `import` ([Importing](OPERATIONS.md#importing)).
 
 ### Start your tracking again
 
