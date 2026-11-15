@@ -1260,6 +1260,7 @@ The page holds, in this order:
 - A commented day is marked by a line at the bottom of its cell.
 - A legend of the codes comes with the table.
 - A day that does not exist (30 February, 31 April) is black ([Colours](#colours)).
+- Hovering any part of a month highlights the whole month: its name, its morning row and its afternoon row, never one row alone.
 
 ### Yearly summary
 
