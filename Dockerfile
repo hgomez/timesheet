@@ -27,7 +27,7 @@ COPY . .
 
 RUN sh .ci/make-build.sh \
  && DESTDIR=/stage sh .ci/make-install.sh \
- && install -m 755 bin/timesheet-entrypoint.sh /stage/usr/bin/timesheet-entrypoint.sh \
+ && install -m 755 .ci/timesheet-entrypoint.sh /stage/usr/bin/timesheet-entrypoint.sh \
  && /stage/usr/bin/timesheet config set server.listen 0.0.0.0:8080 --config=/stage/etc/timesheet/timesheet.json
 
 # ----------------------------------------------------------------------------

@@ -114,7 +114,7 @@ Never run `make mrproper` without a backup of the database and a commit of your 
    It runs `docker build -t timesheet .` and ends with `=== docker ok ===`.
 
 2. The build runs in two stages:
-   - in `golang:1.24-alpine3.22`, `.ci/make-build.sh` and `.ci/make-install.sh` build and install the files into a staging tree, as `make` and `make install` do; `bin/timesheet-entrypoint.sh` is added as `/usr/bin/timesheet-entrypoint.sh`, and `config set` makes the server configuration listen on `0.0.0.0:8080`;
+   - in `golang:1.24-alpine3.22`, `.ci/make-build.sh` and `.ci/make-install.sh` build and install the files into a staging tree, as `make` and `make install` do; `.ci/timesheet-entrypoint.sh` is added as `/usr/bin/timesheet-entrypoint.sh`, and `config set` makes the server configuration listen on `0.0.0.0:8080`;
    - `alpine:3.22` receives these files, the time zones (`tzdata`) and the system account `timesheet` (uid and gid 10001).
 3. The image does not run the tests: run `make check` before.
 
