@@ -619,7 +619,7 @@ Its settings are specified in [SPECIFICATIONS.md, Server configuration](SPECIFIC
 2. Create the logger.
 3. Read the server configuration file, resolve the database path, and create the logger again at `server.log_level` when `--log-level` is not given.
 4. Lock, then load the database.
-5. Check that an administrator account exists.
+5. Warn when no enabled administrator account exists.
 6. Open the listener.
 7. Compute the accepted origins.
 8. Load the TLS pair of the options or of the file, when one is given, after the check that the origins are https.

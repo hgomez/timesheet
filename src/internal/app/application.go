@@ -191,8 +191,7 @@ func (a *Application) serve(ctx context.Context, settings *Settings, server acti
         return a.fail(logger, "cannot load " + database.Path(), err)
     }
     if database.AdminCount() == 0 {
-        fmt.Fprintf(a.stderr, "%s: no administrator account: run '%s user add <login> --profile=ADMIN --database=%s' first\n", ProgramName, ProgramName, settings.Database())
-        return ExitError
+        logger.Warn("no administrator account", "hint", fmt.Sprintf("stop the server, run '%s user add <login> --profile=ADMIN --database=%s', then start it again", ProgramName, settings.Database()))
     }
     listen := config.Listen
     if settings.Listen() != "" {

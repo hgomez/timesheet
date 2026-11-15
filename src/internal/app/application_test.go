@@ -63,9 +63,6 @@ func TestInitAndAccounts(t *testing.T) {
     if run := runCommand(t, "", "init", template, database); run.code != ExitError {
         t.Fatal("a second init must fail")
     }
-    if run := runCommand(t, "", "run", database); (run.code != ExitError) || !strings.Contains(run.stderr, "--profile=ADMIN") {
-        t.Fatalf("run without admin: %+v", run)
-    }
     if run := runCommand(t, "short", "user", "add", "root", "--profile=ADMIN", database); run.code != ExitError {
         t.Fatal("weak password accepted")
     }
@@ -276,6 +273,32 @@ func TestSessionClearEmptiesTheSessionFile(t *testing.T) {
     }
     if data, _ := os.ReadFile(sessions); strings.TrimSpace(string(data)) != "[]" {
         t.Fatalf("session file: %s", data)
+    }
+}
+
+func TestRunStartsWithoutAnyAccount(t *testing.T) {
+    _, database := newTestDirectory(t)
+    runCommand(t, "", "init", "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json"), database)
+    stderr := &bytes.Buffer{}
+    application := NewApplication([]string{"run", "--listen=127.0.0.1:0", database}, testEnv(""), strings.NewReader(""), io.Discard, stderr, time.UTC).WithIterations(account.MinIterations).WithClock(activity.NewSystemClock())
+    ctx, cancel := context.WithCancel(context.Background())
+    done := make(chan int, 1)
+    go func() {
+        done <- application.Run(ctx)
+    }()
+    select {
+        case <-application.Ready():
+        case code := <-done:
+            t.Fatalf("run without any account stopped: %d %s", code, stderr.String())
+    }
+    response, err := http.Get("http://" + application.Listen() + "/login")
+    if err != nil {
+        t.Fatal(err)
+    }
+    response.Body.Close()
+    cancel()
+    if code := <-done; (code != ExitOK) || (response.StatusCode != http.StatusOK) || !strings.Contains(stderr.String(), `msg="no administrator account"`) || !strings.Contains(stderr.String(), "--profile=ADMIN") {
+        t.Fatalf("run without any account: %d, status %d, log %s", code, response.StatusCode, stderr.String())
     }
 }
 

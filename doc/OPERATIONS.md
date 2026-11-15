@@ -295,7 +295,7 @@ The installation script leaves an existing directory as it is. The unit (`StateD
    apt install ./_dist/timesheet_<version>_amd64.deb
    ```
 
-2. The service starts, and fails: the new database has no administrator. It restarts on failure until systemd gives up.
+2. The service starts on the new database, which has no account: it logs the warning `no administrator account`, and nobody can log in yet.
 3. Create the first administrator, with the service stopped:
 
    ```sh
@@ -303,8 +303,6 @@ The installation script leaves an existing directory as it is. The unit (`StateD
    runuser -u timesheet -- timesheet user add <login> --profile=ADMIN --config=/etc/timesheet/timesheet.json
    systemctl start timesheet
    ```
-
-   If `systemctl start` refuses because the service failed too often, run `systemctl reset-failed timesheet` first.
 
 4. Check the journal: `journalctl -u timesheet`. The service listens on `http://127.0.0.1:8080`.
 5. To change the address, the origins, the trusted proxies, the time zone, TLS, the logs, the sessions or the limits, see [Server configuration](#server-configuration).
@@ -449,7 +447,7 @@ Other points:
 
 ## TROUBLESHOOTING
 
-The errors of the commands are prefixed with `timesheet:`. Those of `run` are log lines `level=ERROR msg=…`, except `no administrator account`.
+The errors of the commands are prefixed with `timesheet:`. Those of `run` are log lines `level=ERROR msg=…`; its warnings are log lines `level=WARN msg=…`.
 
 | Message | Cause | What to do |
 | --- | --- | --- |
@@ -467,7 +465,7 @@ The errors of the commands are prefixed with `timesheet:`. Those of `run` are lo
 | `… belongs to another user` | The command runs as another user than the owner of the file, such as root on a package. | Run it as the owner: `runuser -u timesheet -- …` on a package. |
 | `malformed database: json: unknown field "server"` | The database was created before the server settings moved to their own file. | Follow [Upgrade](#upgrade). |
 | `the password needs at least 12 characters…` | The password is refused by the policy. | Choose a longer or more varied one. |
-| `no administrator account: run 'timesheet user add …' first` | `run` finds no enabled administrator. | Create one with `user add <login> --profile=ADMIN`. |
+| `level=WARN msg="no administrator account"` at start | The database has no enabled administrator: the server runs, but nobody can administer it, and nobody can log in when it has no account. | Stop the server, create one with `user add <login> --profile=ADMIN` (or promote an account with `user profile <login> ADMIN`), then start it again. |
 | `cannot lock …` with `the file is used by another process` | Another instance already serves this database. | Use that instance, or stop it. |
 | `cannot listen on 127.0.0.1:8080` with `address already in use` | Another program, or an instance serving another database, uses the port. | Stop it, or start with `--listen=127.0.0.1:8081`: the accepted origins then follow that address. |
 | `the file is used by another process … (stop the server or use /admin/accounts)`, or `(stop the server first)` | A command that needs the server stopped is run while the server holds the database. | Stop the server first, or act from « Administration ». |

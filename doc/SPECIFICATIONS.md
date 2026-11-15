@@ -302,7 +302,7 @@ Accounts created on the command line do not have the flag, and `user passwd` cle
 
 ### Start condition of the server
 
-`run` refuses to start (exit 1) while no enabled `ADMIN` account exists, and prints the command that creates one ([Bootstrap](#bootstrap)).
+`run` starts even when the database has no account, or no enabled `ADMIN` account. It then logs the warning `no administrator account` with the command that creates one ([Bootstrap](#bootstrap)). Nobody can use the administration until an `ADMIN` is created with `user add` or `user profile`, the server stopped.
 
 ## CALENDAR AND DAYS
 
@@ -1937,6 +1937,8 @@ An error is printed on the standard error as `timesheet: <message>`. An error fo
 2. `timesheet user add <login> --profile=ADMIN` creates the first administrator.
 3. `timesheet run` starts the server.
 
+The server also starts before step 2, without any account: it then warns, and step 2 is done with the server stopped.
+
 The procedure, with the paths of an installed package, is in [OPERATIONS.md, Install](OPERATIONS.md#install) and [README.md, First start](../README.md#first-start).
 
 ### Passwords
@@ -1979,7 +1981,7 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 ### `timesheet run`
 
 - Reads the server configuration first, then takes the lock and loads the database.
-- Refuses to start (exit 1) while no enabled `ADMIN` exists, with `no administrator account: run 'timesheet user add <login> --profile=ADMIN --database=<file>' first`.
+- Starts even while no enabled `ADMIN` exists, and then logs the warning `no administrator account` with the hint `stop the server, run 'timesheet user add <login> --profile=ADMIN --database=<file>', then start it again` ([Start condition of the server](#start-condition-of-the-server)).
 - Restores the sessions of the [session file](#session-file).
 - Stops on SIGINT or SIGTERM, letting the requests in progress end for up to `server.shutdown_timeout` (10 seconds by default).
 - Takes its timeouts and request sizes from the [section server](#section-server) of the server configuration, and the durations of its sessions and of its login throttle from the sections [sessions](#section-sessions) and [login](#section-login).
@@ -2693,6 +2695,7 @@ time=2026-11-13T16:40:12.345+01:00 level=INFO msg=request client=203.0.113.9 pee
 | --- | --- | --- | --- |
 | `starting` | INFO | `version` | `run` starts |
 | `listening` | INFO | `address`, `origins`, `database` | the server is ready; `database` is the absolute path of the database file |
+| `no administrator account` | WARN | `hint` | the database has no enabled `ADMIN` at start |
 | `serving plain HTTP: …` | WARN | | the origins are `http` |
 | `stopped` | INFO | | the server stopped |
 | `server stopped` | ERROR | `error` | the server failed while serving |
