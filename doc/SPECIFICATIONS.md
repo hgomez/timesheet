@@ -2690,7 +2690,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 
 - `share/timesheet/database-example.json` is a complete database, to try the application with the data of nearly three years. It is installed next to the configuration template.
 - Its configuration is the one of the [configuration template](#configuration-template).
-- It holds one account: login `demo`, name « Démo », profile `ADMIN`, password `demonstration`.
+- It holds one account: login `demo`, name « Compte Démo », profile `ADMIN`, password `demonstration`.
 - Its tracking start is 2023-11-27; every day is entered from that date to 2026-12-31.
 - The months from November 2023 to October 2026 are validated, each on its last day at 23:59:59 in `Europe/Paris`; the later months are open.
 - `CP` and `RTT` are enabled with their default amounts, `TPC` is disabled; the complementary part-time days of the history are entered as `RTT`; three adjustments complete the balances of `CP`.

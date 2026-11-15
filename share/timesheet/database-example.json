@@ -200,7 +200,7 @@
   "accounts": [
     {
       "login": "demo",
-      "name": "Démo",
+      "name": "Compte Démo",
       "profile": "ADMIN",
       "password": "pbkdf2-sha256$600000$g0yCRyex58lQGW6CpMnnCg$9Rh6llpSMsrfYqA8YBxd/xqDSC0mpvzO0WYk0CI4QYo",
       "must_change_password": false,
