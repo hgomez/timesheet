@@ -338,7 +338,7 @@ The sessions are kept in memory and saved in a file next to the database, so tha
 
 | Property | Value |
 | --- | --- |
-| Name | Named after the database: `.timesheet-database.json.sessions` next to `timesheet-database.json` by default |
+| Name | Named after the database: `timesheet-database.json.sessions` next to `timesheet-database.json` |
 | Mode | 0600 |
 | Writing | Atomic, like the database |
 | Size | At most 8 MiB |

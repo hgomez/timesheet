@@ -33,15 +33,15 @@ Every procedure below gives two forms:
 | Configuration template | `share/timesheet/database-template.json` | `/usr/share/timesheet/database-template.json` |
 | Example database | `share/timesheet/database-example.json` | `/usr/share/timesheet/database-example.json` |
 | Import template | `share/timesheet/import-template.json` | `/usr/share/timesheet/import-template.json` |
-| Sessions | `.timesheet-database.json.sessions`, next to the database | the same, in `/var/lib/timesheet/` |
-| Server | `bin/timesheet.sh`, or `bin/timesheet run --database=var/lib/timesheet/timesheet-database.json`, in the foreground | the unit `timesheet.service` |
+| Sessions and lock | `timesheet-database.json.sessions` and `timesheet-database.json.lock`, next to the database | the same, in `/var/lib/timesheet/` |
+| Server | `bin/timesheet.sh`, or `bin/timesheet run --database=var/lib/timesheet/timesheet-database.json --config=etc/timesheet/timesheet.json`, in the foreground | the unit `timesheet.service` |
 | Logs | the standard error of `run` | the journal: `journalctl -u timesheet` |
-| Commands that use the database | `bin/timesheet <command> --database=var/lib/timesheet/timesheet-database.json` | `runuser -u timesheet -- timesheet <command> --config=/etc/timesheet/timesheet.json` |
-| `config set` | `bin/timesheet config set …` | `timesheet config set … --config=/etc/timesheet/timesheet.json`, as root |
+| Commands that use the database | `bin/timesheet <command> --database=var/lib/timesheet/timesheet-database.json --config=etc/timesheet/timesheet.json` | `runuser -u timesheet -- timesheet <command> --config=/etc/timesheet/timesheet.json` |
+| `config set` | `bin/timesheet config set … --config=etc/timesheet/timesheet.json` | `timesheet config set … --config=/etc/timesheet/timesheet.json`, as root |
 
-- The database comes from `database.path` of the server configuration, `/var/lib/timesheet/timesheet-database.json` by default: the database of the package.
-- Every binary reads `etc/timesheet/timesheet.json` under the current directory by default, the binary of the package included: on a package, always give `--config=/etc/timesheet/timesheet.json`. The database then comes from that file, so the commands of the package need no `--database`.
-- From the sources, run the binary from the repository root, and give `--database=var/lib/timesheet/timesheet-database.json` to every command that uses the database of the repository: without it, the command opens `/var/lib/timesheet/timesheet-database.json`. `bin/timesheet.sh` passes both paths to `run`.
+- No path has a default. Without `--config`, every setting takes its default; `config show` and `config set` need `--config`, and `init` needs `--template`. A command missing them is refused (exit 2).
+- The database comes from `--database`, or else from `database.path` of the server configuration, which has no default: the shipped file names `/var/lib/timesheet/timesheet-database.json`, the database of the package. A command that opens the database without either is refused (exit 2). The commands of the package therefore need only `--config=/etc/timesheet/timesheet.json`.
+- From the sources, run the binary from the repository root, and give `--config=etc/timesheet/timesheet.json` and `--database=var/lib/timesheet/timesheet-database.json` to every command that uses the database of the repository: without `--database`, the command opens `/var/lib/timesheet/timesheet-database.json`. `bin/timesheet.sh` passes both paths to `run`.
 
 ## COMMANDS
 
@@ -61,10 +61,10 @@ Every procedure below gives two forms:
 | `help`, `version` | Prints the commands and their options; prints the release number and the commit it was built from. | No |
 
 - The exact syntax, the options, the exit codes and the messages are in [Command line](SPECIFICATIONS.md#command-line).
-- Every command accepts `--database=FILE`, `--config=FILE` and `--log-level=LEVEL` (`debug`, `info`, `warn` or `error`). `--database` and `--log-level` take precedence over `database.path` and `server.log_level`.
+- Every command accepts `--database=FILE`, `--config=FILE` and `--log-level=LEVEL` (`debug`, `info`, `warn` or `error`); without `--config`, the defaults apply, and the database then comes from `--database`. `--database` and `--log-level` take precedence over `database.path` and `server.log_level`.
 - Options are written `--name=value`, before or after the arguments. An argument cannot start with a dash.
 - A command that needs the server stopped refuses to run while the server holds the database. Accounts can also be managed in « Administration » while it runs.
-- The sessions survive a restart of the server: they are saved, hashed, in `.<name>.sessions` next to a database `<name>`.
+- The sessions survive a restart of the server: they are saved, hashed, in `<name>.sessions` next to a database `<name>`, and the lock is `<name>.lock`.
 
 ## SERVER CONFIGURATION
 
@@ -89,8 +89,8 @@ The server configuration file holds the settings of the server and of its operat
 To read a setting:
 
 ```sh
-bin/timesheet config show                   # the whole file, every key included
-bin/timesheet config show database.path     # one raw value, for a script
+bin/timesheet config show --config=etc/timesheet/timesheet.json   # the whole file, every key included
+bin/timesheet config show database.path --config=etc/timesheet/timesheet.json   # one raw value, for a script
 ```
 
 To change settings:
@@ -100,7 +100,7 @@ To change settings:
    Repository:
 
    ```sh
-   bin/timesheet config set server.listen 0.0.0.0:8080 server.origins http://timesheet.example:8080
+   bin/timesheet config set server.listen 0.0.0.0:8080 server.origins http://timesheet.example:8080 --config=etc/timesheet/timesheet.json
    ```
 
    Package, as root:
@@ -130,11 +130,11 @@ On a package, add `--config=/etc/timesheet/timesheet.json` to each of these comm
 
 Rules to know:
 
-- Without `--config`, `config set` and `config show` act on `etc/timesheet/timesheet.json` under the current directory, and `config set` creates that file when it is missing. On a package, always give `--config=/etc/timesheet/timesheet.json`.
-- `config show` prints the settings of the file, validated and re-encoded (an absent list is printed `[]`, every absent key with its default), or the defaults when the file is missing, without saying so. It fails with the faulty setting when the file is invalid. It never shows the options given to a running server.
+- `config set` and `config show` need `--config`: `etc/timesheet/timesheet.json` from the sources, `/etc/timesheet/timesheet.json` on a package. `config set` creates a missing file, starting from the defaults, without database.
+- `config show` prints the settings of the file, validated and re-encoded (an absent list is printed `[]`, every absent key with its default); a missing file is an error. It fails with the faulty setting when the file is invalid. It never shows the options given to a running server.
 - The options take precedence over the file: `--listen` over `server.listen`, `--origin` over `server.origins`, `--trusted-proxy` over `server.trusted_proxies`, `--tls-cert` and `--tls-key` over the pair of the file, `--database` over `database.path`, `--log-level` over `server.log_level`.
 - With `--listen` and without `--origin`, the origins of the file are not used. The server then accepts, on that port, `localhost`, `127.0.0.1`, `::1`, the IPv4 addresses of the interfaces, the host name and `<host name>.local`. Give `--origin` to fix the list.
-- In an existing file, `server.listen`, `server.origins` and `server.timezone` are mandatory, and a missing `trusted_proxies` trusts no proxy. Every other missing key takes its default.
+- In a file, `server.listen`, `server.origins` and `server.timezone` are mandatory, a missing `trusted_proxies` trusts no proxy, and a missing `database.path` names no database. Every other missing key takes its default.
 - The bounds keep a floor for security (600 000 iterations, 256 KiB of request body for the largest form) and keep the sessions restorable (at most 16 384 sessions in all).
 
 ## NETWORK AND SECURITY
@@ -163,19 +163,19 @@ In this example, the server listens on `192.0.2.10`, the proxy has the address `
 1. Set the listening address to an address the proxy can reach, not the loopback:
 
    ```sh
-   bin/timesheet config set server.listen 192.0.2.10:8080
+   bin/timesheet config set server.listen 192.0.2.10:8080 --config=etc/timesheet/timesheet.json
    ```
 
 2. Set the origin to the public address, not to the address of the server:
 
    ```sh
-   bin/timesheet config set server.origins https://timesheet.example.org
+   bin/timesheet config set server.origins https://timesheet.example.org --config=etc/timesheet/timesheet.json
    ```
 
 3. Trust only the proxy:
 
    ```sh
-   bin/timesheet config set server.trusted_proxies 192.0.2.20
+   bin/timesheet config set server.trusted_proxies 192.0.2.20 --config=etc/timesheet/timesheet.json
    ```
 
 4. Restart the server.
@@ -198,8 +198,8 @@ With `https` origins, the session cookies are marked `Secure` and the server sen
 
 | | Repository | Package |
 | --- | --- | --- |
-| Read the logs | the standard error of `bin/timesheet.sh` or `bin/timesheet run` | `journalctl -u timesheet` |
-| Change the level | `bin/timesheet config set server.log_level warn`, or `bin/timesheet.sh --log-level=warn` for one run | `timesheet config set server.log_level warn --config=/etc/timesheet/timesheet.json` as root, then `systemctl restart timesheet` |
+| Read the logs | the standard error of `bin/timesheet.sh` or `bin/timesheet run --config=etc/timesheet/timesheet.json` | `journalctl -u timesheet` |
+| Change the level | `bin/timesheet config set server.log_level warn --config=etc/timesheet/timesheet.json`, or `bin/timesheet.sh --log-level=warn` for one run | `timesheet config set server.log_level warn --config=/etc/timesheet/timesheet.json` as root, then `systemctl restart timesheet` |
 | Retention | what you keep of the standard error | the settings of the journal (`/etc/systemd/journald.conf`) |
 
 What the logs hold about people is listed in [Personal data](SPECIFICATIONS.md#personal-data).
@@ -221,10 +221,10 @@ To import:
 3. Run a dry run until it reports no error:
 
    ```sh
-   bin/timesheet import <login> ~/private/activity.json --dry-run --database=var/lib/timesheet/timesheet-database.json
+   bin/timesheet import <login> ~/private/activity.json --dry-run --database=var/lib/timesheet/timesheet-database.json --config=etc/timesheet/timesheet.json
    ```
 
-   Try it first on the shipped template, `bin/timesheet import <login> share/timesheet/import-template.json --dry-run --database=var/lib/timesheet/timesheet-database.json`, which answers:
+   Try it first on the shipped template, `bin/timesheet import <login> share/timesheet/import-template.json --dry-run --database=var/lib/timesheet/timesheet-database.json --config=etc/timesheet/timesheet.json`, which answers:
 
    ```text
    Settings read: tracking start 2026-01-01, 3 counter(s).
@@ -259,7 +259,7 @@ To import:
 2. Start a server on it, on another port if a server already runs on 8080:
 
    ```sh
-   bin/timesheet run --listen=127.0.0.1:8081 --database="$HOME/timesheet-example/timesheet-database.json"
+   bin/timesheet run --listen=127.0.0.1:8081 --database="$HOME/timesheet-example/timesheet-database.json" --config=etc/timesheet/timesheet.json
    ```
 
 3. Open `http://127.0.0.1:8081` and log in with the login `demo` and the password `demonstration`.
@@ -285,7 +285,7 @@ Its installation script creates, each when missing:
 
 - the system account `timesheet`;
 - the directory `/var/lib/timesheet`, mode 0700, owned by that account;
-- the database at the `database.path` of `/etc/timesheet/timesheet.json`, `/var/lib/timesheet/timesheet-database.json` by default. A path outside `/var/lib/timesheet` is not created: the script warns, and you create it with `timesheet init`. When the server configuration cannot be read, the script warns and creates no database.
+- the database at the `database.path` of `/etc/timesheet/timesheet.json`, `/var/lib/timesheet/timesheet-database.json` in the shipped file. A path outside `/var/lib/timesheet` is not created: the script warns, and you create it with `timesheet init`. When the server configuration cannot be read, the script warns and creates no database.
 
 The installation script leaves an existing directory as it is. The unit (`StateDirectory=`) gives `/var/lib/timesheet` to the account `timesheet` at each start of the service; an existing directory keeps its mode (systemd only warns when it differs from 0700).
 
@@ -333,7 +333,7 @@ The unit runs `timesheet run --config=/etc/timesheet/timesheet.json`: every sett
 
 To move the database:
 
-- Inside `/var/lib/timesheet`, the directory of the service, stop the service, change `database.path` with `config set`, move the file and its session file `.<name>.sessions` to the new name, then start the service.
+- Inside `/var/lib/timesheet`, the directory of the service, stop the service, change `database.path` with `config set`, move the file and its session file `<name>.sessions` to the new name, then start the service.
 - Elsewhere, the sandbox of the unit (`ProtectSystem=strict`) allows writes only in `/var/lib/timesheet`. Create the directory with mode 0700 for the account `timesheet`, allow it in a drop-in of the unit, then change `database.path`:
 
   ```ini
@@ -378,7 +378,7 @@ To restore:
 
    Adapt the path when you use `--database`.
 
-3. If the sessions saved next to the database must not stay open, close them: `bin/timesheet session clear --database=var/lib/timesheet/timesheet-database.json`, or on a package `runuser -u timesheet -- timesheet session clear --config=/etc/timesheet/timesheet.json`.
+3. If the sessions saved next to the database must not stay open, close them: `bin/timesheet session clear --database=var/lib/timesheet/timesheet-database.json --config=etc/timesheet/timesheet.json`, or on a package `runuser -u timesheet -- timesheet session clear --config=/etc/timesheet/timesheet.json`.
 4. Start the server again. On a package: `systemctl start timesheet`.
 
 A restored backup brings back the accounts, passwords, profiles and states of its date. Change again the passwords changed since, and disable or delete again the accounts disabled or deleted since.
@@ -393,7 +393,7 @@ When the password of an administrator is lost:
    Repository:
 
    ```sh
-   bin/timesheet user passwd <login> --database=var/lib/timesheet/timesheet-database.json
+   bin/timesheet user passwd <login> --database=var/lib/timesheet/timesheet-database.json --config=etc/timesheet/timesheet.json
    ```
 
    Package, as root:
@@ -438,13 +438,19 @@ On a package, use `/var/lib/timesheet/timesheet-database.json`, `--config=/etc/t
 
 A server configuration written before the key `addr` became `listen` is refused with `json: unknown field "addr"`, by `run` and by every command that reads it. Rename the key in the file by hand: `config show` and `config set` refuse the file until then. Replace `--addr` by `--listen` in your scripts.
 
-The binary built from the sources no longer opens `var/lib/timesheet/timesheet-database.json` by default: the default database is now `database.path` of the server configuration, `/var/lib/timesheet/timesheet-database.json`. Start the server with `bin/timesheet.sh`, which passes the database of the repository, and give `--database=var/lib/timesheet/timesheet-database.json` to the other commands ([Database path in the server configuration](SPECIFICATIONS.md#database-path-in-the-server-configuration)).
+The binary built from the sources no longer opens `var/lib/timesheet/timesheet-database.json` by default: the database is `database.path` of the server configuration, `/var/lib/timesheet/timesheet-database.json` in the shipped file. Start the server with `bin/timesheet.sh`, which passes the database of the repository, and give `--database=var/lib/timesheet/timesheet-database.json` to the other commands ([Database path in the server configuration](SPECIFICATIONS.md#database-path-in-the-server-configuration)).
+
+No path has a default any more, and the files next to the database lost their leading dot ([No default path and no hidden companion file](SPECIFICATIONS.md#no-default-path-and-no-hidden-companion-file)):
+
+- give `--config`, or `--database` to run with the defaults, to every command that opens the database, `--config` to `config show` and `config set`, and `--template` to `init`; the unit of the package already gives `--config`;
+- a command that opens the database needs `--database` when the configuration names none: the shipped file names it;
+- the former `.<name>.sessions` is no longer read, so its users log in again: stop the server and delete it, with the former `.<name>.lock`.
 
 Other points:
 
 - The database is checked entirely at load. An older binary refuses a database written by a newer one: keep the backup taken before the upgrade to go back.
 - A server configuration file using the former key `trusted_proxy` is refused (`json: unknown field "trusted_proxy"`): rename it `trusted_proxies` and write it as a list.
-- Sessions are saved in `.<database file name>.sessions`. A `timesheet-sessions.json` left by an older version is no longer read, so its users log in again. Delete it: it holds the CSRF tokens of its sessions.
+- Sessions are saved in `<database file name>.sessions`. A `timesheet-sessions.json` left by an older version is no longer read, so its users log in again. Delete it: it holds the CSRF tokens of its sessions.
 - The certificate pair, when used, is read at start: restart the server after renewing it.
 
 ## TROUBLESHOOTING
@@ -453,9 +459,14 @@ The errors of the commands are prefixed with `timesheet:`. Those of `run` are lo
 
 | Message | Cause | What to do |
 | --- | --- | --- |
-| `open share/timesheet/database-template.json: no such file or directory` | `init` is run outside the repository root, or by the installed binary. | Go to the root, or give `--template` and `--database`. |
+| `<command>: no database: give --database or set database.path in --config` (exit 2) | A command that opens the database is run without `--database`, and without `--config` or with a configuration that names no database. | Give `--database`, or `--config` with a file that has `database.path` (`etc/timesheet/timesheet.json` from the sources names the database of the package, `/etc/timesheet/timesheet.json` on a package). |
+| `config show: --config is required` (exit 2) | `config show` or `config set` is run without `--config`. | Give the file to print or change. |
+| `init: --template names the configuration template, a file` (exit 2) | `init` is run without `--template`. | Give `--template=share/timesheet/database-template.json` from the sources, `--template=/usr/share/timesheet/database-template.json` on a package. |
+| `the server configuration does not exist: <file>` | `--config` names a missing file. | Fix the path, or create the file with `config set database.path <file> --config=<file>`. |
+| `database.path: a file whose name does not end with .lock, .sessions or .tmp is expected` | `database.path` names a file that ends like a lock, session or temporary file, or a directory. | Set another name with `config set database.path <file>`, or `null`. |
+| `open share/timesheet/database-template.json: no such file or directory` | `init` is run with a relative `--template` from another directory. | Go to the root, or give an absolute `--template`. |
 | `cannot lock …` with `the directory does not exist` | `run` is started with a wrong `--database` or `database.path`, or a relative path from another directory. | Run `bin/timesheet.sh`, or give `--database`. |
-| `the database does not exist, run init first`, or a permission error, naming `/var/lib/timesheet/timesheet-database.json` | A command of the sources is run without `--database`: the default database is the one of the package. | Give `--database=var/lib/timesheet/timesheet-database.json`. |
+| `the database does not exist, run init first`, or a permission error, naming `/var/lib/timesheet/timesheet-database.json` | A command of the sources is run without `--database`: the database of `etc/timesheet/timesheet.json` is the one of the package. | Give `--database=var/lib/timesheet/timesheet-database.json`. |
 | `the database does not exist, run init first` | The database file is missing, at `database.path` or at `--database` (for `user list`, also when its directory is missing). | Run `init`, or fix the path. |
 | `json: unknown field "addr"` | The server configuration was written before `addr` became `listen`. | Rename the key `listen` ([Upgrade](#upgrade)). |
 | `<section>.<key>: a duration from … to … is expected`, or `an integer from … to … is expected` | A value of the server configuration is out of its bounds. | Fix it with `config set`; the bounds are in [Server configuration](SPECIFICATIONS.md#server-configuration). |

@@ -127,9 +127,15 @@ func (a *Application) Run(ctx context.Context) int {
             return a.report(NewConfigCommand(settings, logger).Run(a.stdout))
     }
     configuration := NewServerFile(settings.Config())
-    server, err := configuration.Load()
+    server := activity.NewDefaultServerConfiguration()
+    if settings.HasConfig() {
+        server, err = configuration.Load()
+    }
     if err == nil {
-        err = settings.ResolveDatabase(server.Database.Path)
+        err = settings.ResolveDatabase(string(server.Database.Path))
+    }
+    if err == nil {
+        server.Database.Path = activity.NullableText(settings.Database())
     }
     if (err != nil) && (settings.Command() == "run") {
         return a.fail(logger, "cannot load " + configuration.Path(), err)
@@ -191,7 +197,7 @@ func (a *Application) serve(ctx context.Context, settings *Settings, server acti
         return a.fail(logger, "cannot load " + database.Path(), err)
     }
     if database.AdminCount() == 0 {
-        logger.Warn("no administrator account", "hint", fmt.Sprintf("stop the server, run '%s user add <login> --profile=ADMIN --database=%s', then start it again", ProgramName, settings.Database()))
+        logger.Warn("no administrator account", "hint", fmt.Sprintf("stop the server, run '%s user add <login> --profile=ADMIN %s', then start it again", ProgramName, settings.Paths()))
     }
     listen := config.Listen
     if settings.Listen() != "" {

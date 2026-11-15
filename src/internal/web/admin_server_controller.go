@@ -90,7 +90,7 @@ func (c *AdminServerController) groups() []serverGroupRecord {
             {"Longueur de l'adresse", c.one(strconv.FormatInt(server.MaxURLBytes, 10) + " octets")},
         }},
         {Title: "Base de données", Facts: []serverFactRecord{
-            {"Fichier", c.one(database.Path)},
+            {"Fichier", c.one(string(database.Path))},
             {"Taille maximale", c.one(c.size(database.MaxBytes))},
         }},
         {Title: "Sessions", Facts: []serverFactRecord{

@@ -222,7 +222,7 @@ func TestUserCommandsCloseTheSessionsOfTheAccount(t *testing.T) {
     template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database)
-    sessions := filepath.Join(directory, ".ts.json.sessions")
+    sessions := filepath.Join(directory, "ts.json.sessions")
     record := func(key string, login string) string {
         return `{"key": "` + strings.Repeat(key, 64) + `", "login": "` + login + `", "csrf": "t", "created": "2026-11-11T21:00:00Z", "seen": "2026-11-11T21:00:00Z"}`
     }
@@ -266,7 +266,7 @@ func TestSessionClearEmptiesTheSessionFile(t *testing.T) {
     directory, database := newTestDirectory(t)
     template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
-    sessions := filepath.Join(directory, ".ts.json.sessions")
+    sessions := filepath.Join(directory, "ts.json.sessions")
     writeTestFile(t, sessions, `[{"key": "` + strings.Repeat("ab", 32) + `", "login": "olivier", "csrf": "t", "created": "2026-11-11T21:00:00Z", "seen": "2026-11-11T21:00:00Z"}]`)
     if run := runCommand(t, "", "session", "clear", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "All sessions are closed.") {
         t.Fatalf("session clear: %+v", run)
@@ -463,7 +463,7 @@ func TestImportKeepsRepeatedAdjustmentsAndSkipsStoredOnes(t *testing.T) {
 
 func TestDatabaseNamesNeverCollideWithTheirCompanionFiles(t *testing.T) {
     directory, _ := newTestDirectory(t)
-    if run := runCommand(t, "", "user", "list", "--database=" + filepath.Join(directory, ".ts.json.sessions")); run.code != ExitUsage {
+    if run := runCommand(t, "", "user", "list", "--database=" + filepath.Join(directory, "ts.json.sessions")); run.code != ExitUsage {
         t.Fatalf("hidden database name: %+v", run)
     }
 }
@@ -505,7 +505,7 @@ func TestUserCommandsOnAnUnknownAccountKeepTheSessions(t *testing.T) {
     template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     runCommand(t, "", "init", template, database)
     runCommand(t, "correct horse battery", "user", "add", "root", "--profile=ADMIN", database)
-    sessions := filepath.Join(directory, ".ts.json.sessions")
+    sessions := filepath.Join(directory, "ts.json.sessions")
     writeTestFile(t, sessions, "garbage")
     for _, command := range [][]string{{"user", "passwd", "ghost"}, {"user", "profile", "ghost", "USER"}, {"user", "del", "ghost"}} {
         if run := runCommand(t, "", append(command, database)...); (run.code != ExitError) || !strings.Contains(run.stderr, "unknown account") {
@@ -591,14 +591,26 @@ func TestServerConfigurationLivesInItsOwnFile(t *testing.T) {
     template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
     file := filepath.Join(directory, "etc", "timesheet.json")
     config := "--config=" + file
-    if run := runCommand(t, "", "config", "show", config); (run.code != ExitOK) || !strings.Contains(run.stdout, `"listen": "127.0.0.1:8080"`) || !strings.Contains(run.stdout, `"timezone": "Europe/Paris"`) {
-        t.Fatalf("defaults without file: %+v", run)
-    }
-    if _, err := os.Stat(file); err == nil {
-        t.Fatal("config show created the file")
+    if run := runCommand(t, "", "config", "show", config); (run.code != ExitError) || !strings.Contains(run.stderr, "the server configuration does not exist") {
+        t.Fatalf("config show without file: %+v", run)
     }
     if run := runCommand(t, "", "config", "set", "server.timezone", "Asia/Tokyo", config); (run.code != ExitOK) || !strings.Contains(run.stdout, file) {
         t.Fatalf("config set: %+v", run)
+    }
+    if run := runCommand(t, "", "config", "show", "database.path", config); (run.code != ExitOK) || (run.stdout != "null\n") {
+        t.Fatalf("a new file names no database: %+v", run)
+    }
+    if run := runCommand(t, "", "user", "list", config); (run.code != ExitUsage) || !strings.Contains(run.stderr, "user list: no database: give --database or set database.path in --config") {
+        t.Fatalf("command without database: %+v", run)
+    }
+    if run := runCommand(t, "", "user", "list"); (run.code != ExitUsage) || !strings.Contains(run.stderr, "user list: no database") {
+        t.Fatalf("command without --config nor --database: %+v", run)
+    }
+    if run := runCommand(t, "", "config", "show"); (run.code != ExitUsage) || !strings.Contains(run.stderr, "config show: --config is required") {
+        t.Fatalf("config show without --config: %+v", run)
+    }
+    if run := runCommand(t, "", "init", database, config); (run.code != ExitUsage) || !strings.Contains(run.stderr, "--template") {
+        t.Fatalf("init without --template: %+v", run)
     }
     data, err := os.ReadFile(file)
     if (err != nil) || !strings.Contains(string(data), `"timezone": "Asia/Tokyo"`) || !strings.Contains(string(data), `"server": {`) {
@@ -631,7 +643,7 @@ func TestConfigShowAndSetHandleEveryKey(t *testing.T) {
     directory, _ := newTestDirectory(t)
     file := filepath.Join(directory, "timesheet.json")
     config := "--config=" + file
-    if run := runCommand(t, "", "config", "show", "database.path", config); (run.code != ExitOK) || (run.stdout != activity.DefaultDatabasePath + "\n") {
+    if run := runCommand(t, "", "config", "show", "database.path", config); (run.code != ExitOK) || (run.stdout != filepath.Join(directory, "ts.json") + "\n") {
         t.Fatalf("raw value: %+v", run)
     }
     for _, args := range [][]string{{"config", "show", "server.addr"}, {"config", "show", "a", "b"}, {"config", "set", "server.tls_cert", "a.pem", "server.tls_key"}, {"config", "set", "server.addr", "x"}} {
@@ -661,6 +673,24 @@ func TestConfigShowAndSetHandleEveryKey(t *testing.T) {
     }
 }
 
+func TestCommandsRunWithTheDefaultsWithoutConfiguration(t *testing.T) {
+    directory, _ := newTestDirectory(t)
+    database := "--database=" + filepath.Join(directory, "alone.json")
+    template := "--template=" + filepath.Join("..", "..", "..", "share", "timesheet", "database-template.json")
+    if run := runCommand(t, "", "init", template, database); (run.code != ExitOK) || strings.Contains(run.stdout, "--config") || !strings.Contains(run.stdout, "--profile=ADMIN " + database + "\n") {
+        t.Fatalf("init without --config: %+v", run)
+    }
+    if run := runCommand(t, "correct horse battery", "user", "add", "alone", database); run.code != ExitOK {
+        t.Fatalf("user add without --config: %+v", run)
+    }
+    if run := runCommand(t, "", "user", "list", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "alone") {
+        t.Fatalf("user list without --config: %+v", run)
+    }
+    if run := runCommand(t, "", "init", template); (run.code != ExitUsage) || !strings.Contains(run.stderr, "init: no database: give --database or set database.path in --config") {
+        t.Fatalf("init without --config nor --database: %+v", run)
+    }
+}
+
 func TestDatabasePathComesFromTheConfiguration(t *testing.T) {
     directory, _ := newTestDirectory(t)
     config := "--config=" + filepath.Join(directory, "timesheet.json")
@@ -680,10 +710,15 @@ func TestDatabasePathComesFromTheConfiguration(t *testing.T) {
     if run := runCommand(t, "", "init", template, "--database=" + explicit, config); (run.code != ExitOK) || !strings.Contains(run.stdout, explicit) {
         t.Fatalf("--database comes first: %+v", run)
     }
-    if run := runCommand(t, "", "config", "set", "database.path", filepath.Join(directory, ".hidden.json"), config); (run.code != ExitError) || !strings.Contains(run.stderr, "database.path:") {
-        t.Fatalf("hidden database name: %+v", run)
+    for _, name := range []string{"configured.json.lock", "configured.json.sessions", "configured.json.1.tmp"} {
+        if run := runCommand(t, "", "config", "set", "database.path", filepath.Join(directory, name), config); (run.code != ExitError) || !strings.Contains(run.stderr, "database.path:") {
+            t.Fatalf("database named like a companion file %s: %+v", name, run)
+        }
     }
-    settings, err := NewSettings([]string{"user", "list"})
+    if run := runCommand(t, "", "init", template, "--database=" + filepath.Join(directory, ".hidden.json"), config); run.code != ExitOK {
+        t.Fatalf("a hidden database name is allowed: %+v", run)
+    }
+    settings, err := NewSettings([]string{"user", "list", "--config=timesheet.json"})
     if err != nil {
         t.Fatal(err)
     }

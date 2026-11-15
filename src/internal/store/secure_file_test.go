@@ -37,7 +37,7 @@ const testMaxBytes = 64 << 20
 
 func TestSecureFileLiteralNamesAndLateChecks(t *testing.T) {
     directory := t.TempDir()
-    unrelated := filepath.Join(directory, ".axb.json.keep.tmp")
+    unrelated := filepath.Join(directory, "axb.json.keep.tmp")
     os.WriteFile(unrelated, []byte("x"), 0o600)
     file := NewSecureFile(filepath.Join(directory, "a*b.json"), slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), testMaxBytes)
     if err := file.Prepare(); err != nil {
@@ -81,7 +81,7 @@ func TestSecureFileLock(t *testing.T) {
         t.Fatalf("lock after release: %v", err)
     }
     second.Unlock()
-    info, err := os.Stat(filepath.Join(directory, ".data.json.lock"))
+    info, err := os.Stat(filepath.Join(directory, "data.json.lock"))
     if (err != nil) || (info.Mode().Perm() != 0o600) {
         t.Fatalf("lock file: %v", err)
     }
@@ -89,8 +89,8 @@ func TestSecureFileLock(t *testing.T) {
 
 func TestSecureFileRemovesOnlyItsOwnTemporaryFiles(t *testing.T) {
     directory := t.TempDir()
-    orphan := filepath.Join(directory, ".db.json.4242.tmp")
-    foreign := []string{filepath.Join(directory, ".db.json.bak.4242.tmp"), filepath.Join(directory, ".db.json.notes.tmp"), filepath.Join(directory, ".db.json..tmp")}
+    orphan := filepath.Join(directory, "db.json.4242.tmp")
+    foreign := []string{filepath.Join(directory, "db.json.bak.4242.tmp"), filepath.Join(directory, "db.json.notes.tmp"), filepath.Join(directory, "db.json..tmp")}
     for _, name := range append(foreign, orphan) {
         os.WriteFile(name, []byte("x"), 0o600)
     }

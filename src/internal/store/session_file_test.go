@@ -40,11 +40,11 @@ import (
 func TestSessionFileRoundTrip(t *testing.T) {
     directory := t.TempDir()
     os.Chmod(directory, 0o700)
-    if name := filepath.Base(NewSessionFile(filepath.Join(directory, "timesheet-database.json"), nil).Path()); name != ".timesheet-database.json.sessions" {
+    if name := filepath.Base(NewSessionFile(filepath.Join(directory, "timesheet-database.json"), nil).Path()); name != "timesheet-database.json.sessions" {
         t.Fatalf("default name: %s", name)
     }
     file := NewSessionFile(filepath.Join(directory, "ts.json"), slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)))
-    if filepath.Base(file.Path()) != ".ts.json.sessions" {
+    if filepath.Base(file.Path()) != "ts.json.sessions" {
         t.Fatalf("path: %s", file.Path())
     }
     if records, err := file.LoadSessions(); (err != nil) || (len(records) != 0) {

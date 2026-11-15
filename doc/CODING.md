@@ -57,7 +57,7 @@ The tests named below live in `src/internal/web/` unless another package is give
 | Notice codes have a message and are documented | `TestNoticesMatchTheSpecifications` (`specifications_test.go`) | [Tests of the documentation](#tests-of-the-documentation) |
 | Commands of the specifications equal a fixed list and appear in the usage | `TestCommandsMatchTheSpecifications` (`src/internal/app/specifications_test.go`) | [Tests of the documentation](#tests-of-the-documentation) |
 | The configuration template equals `NewDefaultConfiguration` | `TestTemplateMirrorsTheDefaultConfiguration` (`src/internal/activity/configuration_test.go`) | [Changing the schema](#changing-the-schema) |
-| `etc/timesheet/timesheet.json` is, byte for byte, the encoding of `NewDefaultServerConfiguration` | `TestShippedServerFileIsTheDefaultConfiguration` (`src/internal/app/server_file_test.go`) | [Changing the schema](#changing-the-schema) |
+| `etc/timesheet/timesheet.json` is, byte for byte, the encoding of `NewDefaultServerConfiguration` with `database.path` set to the database of the package | `TestShippedServerFileIsTheDefaultConfiguration` (`src/internal/app/server_file_test.go`) | [Changing the schema](#changing-the-schema) |
 | The keys of the server configuration equal the keys of the tables of [Server configuration](SPECIFICATIONS.md#server-configuration) | `TestServerKeysMatchTheSpecifications` (`src/internal/app/specifications_test.go`) | [Tests of the documentation](#tests-of-the-documentation) |
 | The import template is a valid import file | `TestImportTemplateIsValid` (`src/internal/app/application_test.go`) | [Changing the schema](#changing-the-schema) |
 | `ReleaseVersion` equals the first entry of `debian/changelog` | `TestVersionIsTheReleaseOfTheChangelog` (`src/internal/app/application_test.go`) | [Release](#release) |
@@ -554,7 +554,7 @@ The look is sober and professional:
 - `html/template` escapes an apostrophe inserted by an action (`{{.Label}}`, a notice) as `&#39;`, while the literal text of a template keeps it: a test that looks for an inserted text with an apostrophe uses the escaped form or another text.
 - Web tests use `httptest` and a database in `t.TempDir()`.
 - Password hashing uses `account.MinIterations` in tests: `Application.WithIterations` and the field `Iterations` of `SiteDependencies` take precedence over `passwords.iterations`, whose floor is 600 000.
-- A test that opens a database always gives its path (`--database` or `store.NewDatabase`): the default database is `/var/lib/timesheet/timesheet-database.json`.
+- A test that opens a database always gives its path (`--database` or `store.NewDatabase`): no path has a default, and the configuration of the repository names `/var/lib/timesheet/timesheet-database.json`. Without `--config`, a command takes the default settings, which name no database; `newTestDirectory` also writes `timesheet.json` next to the database, naming it, for the tests that give `--config`.
 - `go vet` rejects non-constant format strings: always use a constant format.
 
 ### Tests of the documentation
@@ -658,7 +658,7 @@ Steps of a change:
 1. Update [SPECIFICATIONS.md, Database](SPECIFICATIONS.md#database) and write how existing databases are handled in [Migration notes](SPECIFICATIONS.md#migration-notes).
 2. Change the records in `internal/activity`, `internal/account` or `internal/store` and their validation.
 3. When the configuration changes, update `share/timesheet/database-template.json` and `NewDefaultConfiguration` together (`TestTemplateMirrorsTheDefaultConfiguration`).
-4. When the server configuration changes, update the settings of `internal/activity` (defaults, bounds, `ServerConfiguration.keys`), regenerate `etc/timesheet/timesheet.json` with `bin/timesheet config show --config=<missing file>` (`TestShippedServerFileIsTheDefaultConfiguration`), and add the key to its table in [Server configuration](SPECIFICATIONS.md#server-configuration) (`TestServerKeysMatchTheSpecifications`). A new key has a default and bounds; a key renamed, removed or made mandatory needs a migration note, since the file is decoded strictly.
+4. When the server configuration changes, update the settings of `internal/activity` (defaults, bounds, `ServerConfiguration.keys`), regenerate `etc/timesheet/timesheet.json` with `bin/timesheet config set database.path /var/lib/timesheet/timesheet-database.json --config=<new file>`, then copy that new file (`TestShippedServerFileIsTheDefaultConfiguration`), and add the key to its table in [Server configuration](SPECIFICATIONS.md#server-configuration) (`TestServerKeysMatchTheSpecifications`). A new key has a default and bounds; a key renamed, removed or made mandatory needs a migration note, since the file is decoded strictly.
 5. When the database schema or the configuration changes, update `share/timesheet/database-example.json` so that it still loads (`TestDatabaseExampleIsValid`).
 6. When the import format changes, update the import code, `share/timesheet/import-template.json` (`TestImportTemplateIsValid`) and [SPECIFICATIONS.md, Import](SPECIFICATIONS.md#import).
 

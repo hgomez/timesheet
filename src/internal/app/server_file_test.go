@@ -20,6 +20,7 @@ package app
 import (
     "os"
     "path/filepath"
+    "strings"
     "testing"
 
     "timesheet/internal/account"
@@ -37,27 +38,41 @@ func TestShippedServerFileIsTheDefaultConfiguration(t *testing.T) {
         t.Fatal(err)
     }
     file := NewServerFile(path)
-    defaults, err := file.Encode(activity.NewDefaultServerConfiguration())
+    packaged := activity.NewDefaultServerConfiguration()
+    packaged.Database.Path = "/var/lib/timesheet/timesheet-database.json"
+    defaults, err := file.Encode(packaged)
     if err != nil {
         t.Fatal(err)
     }
     if string(data) != string(defaults) {
-        t.Fatalf("etc/timesheet/timesheet.json differs from the output of config show without file:\n%s\n%s", data, defaults)
+        t.Fatalf("etc/timesheet/timesheet.json differs from the defaults with the database of the package:\n%s\n%s", data, defaults)
     }
-    if loaded, err := file.Load(); (err != nil) || (loaded.Database.Path != activity.DefaultDatabasePath) {
+    if loaded, err := file.Load(); (err != nil) || (loaded.Database.Path != packaged.Database.Path) {
         t.Fatalf("got %+v %v", loaded.Database, err)
     }
 }
 
 func TestServerFileKeepsTheDefaultsOfTheKeysItLeavesOut(t *testing.T) {
     path := filepath.Join(t.TempDir(), "timesheet.json")
-    writeTestFile(t, path, `{"server": {"listen": "127.0.0.1:9000", "origins": ["http://127.0.0.1:9000"], "timezone": "Europe/Paris"}}`)
+    writeTestFile(t, path, `{"server": {"listen": "127.0.0.1:9000", "origins": ["http://127.0.0.1:9000"], "timezone": "Europe/Paris"}, "database": {"path": "ts.json"}}`)
     loaded, err := NewServerFile(path).Load()
     if err != nil {
         t.Fatal(err)
     }
-    if (len(loaded.Server.TrustedProxies) != 0) || (loaded.Database != activity.NewDefaultDatabaseSettings()) || (loaded.Sessions != activity.NewDefaultSessionSettings()) || (loaded.Server.KeepAliveTimeout != activity.NewDefaultServerSettings().KeepAliveTimeout) {
+    if (len(loaded.Server.TrustedProxies) != 0) || (loaded.Database.MaxBytes != activity.NewDefaultDatabaseSettings().MaxBytes) || (loaded.Sessions != activity.NewDefaultSessionSettings()) || (loaded.Server.KeepAliveTimeout != activity.NewDefaultServerSettings().KeepAliveTimeout) {
         t.Fatalf("an absent list trusts no proxy, the other absent keys keep their default: %+v", loaded)
+    }
+}
+
+func TestServerFileMayNameNoDatabase(t *testing.T) {
+    path := filepath.Join(t.TempDir(), "timesheet.json")
+    writeTestFile(t, path, `{"server": {"listen": "127.0.0.1:9000", "origins": ["http://127.0.0.1:9000"], "timezone": "Europe/Paris"}}`)
+    if loaded, err := NewServerFile(path).Load(); (err != nil) || (loaded.Database.Path != "") {
+        t.Fatalf("a configuration without database.path: %+v %v", loaded.Database, err)
+    }
+    writeTestFile(t, path, `{"server": {"listen": "127.0.0.1:9000", "origins": ["http://127.0.0.1:9000"], "timezone": "Europe/Paris"}, "database": {"path": "ts.json.lock"}}`)
+    if _, err := NewServerFile(path).Load(); (err == nil) || !strings.Contains(err.Error(), "database.path:") {
+        t.Fatalf("a database named like a companion file: %v", err)
     }
 }
 

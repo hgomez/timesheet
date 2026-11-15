@@ -67,6 +67,9 @@ fi
 if [ "${arg_create_database}" = 'yes' ] && [ -z "${arg_database}" ]
 then
     echo "timesheet: ${arg_config} cannot be read, no database created (see the migration notes of the specifications)" >&2
+elif [ "${arg_create_database}" = 'yes' ] && [ "${arg_database}" = 'null' ]
+then
+    echo "timesheet: ${arg_config} names no database (database.path), no database created" >&2
 elif [ "${arg_create_database}" = 'yes' ] && [ ! -e "${arg_database}" ]
 then
     case "${arg_database}" in

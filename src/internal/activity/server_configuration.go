@@ -130,7 +130,7 @@ func (c *ServerConfiguration) keys() []serverConfigurationKey {
         c.integer("server.max_header_bytes", &server.MaxHeaderBytes),
         c.integer("server.max_body_bytes", &server.MaxBodyBytes),
         c.integer("server.max_url_bytes", &server.MaxURLBytes),
-        c.text("database.path", &database.Path),
+        c.path("database.path", &database.Path),
         c.integer("database.max_bytes", &database.MaxBytes),
         c.duration("sessions.idle_timeout", &sessions.IdleTimeout),
         c.duration("sessions.max_lifetime", &sessions.MaxLifetime),

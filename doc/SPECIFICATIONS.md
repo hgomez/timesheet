@@ -1552,7 +1552,7 @@ No other page shows the version.
 - A duration is shown with its French unit: `8 h`, `1 min`, `30 s`, `500 ms`, in the shortest form of the file. A size is shown in `Mio` or `Kio` when it is a whole number of them, otherwise in `octets`; the length of the address is always in `octets`.
 - A list (« Origines publiques », « Proxys de confiance ») shows one entry per line, each in its own `dd` under the same `dt`.
 - An empty list of proxies and a missing certificate pair are shown « aucun ».
-- They come from the [server configuration](#server-configuration) read at the start of the server, not from the options of `run`.
+- They come from the [server configuration](#server-configuration) read at the start of the server, or from the defaults without `--config`, not from the options of `run`, except « Fichier », which is the database the server opened, from `--database` or `database.path`.
 - The line under the `h1` explains how to change them: edit the file or use `timesheet config set`, then restart the server; the options of `timesheet run`, `--database` included, take precedence.
 
 ### Accounts page
@@ -2011,8 +2011,10 @@ All the forms post to `POST /admin/settings` and carry `revision`, the configura
 
 ## COMMAND LINE
 
+The options `--config=FILE.json`, `--database=FILE.json` and, for `init`, `--template=FILE.json` are left out below.
+
 ```text
-timesheet init [--template=share/timesheet/database-template.json]
+timesheet init
 timesheet run [--listen=...] [--origin=...] [--trusted-proxy=...] [--tls-cert=... --tls-key=...]
 timesheet config show [KEY]
 timesheet config set KEY VALUE [KEY VALUE...]
@@ -2031,29 +2033,30 @@ timesheet help | version
 - Options are written `--name=value` (or `--name` for a flag), anywhere on the line, before or after the arguments.
 - An argument cannot start with `-`: every word starting with `-` is read as an option.
 - An option that does not apply to the command is refused.
-- The default paths of `--config` and `--template` are relative to the current directory from the sources: run the commands from the repository root, or give the paths. The default database comes from the [server configuration](#server-configuration).
+- No path has a default. Without `--config`, every setting takes its default; with it, the settings come from that file. The database comes from `--database`, or else from `database.path` of that file, and is asked for only by a command that opens it, when neither gives it. `config show` and `config set` need `--config`, `init` needs `--template`. A relative path is relative to the current directory.
 - Without a command, the program prints the help and exits with 0. `-h` and `--help` print it too.
 
 ### Common options
 
 | Option | Value | Default |
 | --- | --- | --- |
-| `--database=<file>` | the database file; not empty, not ending with `/`, its file name not starting with a dot | `database.path` of the [server configuration](#server-configuration), `/var/lib/timesheet/timesheet-database.json` by default |
-| `--config=<file>` | the [server configuration](#server-configuration); not empty, not ending with `/` | `etc/timesheet/timesheet.json` |
+| `--database=<file>` | the database file; not empty, not ending with `/`, its file name not ending with `.lock`, `.sessions` or `.tmp` | `database.path` of the [server configuration](#server-configuration); none when the file names no database, or without `--config` |
+| `--config=<file>` | the [server configuration](#server-configuration); not empty, not ending with `/` | none: without it, every setting takes its default; required by `config show` and `config set` |
 | `--log-level=<level>` | the lowest level written on the standard error: `debug`, `info`, `warn` or `error`, in any case, with an optional offset such as `info+2` | `info`; `server.log_level` of the server configuration for `run` |
 
-- A database file name cannot start with a dot because the lock and session files, next to it, use names starting with a dot.
+- A database file name cannot end with `.lock`, `.sessions` or `.tmp`, the suffixes of the lock, session and temporary files written next to it ([Lock](#lock)).
 - A relative database path, given by `--database` or by `database.path`, is relative to the current directory; the commands turn it into an absolute path before opening the file.
-- From the sources, the database of the repository is given explicitly: `--database=var/lib/timesheet/timesheet-database.json`. Without it, a command opens `/var/lib/timesheet/timesheet-database.json`, the database of the package.
-- The default of `--config` is relative to the current directory, for the binary of the Debian package too: its unit and its commands give `--config=/etc/timesheet/timesheet.json` ([OPERATIONS.md](OPERATIONS.md#two-installations)).
+- From the sources, the database of the repository is given explicitly: `--database=var/lib/timesheet/timesheet-database.json`, with `--config=etc/timesheet/timesheet.json`, whose `database.path` is the database of the package.
+- The unit and the commands of the Debian package give `--config=/etc/timesheet/timesheet.json` ([OPERATIONS.md](OPERATIONS.md#two-installations)).
+- A command that opens the database while neither `--database` nor `database.path` gives it is a usage error (exit 2): `timesheet: <command>: no database: give --database or set database.path in --config`. So are `config show` or `config set` without `--config` (`timesheet: config show: --config is required`), and `init` without `--template`.
 
 ### Exit codes
 
 | Code | Meaning | Cases |
 | --- | --- | --- |
 | 0 | success | the command did its work; `help`, `version`, no command, `-h`, `--help` |
-| 1 | error | an invalid or out-of-bounds setting value for `config set`, or two linked values that do not agree; an invalid server configuration, for every command that reads it; an invalid `--profile` or profile argument, or an invalid `--origin` or `--listen`, which are checked once the database is open; an invalid login; an unknown account; a login taken; the last administrator; a refused import; a weak password or two different passwords; the database missing, existing already for `init`, locked by the server, malformed or insecure; `run` unable to listen or to set up TLS |
-| 2 | usage error | an unknown command, option or key of `config show` or `config set`; `config`, `user` or `session` without subcommand; a wrong number of arguments, `config set` without a value for each key included; an option that does not apply to the command; a malformed value of `--from`, `--to`, `--log-level` or `--trusted-proxy`; an empty `--origin=` or `--trusted-proxy=`; `--from` after `--to`; `--tls-cert` without `--tls-key`, or the reverse; an invalid `--database` or `--config` |
+| 1 | error | an invalid or out-of-bounds setting value for `config set`, or two linked values that do not agree; an invalid server configuration, for every command that reads it, or a missing file given by `--config`, except for `config set`; an invalid `--profile` or profile argument, or an invalid `--origin` or `--listen`, which are checked once the database is open; an invalid login; an unknown account; a login taken; the last administrator; a refused import; a weak password or two different passwords; the database missing, existing already for `init`, locked by the server, malformed or insecure; `run` unable to listen or to set up TLS |
+| 2 | usage error | an unknown command, option or key of `config show` or `config set`; `config`, `user` or `session` without subcommand; a wrong number of arguments, `config set` without a value for each key included; an option that does not apply to the command; a malformed value of `--from`, `--to`, `--log-level` or `--trusted-proxy`; an empty `--origin=` or `--trusted-proxy=`; `--from` after `--to`; `--tls-cert` without `--tls-key`, or the reverse; an invalid `--database` or `--config`; a command that opens the database while neither `--database` nor `database.path` gives it; `config show` or `config set` without `--config`; `init` without `--template` |
 | 128 + signal | password prompt interrupted | 129 for SIGHUP, 130 for SIGINT, 131 for SIGQUIT, 143 for SIGTERM; the terminal echo is restored |
 
 An error is printed on the standard error as `timesheet: <message>`. An error found while reading the options and the arguments is followed by `Try 'timesheet help' for more information.`, except the checks of the months of `import`, which print only their line: `timesheet: invalid --from`, `timesheet: invalid --to` or `timesheet: --from after --to`.
@@ -2096,24 +2099,24 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 | `config show`, `config set` | no | no | no |
 | `help`, `version` | no | no | no |
 
-- Every command but `help` and `version` reads the [server configuration](#server-configuration) first; the commands that open the database take its path, its size limit, the limits of the accounts and the iterations of the password hashes from it.
+- Every command but `help` and `version` reads the [server configuration](#server-configuration) first when `--config` is given, and takes the defaults otherwise; the commands that open the database take its path, its size limit, the limits of the accounts and the iterations of the password hashes from it.
 
-- The lock is `.<file name>.lock` next to the database ([Database](#database)).
+- The lock is `<file name>.lock` next to the database ([Database](#database)).
 - A command that needs the lock while the server runs fails with exit 1: `the file is used by another process`, followed by `(stop the server or use /admin/accounts)` for the `user` commands and `(stop the server first)` for `session clear` and `import`.
 - A command that takes the lock checks the database file and its directory ([Files and directories](#files-and-directories)). `user list` checks only the file.
 
 ### `timesheet init`
 
-- Reads the configuration template given by `--template` (default `share/timesheet/database-template.json`), strictly, 1 MiB at most ([Configuration template](#configuration-template)).
+- Reads the configuration template given by `--template`, a required option, strictly, 1 MiB at most ([Configuration template](#configuration-template)).
 - Creates the database with that configuration and no account, mode 0600.
 - Refuses an existing database (exit 1).
 - Does not create the directory of the database: it must exist.
-- Prints `Database created: <file>`, then `Now create an administrator: ` followed by the command that creates the first administrator.
+- Prints `Database created: <file>`, then `Now create an administrator: ` followed by the command that creates the first administrator, with `--database` and, when it was given, `--config`.
 
 ### `timesheet run`
 
 - Reads the server configuration first, then takes the lock and loads the database.
-- Starts even while no enabled `ADMIN` exists, and then logs the warning `no administrator account` with the hint `stop the server, run 'timesheet user add <login> --profile=ADMIN --database=<file>', then start it again` ([Start condition of the server](#start-condition-of-the-server)).
+- Starts even while no enabled `ADMIN` exists, and then logs the warning `no administrator account` with the hint `stop the server, run 'timesheet user add <login> --profile=ADMIN --database=<file>', then start it again`, followed by `--config=<file>` inside the quotes when it was given ([Start condition of the server](#start-condition-of-the-server)).
 - Restores the sessions of the [session file](#session-file).
 - Stops on SIGINT or SIGTERM, letting the requests in progress end for up to `server.shutdown_timeout` (10 seconds by default).
 - Takes its timeouts and request sizes from the [section server](#section-server) of the server configuration, and the durations of its sessions and of its login throttle from the sections [sessions](#section-sessions) and [login](#section-login).
@@ -2158,21 +2161,21 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 
 ### `timesheet config show` and `timesheet config set`
 
-- `config show` prints the server configuration read from the file, as JSON, in the [layout](#layout) of the file, every key included. It prints the defaults when the file is missing, without saying so. It never shows the options of a running server.
+- `config show` prints the server configuration read from the file, as JSON, in the [layout](#layout) of the file, every key included. A missing file is an error. It never shows the options of a running server.
 - `config show KEY` prints only the value of one key, raw, on one line: a string without quotes, a duration in its shortest form, a number, a list as values separated by commas, `null` for no value. A script reads a setting this way, for instance `config show database.path`.
-- `config set KEY VALUE [KEY VALUE...]` reads each value according to the type of its key, applies all of them, validates the whole configuration, then rewrites the file atomically in its layout, mode 0644, creating its directory (mode 0755) when missing. Nothing is written when one value is refused.
+- `config set KEY VALUE [KEY VALUE...]` reads each value according to the type of its key, applies all of them, validates the whole configuration, then rewrites the file atomically in its layout, mode 0644, creating its directory (mode 0755) when missing. Nothing is written when one value is refused. A missing file starts from the defaults, without database.
 - Linked keys are set in the same command: `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` and `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. Set one after the other, the first may be refused.
 - `config set` prints `<keys> updated in <file>; restart the server to apply it.`, the keys separated by commas.
 - Neither reads the database nor needs the server stopped.
-- Without `--config`, both act on `etc/timesheet/timesheet.json` under the current directory; `config set` creates it there. On a Debian package, give `--config=/etc/timesheet/timesheet.json`.
+- Both need `--config`, since they act on a file; on a Debian package, give `--config=/etc/timesheet/timesheet.json`.
 - The keys are those of the [server configuration](#server-configuration), written `<section>.<key>`: `server.listen`, `sessions.idle_timeout`, `limits.accounts`, and so on. An unknown key is a usage error (exit 2).
 
 | Type of the key | Value given to `config set` |
 | --- | --- |
 | address (`server.listen`) | `host:port`, the port being 0 to 65535 or a service name |
 | list (`server.origins`, `server.trusted_proxies`) | values separated by commas, spaces around them ignored; an empty value gives an empty list, which `server.trusted_proxies` accepts and `server.origins` refuses |
-| text (`server.timezone`, `server.log_level`, `server.tls_min_version`, `database.path`) | the value as given |
-| path (`server.tls_cert`, `server.tls_key`) | a path, or `null` to remove it |
+| text (`server.timezone`, `server.log_level`, `server.tls_min_version`) | the value as given |
+| path (`server.tls_cert`, `server.tls_key`, `database.path`) | a path, or `null` to remove it |
 | duration (`server.*_timeout`, `server.hsts_max_age`, `sessions.*`, `login.*`) | a duration such as `500ms`, `30s`, `5m`, `1h30m` or `8h` |
 | number (sizes, counts, `passwords.iterations`) | a whole number |
 
@@ -2403,7 +2406,7 @@ The spreadsheet an employee converts, and the import file made from it, are pers
 ### File
 
 - A single JSON file holds the configuration, the accounts and their data.
-- Its path is `database.path` of the [server configuration](#server-configuration), `/var/lib/timesheet/timesheet-database.json` by default; the option `--database` gives another one.
+- Its path is given by the option `--database`, or else by `database.path` of the [server configuration](#server-configuration), a key without default.
 - Its mode is 0600, and it belongs to the account that runs the program.
 - `init` creates it ([`timesheet init`](#timesheet-init)).
 
@@ -2509,7 +2512,7 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 ### Writing
 
 - The database is kept in memory.
-- It is rewritten atomically and synchronously on each change: temporary file, `fsync`, rename, `fsync` of the directory.
+- It is rewritten atomically and synchronously on each change: temporary file `<name>.<digits>.tmp` next to it, `fsync`, rename, `fsync` of the directory.
 - Every write checks that the encoded file can be decoded again before replacing it; the load checks the same. A value that could not be read back never reaches the disk.
 - A write that would make the file larger than `database.max_bytes` (64 MiB by default) is refused.
 
@@ -2523,7 +2526,7 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 
 ### Lock
 
-- An exclusive lock `.<file name>.lock`, next to the database, allows one writer at a time: `.timesheet-database.json.lock` by default.
+- An exclusive lock `<file name>.lock`, next to the database, allows one writer at a time: `timesheet-database.json.lock` for `timesheet-database.json`.
 - The commands that take it are listed in [Lock and running server](#lock-and-running-server).
 - A command refuses to write while the server runs.
 
@@ -2538,7 +2541,7 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 
 ## SESSION FILE
 
-- The sessions are saved, hashed, in a file named after the database: `.<name>.sessions` next to `<name>`, so `.timesheet-database.json.sessions` by default, as the lock is `.<name>.lock`.
+- The sessions are saved, hashed, in a file named after the database: `<name>.sessions` next to `<name>`, so `timesheet-database.json.sessions` for `timesheet-database.json`, as the lock is `<name>.lock`.
 - Its mode is 0600, and it is 8 MiB at most. The bound of 16 384 sessions on `limits.accounts` × `sessions.per_account` keeps it below ([Section sessions](#section-sessions)).
 - A request that only refreshes the last use of its session writes it at most once per `sessions.save_interval` (1 minute by default).
 - It lets the sessions survive a restart of the server.
@@ -2548,7 +2551,7 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 
 ## SERVER CONFIGURATION
 
-The settings of the server live in their own file, apart from the database. Its default path is `etc/timesheet/timesheet.json` under the current directory; the option `--config` gives another one, `/etc/timesheet/timesheet.json` for the Debian package. The file shipped in the repository, installed as is by `make install` and by the package, holds the defaults:
+The settings of the server live in their own file, apart from the database. Its path has no default: the option `--config` gives it, `etc/timesheet/timesheet.json` from the sources, `/etc/timesheet/timesheet.json` for the Debian package. Without `--config`, every setting takes its default; `database.path` has no default, so the database is then given by `--database`. The file shipped in the repository, installed as is by `make install` and by the package, holds the defaults, with the database of the package:
 
 ```json
 {
@@ -2651,7 +2654,7 @@ A file edited by hand may use any layout: the next `config set` rewrites it in t
 
 | Key | Format and bounds | Meaning | Default | Option that replaces it |
 | --- | --- | --- | --- | --- |
-| `path` | a file; not empty, not ending with `/`, its file name not starting with a dot; a relative path is relative to the current directory | the [database file](#database), with its lock and session files next to it | `/var/lib/timesheet/timesheet-database.json` | `--database` |
+| `path` | `null`, or a file: not ending with `/`, its file name not ending with `.lock`, `.sessions` or `.tmp`; a relative path is relative to the current directory | the [database file](#database), with its lock and session files next to it | `null`: no default; `/var/lib/timesheet/timesheet-database.json` in the shipped file | `--database` |
 | `max_bytes` | 1 048 576 to 1 073 741 824 | the size of the database file, read or written ([Writing](#writing)) | `67108864` (64 MiB) | none |
 
 ### Section sessions
@@ -2700,11 +2703,12 @@ These limits apply only to a write that grows the database: a lowered limit neve
 
 ### Reading
 
-- Every command reads the file first, except `help` and `version`: `run`, `init`, `user`, `session clear` and `import` before opening the database, `config show` and `config set` to print or change it.
+- Every command given `--config` reads the file first, except `help` and `version`: `run`, `init`, `user`, `session clear` and `import` before opening the database, `config show` and `config set` to print or change it. Without `--config`, they take the defaults.
 - The file is read strictly: unknown fields and data after the object are refused, and it is 1 MiB at most. As for the database, the standard decoder matches field names without regard to case and keeps the last of repeated keys, merging two repeated objects or maps key by key.
 - An invalid file stops the command (exit 1) with the path of the faulty setting, for instance `server.listen: an address host:port is expected` or `sessions.idle_timeout: a duration from 5m to 168h is expected`.
-- A missing file is not an error: the defaults apply. They are also the values of the file shipped in the repository.
-- In an existing file, `server.listen`, `server.origins` and `server.timezone` are mandatory, and an absent `server.trusted_proxies` trusts no proxy. Every other absent key takes its default.
+- A file given by `--config` and missing is an error (exit 1), `the server configuration does not exist: <file>`, except for `config set`, which creates it.
+- In a file, `server.listen`, `server.origins` and `server.timezone` are mandatory, an absent `server.trusted_proxies` trusts no proxy, and an absent `database.path` names no database. Every other absent key takes its default.
+- The file shipped in the repository holds the defaults, with `database.path` set to `/var/lib/timesheet/timesheet-database.json`, the database of the Debian package.
 
 ### Priority
 
@@ -2715,7 +2719,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 - `--tls-cert` and `--tls-key` replace `server.tls_cert` and `server.tls_key`.
 - `--database` replaces `database.path`.
 - `--log-level` replaces `server.log_level` for `run`.
-- Without option, the file applies; without file, the defaults.
+- Without option, the file applies; without file, the defaults, the database coming from `--database`.
 - A change applies at the next start of the server, or at the next command.
 
 ### Editing
@@ -2735,7 +2739,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 ## CONFIGURATION TEMPLATE
 
 - `share/timesheet/database-template.json` is the initial `configuration` section: codes, counters and default colours ([Codes of the template](#codes-of-the-template), [Counters of the template](#counters-of-the-template)).
-- It is read by `init` only, strictly, 1 MiB at most, and validated like the configuration.
+- It is read by `init` only, given by `--template`, strictly, 1 MiB at most, and validated like the configuration.
 - Editing it afterwards has no effect on an existing database: codes, counters and default colours are then edited in the [configuration page](#configuration-page).
 - The settings of the server are not in the database: see [Server configuration](#server-configuration).
 
@@ -2787,7 +2791,7 @@ A script or an `--template` option that names a former file fails with `no such 
 
 ### Former session file
 
-- Sessions are saved in `.<database file name>.sessions` ([Session file](#session-file)).
+- Sessions are saved in `<database file name>.sessions` ([Session file](#session-file)).
 - A file `timesheet-sessions.json` left by an older version is no longer read: its users log in again.
 - Delete it, as it holds the CSRF tokens of its sessions.
 
@@ -2812,7 +2816,7 @@ Procedure:
 
 The path of the database moved from the default of `--database` into the key `database.path` of the server configuration, whose default is `/var/lib/timesheet/timesheet-database.json`.
 
-- Debian package: nothing to do. A file without the key takes that default, which is the database of the package, and a drop-in that still passes `--database` keeps working, since the option comes first. The unit of the package now passes only `--config=/etc/timesheet/timesheet.json`: the database comes from that file.
+- Debian package: nothing to do then. A file without the key took that default, which is the database of the package; since then the key has no default, and such a file is refused ([No default path and no hidden companion file](#no-default-path-and-no-hidden-companion-file)). A drop-in that still passes `--database` keeps working, since the option comes first. The unit of the package now passes only `--config=/etc/timesheet/timesheet.json`: the database comes from that file.
 - From the sources: a command run without `--database` now opens `/var/lib/timesheet/timesheet-database.json` instead of `var/lib/timesheet/timesheet-database.json` under the current directory, and fails with `store: the database does not exist, run init first` or with a permission error naming that path. Give `--database=var/lib/timesheet/timesheet-database.json`, or start the server with `bin/timesheet.sh`, which passes it.
 - The installation script of the package reads the path with `timesheet config show database.path --config=/etc/timesheet/timesheet.json`. When the file cannot be read, it warns and creates no database; fix the file, then run `dpkg-reconfigure timesheet`.
 
@@ -2823,6 +2827,22 @@ The zones of public holidays added the key `public_holidays` to the configuratio
 - Nothing to do: a database without `configuration.public_holidays` follows the zone `fr-metropole`, the former calendar, and an account without `settings.public_holidays` follows the default zone. At the next write, an account gets `"public_holidays": null`, and the configuration `"public_holidays": ""`, still read as `fr-metropole`, until an administrator saves a default zone in the configuration page.
 - An older binary refuses a database written since, with `json: unknown field "public_holidays"`: restore the backup taken before the upgrade, or delete the keys by hand.
 - An import file with `public_holidays` is refused by an older binary for the same reason.
+
+### No default path and no hidden companion file
+
+The paths lost their defaults, and the files written next to the database lost their leading dot, without raising the schema `version`, which is still 1.
+
+| Before | Now |
+| --- | --- |
+| `--config` defaulted to `etc/timesheet/timesheet.json` | without `--config`, the defaults apply; `config show` and `config set` require `--config` |
+| `init` read `share/timesheet/database-template.json` by default | `init` requires `--template` |
+| `database.path` defaulted to `/var/lib/timesheet/timesheet-database.json` | `database.path` has no default: the database comes from `--database` or from `database.path`, and a command that opens it without either is refused |
+| a missing server configuration gave the defaults | a file given by `--config` and missing is an error, except for `config set`, which creates it with `database.path` |
+| `.<name>.lock`, `.<name>.sessions`, `.<name>.<digits>.tmp` | `<name>.lock`, `<name>.sessions`, `<name>.<digits>.tmp` |
+| a database name could not start with a dot | a database name cannot end with `.lock`, `.sessions` or `.tmp` |
+
+- A script or a unit that opens the database without `--database`, with a configuration that names none or without `--config`, fails with `timesheet: <command>: no database: give --database or set database.path in --config` (exit 2): add `--database`, or `database.path` with `config set database.path <file>`. The unit of the Debian package gives `--config`, and the file shipped in the repository and in the package names the database.
+- The former session file `.<name>.sessions` is no longer read: its users log in again. Stop the server, then delete it, with the former lock `.<name>.lock`; the session file holds the CSRF tokens of its sessions.
 
 ### Rule for future changes
 

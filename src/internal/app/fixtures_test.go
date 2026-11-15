@@ -61,11 +61,21 @@ func runCommand(t *testing.T, password string, args ...string) testRun {
     return testRun{code: code, stdout: stdout.String(), stderr: stderr.String()}
 }
 
+func testConfigPath(directory string) string {
+    return filepath.Join(directory, "timesheet.json")
+}
+
 func newTestDirectory(t *testing.T) (string, string) {
     t.Helper()
     directory := t.TempDir()
     os.Chmod(directory, 0o700)
-    return directory, "--database=" + filepath.Join(directory, "ts.json")
+    database := filepath.Join(directory, "ts.json")
+    configuration := activity.NewDefaultServerConfiguration()
+    configuration.Database.Path = activity.NullableText(database)
+    if err := NewServerFile(testConfigPath(directory)).Save(configuration); err != nil {
+        t.Fatal(err)
+    }
+    return directory, "--database=" + database
 }
 
 func writeTestImport(t *testing.T, path string) {

@@ -213,7 +213,7 @@ func TestDatabaseRefusesUnreadableData(t *testing.T) {
     database, path := newTestDatabase(t)
     start, _ := activity.NewDateFromText("2026-01-01")
     database.CreateAccount(newTestAccount(t, "bob", account.ProfileAdmin), activity.NewCalendar(start))
-    orphan := filepath.Join(filepath.Dir(path), "." + filepath.Base(path) + ".4242.tmp")
+    orphan := filepath.Join(filepath.Dir(path), filepath.Base(path) + ".4242.tmp")
     os.WriteFile(orphan, []byte("x"), 0o600)
     if err := NewDatabase(path, slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)), activity.NewDefaultDatabaseSettings().MaxBytes, activity.NewDefaultLimitSettings()).Load(); err != nil {
         t.Fatal(err)

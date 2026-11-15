@@ -24,10 +24,10 @@ import (
     "fmt"
     "io"
     "log/slog"
-    "path/filepath"
     "regexp"
 
     "timesheet/internal/account"
+    "timesheet/internal/activity"
 )
 
 // ---------------------------------------------------------------------------
@@ -47,8 +47,7 @@ var ErrMalformedSessions = errors.New("store: malformed session file")
 // ---------------------------------------------------------------------------
 
 func NewSessionFile(database string, logger *slog.Logger) *SessionFile {
-    name := "." + filepath.Base(database) + ".sessions"
-    return &SessionFile{file: NewSecureFile(filepath.Join(filepath.Dir(database), name), logger, MaxSessionFileSize)}
+    return &SessionFile{file: NewSecureFile(database + activity.SessionsSuffix, logger, MaxSessionFileSize)}
 }
 
 func (f *SessionFile) Path() string {

@@ -36,7 +36,7 @@ make
 - It ends with `=== build ok ===`.
 - The build cache is kept in `.cache/`, at the root of the repository. The first build, and the first build after `make clean`, take a few seconds more.
 - Rebuild after every change of the sources, templates and styles included.
-- The binary reads the server configuration `etc/timesheet/timesheet.json` under the current directory by default; `--config` gives another one.
+- The binary has no default path: `--config` gives the server configuration, `etc/timesheet/timesheet.json` from the sources; without it, every setting takes its default and `--database` gives the database, which has no default path. `init` takes the configuration template with `--template`.
 
 ## RUN THE TESTS
 
@@ -69,7 +69,7 @@ make install DESTDIR=/tmp/stage
 - It replaces an `/etc/timesheet/timesheet.json` already there: save your own first.
 - It creates neither the service account, nor the database directory, nor the service. The [Debian package](#build-the-debian-package) does.
 - The server configuration names the database `/var/lib/timesheet/timesheet-database.json` (`database.path`): the installed binary finds it through the configuration, without `--database`.
-- The installed binary still reads `etc/timesheet/timesheet.json` under the current directory by default: give it `--config=/etc/timesheet/timesheet.json` and, for `init`, `--template=/usr/share/timesheet/database-template.json`.
+- Give the installed binary `--config=/etc/timesheet/timesheet.json` and, for `init`, `--template=/usr/share/timesheet/database-template.json`.
 
 ## CLEAN
 

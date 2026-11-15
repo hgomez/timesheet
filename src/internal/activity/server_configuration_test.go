@@ -28,18 +28,29 @@ import (
 // ServerConfiguration tests
 // ---------------------------------------------------------------------------
 
-func TestDefaultServerConfigurationIsValid(t *testing.T) {
+func TestDefaultServerConfigurationNamesNoDatabase(t *testing.T) {
+    if NewDefaultServerConfiguration().Database.Path != "" {
+        t.Fatal("the database has no default path")
+    }
     if err := NewDefaultServerConfiguration().Validate(); err != nil {
+        t.Fatalf("a configuration without database is valid: %v", err)
+    }
+    if value, err := NewDefaultServerConfiguration().Value("database.path"); (err != nil) || (value != "null") {
+        t.Fatalf("no database is written null: %q %v", value, err)
+    }
+    if err := testServerConfiguration().Validate(); err != nil {
         t.Fatal(err)
     }
-    if NewDefaultServerConfiguration().Database.Path != "/var/lib/timesheet/timesheet-database.json" {
-        t.Fatal("the default database is the one of the package")
+    for path, valid := range map[string]bool{"db/ts.json": true, "db/.ts.json": true, "db/ts.json.lock": false, "db/ts.json.sessions": false, "db/ts.json.1.tmp": false, "db/": false, "": false} {
+        if ValidDatabasePath(path) != valid {
+            t.Errorf("%q: valid %v expected", path, valid)
+        }
     }
 }
 
 func TestServerConfigurationValidationNamesTheField(t *testing.T) {
     cases := map[string]func(*ServerConfiguration){
-        "database.path":                  func(c *ServerConfiguration) { c.Database.Path = "var/lib/.hidden.json" },
+        "database.path":                  func(c *ServerConfiguration) { c.Database.Path = "var/lib/ts.json.lock" },
         "database.max_bytes":             func(c *ServerConfiguration) { c.Database.MaxBytes = 1024 },
         "sessions.idle_timeout":          func(c *ServerConfiguration) { c.Sessions.IdleTimeout = Duration(time.Minute) },
         "sessions.max_lifetime":          func(c *ServerConfiguration) { c.Sessions.MaxLifetime = Duration(time.Hour) },
@@ -58,14 +69,14 @@ func TestServerConfigurationValidationNamesTheField(t *testing.T) {
         "limits.adjustments":             func(c *ServerConfiguration) { c.Limits.Adjustments = 0 },
     }
     for path, mutate := range cases {
-        configuration := NewDefaultServerConfiguration().Clone()
+        configuration := testServerConfiguration().Clone()
         mutate(&configuration)
         err := configuration.Validate()
         if !errors.Is(err, ErrInvalidConfiguration) || !strings.Contains(err.Error(), path + ":") {
             t.Errorf("%s: got %v", path, err)
         }
     }
-    crowded := NewDefaultServerConfiguration().Clone()
+    crowded := testServerConfiguration().Clone()
     crowded.Limits.Accounts = 1000
     if err := crowded.Validate(); !errors.Is(err, ErrInvalidConfiguration) || !strings.Contains(err.Error(), "sessions.per_account: at most 16384 sessions") {
         t.Fatalf("the sessions of every account must fit in the session file: %v", err)
@@ -73,7 +84,7 @@ func TestServerConfigurationValidationNamesTheField(t *testing.T) {
 }
 
 func TestServerConfigurationKeysReadAndWriteTheirValue(t *testing.T) {
-    configuration := NewDefaultServerConfiguration().Clone()
+    configuration := testServerConfiguration().Clone()
     if keys := configuration.Keys(); (len(keys) != 34) || (keys[0] != "server.listen") || (keys[len(keys) - 1] != "limits.adjustments") {
         t.Fatalf("got %v", keys)
     }
@@ -83,7 +94,7 @@ func TestServerConfigurationKeysReadAndWriteTheirValue(t *testing.T) {
             t.Fatalf("%s: %v", key, err)
         }
     }
-    wanted := map[string]string{"server.origins": "http://a.test:8080,http://b.test:8080", "server.tls_cert": "cert.pem", "server.tls_key": "null", "sessions.idle_timeout": "90m", "limits.accounts": "300", "database.path": "/var/lib/timesheet/timesheet-database.json"}
+    wanted := map[string]string{"server.origins": "http://a.test:8080,http://b.test:8080", "server.tls_cert": "cert.pem", "server.tls_key": "null", "sessions.idle_timeout": "90m", "limits.accounts": "300", "database.path": "/srv/timesheet/timesheet-database.json"}
     for key, want := range wanted {
         if got, err := configuration.Value(key); (err != nil) || (got != want) {
             t.Errorf("%s: got %q %v", key, got, err)

@@ -86,7 +86,9 @@ func newTestSite(t *testing.T) *testSite {
     if err != nil {
         t.Fatal(err)
     }
-    s.site, err = NewSite(SiteDependencies{Repository: database, Server: activity.NewDefaultServerConfiguration(), Clock: clock, Random: rand.Reader, Logger: logger, Origins: origins, Iterations: account.MinIterations, Version: "test"})
+    server := activity.NewDefaultServerConfiguration()
+    server.Database.Path = "/srv/timesheet/timesheet-database.json"
+    s.site, err = NewSite(SiteDependencies{Repository: database, Server: server, Clock: clock, Random: rand.Reader, Logger: logger, Origins: origins, Iterations: account.MinIterations, Version: "test"})
     if err != nil {
         t.Fatal(err)
     }

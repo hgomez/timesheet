@@ -84,7 +84,7 @@ debian/                           Debian packaging
 | `.ci/` | `gitlab-ci.yml`; the scripts run by the Makefile targets (`make-build.sh`, `make-check.sh`, `make-install.sh`, `make-clean.sh`); the CI scripts (`ci-setup-debian.sh`, `ci-build-package.sh`, `ci-cleanup.sh`) | [CODING.md, Makefile](CODING.md#makefile), [CODING.md, Packaging](CODING.md#packaging) |
 | `_dist/` | At the repository root, not under `.ci/`: the packages built by `ci-build-package.sh` (ignored by git) | [CODING.md, Packaging](CODING.md#packaging) |
 | `.cache/` | The Go build cache of the scripts (ignored by git) | [CODING.md, Makefile](CODING.md#makefile) |
-| `var/lib/timesheet/` | The default database, its lock file and its session file (ignored by git, except `.gitkeep`) | [SPECIFICATIONS.md, Database](SPECIFICATIONS.md#database) |
+| `var/lib/timesheet/` | The database of the repository, its lock file and its session file (ignored by git, except `.gitkeep`) | [SPECIFICATIONS.md, Database](SPECIFICATIONS.md#database) |
 
 ## PACKAGES
 
@@ -277,15 +277,15 @@ It is shared by `app.ImportCommand` (database lock, options, English report) and
 - The directory is checked when the file is locked or written.
 - A write is atomic: `CreateTemp`, `Sync`, `Rename`, then `Sync` of the directory.
 - Once the file is renamed, the write has succeeded: a failed `Sync` of the directory is only logged.
-- It removes its own orphan temporary files, named `.<name>.<digits>.tmp`.
-- The lock is an exclusive `flock` on `.<name>.lock`.
+- It removes its own orphan temporary files, named `<name>.<digits>.tmp`.
+- The lock is an exclusive `flock` on `<name>.lock`.
 - It works on Unix only (`secure_file_unix.go`); other platforms return `ErrUnsupportedPlatform`.
 
 #### SessionFile
 
-- The file is named after the database: `.<name>.sessions` next to `<name>`, so `.timesheet-database.json.sessions` next to `timesheet-database.json`.
-- The lock follows the same pattern, `.<name>.lock`.
-- A database name never starts with a dot, so neither file collides with another database.
+- The file is named after the database: `<name>.sessions` next to `<name>`, so `timesheet-database.json.sessions` next to `timesheet-database.json`.
+- The lock follows the same pattern, `<name>.lock`; the suffixes are the constants `LockSuffix`, `SessionsSuffix` and `TemporarySuffix` of `activity`.
+- A database name never ends with one of these suffixes (`ValidDatabasePath`), so no companion file collides with another database.
 - It is read strictly and written atomically through a `SecureFile`.
 - The content of the file is described in [SECURITY.md, Sessions](SECURITY.md#sessions).
 
@@ -407,7 +407,7 @@ A write runs these steps under one `sync.RWMutex`:
 | `Usage` | service | Text of `timesheet help` |
 | `UsageError` | value | Error of usage of the command line |
 | `Application` | service | Dispatch of the commands and lifecycle of `run` (see [Lifecycle](#lifecycle)) |
-| `ServerFile` | service | Server configuration file: strict bounded reading with defaults when it is missing, validation, atomic rewriting by `config set` |
+| `ServerFile` | service | Server configuration file: strict bounded reading, an error when it is missing (`ErrMissingServerFile`, which `config set` turns into the defaults), validation, atomic rewriting by `config set` |
 | `InitCommand` | service | `init` |
 | `ConfigCommand` | service | `config show`, `config set` |
 | `UserCommand` | service | `user add`, `user profile`, `user passwd`, `user del`, `user list` |
@@ -569,7 +569,7 @@ The settings page compares the account revision the same way, before its own che
 | Lock | Protects | Held during |
 | --- | --- | --- |
 | `sync.RWMutex` of `Database` | The record in memory | A read copy, or a whole write including the file |
-| file lock `.<name>.lock` | The database file against a second process | The life of `run`, or of a writing command |
+| file lock `<name>.lock` | The database file against a second process | The life of `run`, or of a writing command |
 | leaf lock of `Sessions` | The sessions in memory | One operation on the sessions |
 | leaf lock of `LoginThrottle` | The counters of failed logins | One operation on the throttle |
 | leaf lock of `ManualClock` | The time of the test clock | One read or change |
@@ -603,9 +603,9 @@ The content of the template is specified in [SPECIFICATIONS.md, Configuration te
 
 ### Server configuration
 
-1. The server configuration lives in `etc/timesheet/timesheet.json` from the sources, `/etc/timesheet/timesheet.json` in the package; `--config` gives its path, `DefaultConfig` of `app` (relative to the current directory) by default.
-2. `Application` reads it with `ServerFile` before any command but `help`, `version` and the `config` commands, which read it themselves.
-3. `Settings.ResolveDatabase` takes the database path from `database.path` unless `--database` is given, and makes it absolute.
+1. The server configuration lives in `etc/timesheet/timesheet.json` from the sources, `/etc/timesheet/timesheet.json` in the package; `--config` gives its path, which has no default.
+2. `Application` reads it with `ServerFile` before any command but `help`, `version` and the `config` commands, which read it themselves; without `--config`, it takes `NewDefaultServerConfiguration`, which names no database.
+3. `Settings.ResolveDatabase` takes the database path from `--database`, or else from `database.path`, refuses a command that has neither (usage error), and makes it absolute; `Application` then puts that path in the configuration it hands on.
 4. `Application` hands the configuration to the commands, which open the database with `store.NewDatabase(path, logger, database.max_bytes, limits)` and hash with `passwords.iterations`.
 5. `run` builds the `http.Server` from the section `server`, and gives the whole configuration to the web layer through `SiteDependencies.Server`: `NewSessions` takes the section `sessions`, `NewLoginThrottle` the section `login`, `NewRequestLimits` and `NewSecurityHeaders` the sizes and HSTS, the login controller the life of its form, the server page (`AdminServerController`) every value.
 6. The database never holds it.

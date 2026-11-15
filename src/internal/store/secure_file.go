@@ -23,6 +23,8 @@ import (
     "os"
     "path/filepath"
     "strings"
+
+    "timesheet/internal/activity"
 )
 
 // ---------------------------------------------------------------------------
@@ -69,7 +71,7 @@ func (a *SecureFile) Prepare() error {
     if err != nil {
         return nil
     }
-    prefix, suffix := "." + filepath.Base(a.path) + ".", ".tmp"
+    prefix, suffix := filepath.Base(a.path) + ".", activity.TemporarySuffix
     for _, entry := range entries {
         name := entry.Name()
         if !entry.Type().IsRegular() || !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, suffix) || !a.generated(name[len(prefix):max(len(prefix), len(name) - len(suffix))]) {
@@ -99,11 +101,11 @@ func (a *SecureFile) Unlock() {
 }
 
 func (a *SecureFile) lockPath() string {
-    return filepath.Join(filepath.Dir(a.Path()), "." + filepath.Base(a.path) + ".lock")
+    return a.path + activity.LockSuffix
 }
 
 func (a *SecureFile) tempPattern() string {
-    return "." + filepath.Base(a.path) + ".*.tmp"
+    return filepath.Base(a.path) + ".*" + activity.TemporarySuffix
 }
 
 // ---------------------------------------------------------------------------

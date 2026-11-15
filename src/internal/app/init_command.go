@@ -62,7 +62,7 @@ func (c *InitCommand) Run(out io.Writer) error {
     if err := database.Create(config); err != nil {
         return err
     }
-    fmt.Fprintf(out, "Database created: %s\nNow create an administrator: %s user add <login> --profile=ADMIN --database=%s\n", database.Path(), ProgramName, c.settings.Database())
+    fmt.Fprintf(out, "Database created: %s\nNow create an administrator: %s user add <login> --profile=ADMIN %s\n", database.Path(), ProgramName, c.settings.Paths())
     return nil
 }
 

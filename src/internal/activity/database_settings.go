@@ -27,12 +27,14 @@ import (
 // ---------------------------------------------------------------------------
 
 type DatabaseSettings struct {
-    Path     string `json:"path"`
-    MaxBytes int64  `json:"max_bytes"`
+    Path     NullableText `json:"path"`
+    MaxBytes int64        `json:"max_bytes"`
 }
 
 const (
-    DefaultDatabasePath = "/var/lib/timesheet/timesheet-database.json"
+    LockSuffix      = ".lock"
+    SessionsSuffix  = ".sessions"
+    TemporarySuffix = ".tmp"
 
     minDatabaseBytes = 1 << 20
     maxDatabaseBytes = 1 << 30
@@ -43,17 +45,21 @@ const (
 // ---------------------------------------------------------------------------
 
 func NewDefaultDatabaseSettings() DatabaseSettings {
-    return DatabaseSettings{Path: DefaultDatabasePath, MaxBytes: 64 << 20}
+    return DatabaseSettings{MaxBytes: 64 << 20}
 }
 
 func ValidDatabasePath(path string) bool {
-    return (path != "") && !strings.HasSuffix(path, "/") && !strings.HasPrefix(filepath.Base(path), ".")
+    if (path == "") || strings.HasSuffix(path, "/") {
+        return false
+    }
+    name := filepath.Base(path)
+    return !strings.HasSuffix(name, LockSuffix) && !strings.HasSuffix(name, SessionsSuffix) && !strings.HasSuffix(name, TemporarySuffix)
 }
 
 func (s DatabaseSettings) Validate() error {
     check := NewSettingCheck("database")
-    if !ValidDatabasePath(s.Path) {
-        return check.Fail("path", "a file whose name does not start with a dot is expected")
+    if (s.Path != "") && !ValidDatabasePath(string(s.Path)) {
+        return check.Fail("path", "a file whose name does not end with " + LockSuffix + ", " + SessionsSuffix + " or " + TemporarySuffix + " is expected")
     }
     return check.Integer("max_bytes", s.MaxBytes, minDatabaseBytes, maxDatabaseBytes)
 }

@@ -53,11 +53,6 @@ type Settings struct {
     explicit       map[string]bool
 }
 
-const (
-    DefaultTemplate = "share/timesheet/database-template.json"
-    DefaultConfig   = "etc/timesheet/timesheet.json"
-)
-
 var ErrUsage = errors.New("invalid usage")
 
 // ---------------------------------------------------------------------------
@@ -78,8 +73,8 @@ func NewSettings(args []string) (*Settings, error) {
     flags.SetOutput(io.Discard)
     level := flags.String("log-level", "info", "")
     flags.StringVar(&s.database, "database", "", "")
-    flags.StringVar(&s.template, "template", DefaultTemplate, "")
-    flags.StringVar(&s.config, "config", DefaultConfig, "")
+    flags.StringVar(&s.template, "template", "", "")
+    flags.StringVar(&s.config, "config", "", "")
     flags.StringVar(&s.listen, "listen", "", "")
     flags.Var(s.origins, "origin", "")
     flags.Var(s.trustedProxies, "trusted-proxy", "")
@@ -157,10 +152,16 @@ func (s *Settings) check() error {
         }
     }
     if s.explicit["database"] && !activity.ValidDatabasePath(s.database) {
-        return NewUsageError("--database names a file, not a directory, whose name does not start with a dot")
+        return NewUsageError("--database names a file, not a directory, whose name does not end with " + activity.LockSuffix + ", " + activity.SessionsSuffix + " or " + activity.TemporarySuffix)
     }
-    if (s.config == "") || strings.HasSuffix(s.config, "/") {
+    if strings.HasPrefix(s.command, "config ") && !s.explicit["config"] {
+        return NewUsageError(s.command + ": --config is required")
+    }
+    if s.explicit["config"] && ((s.config == "") || strings.HasSuffix(s.config, "/")) {
         return NewUsageError("--config names a file")
+    }
+    if (s.command == "init") && ((s.template == "") || strings.HasSuffix(s.template, "/")) {
+        return NewUsageError("init: --template names the configuration template, a file")
     }
     if (s.tlsCert == "") != (s.tlsKey == "") {
         return NewUsageError("--tls-cert and --tls-key go together")
@@ -190,6 +191,9 @@ func (s *Settings) Database() string {
 func (s *Settings) ResolveDatabase(configured string) error {
     if !s.explicit["database"] {
         s.database = configured
+    }
+    if s.database == "" {
+        return NewUsageError(s.command + ": no database: give --database or set database.path in --config")
     }
     absolute, err := filepath.Abs(s.database)
     if err != nil {
@@ -221,6 +225,17 @@ func (s *Settings) Origins() []string {
 
 func (s *Settings) Config() string {
     return s.config
+}
+
+func (s *Settings) HasConfig() bool {
+    return s.explicit["config"]
+}
+
+func (s *Settings) Paths() string {
+    if s.HasConfig() {
+        return "--database=" + s.database + " --config=" + s.config
+    }
+    return "--database=" + s.database
 }
 
 func (s *Settings) TrustedProxies() []string {

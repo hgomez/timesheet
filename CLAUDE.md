@@ -44,15 +44,16 @@ GOCACHE="$PWD/.cache" GOTOOLCHAIN=local go -C src test -race -run TestMonthLifec
 GOCACHE="$PWD/.cache" GOTOOLCHAIN=local go -C src vet ./...   # not part of make check
 grep -rlP '^\t' --include='*.go' src                       # tab grep: must print nothing
 grep -rnE '^\s*//' --include='*.go' src | grep -vE '//go:(build|embed)|// -{10,}$|// .+ (declaration|implementation|tests)( \(.+\))?$|// (End-Of-File|fixtures)$'   # comment grep: must print nothing
-bin/timesheet init --database=<tmp>/ts.json                # manual check on a scratch database
-TIMESHEET_PASSWORD='<12+ chars, 6+ distinct>' bin/timesheet user add root --profile=ADMIN --database=<tmp>/ts.json
-bin/timesheet run --listen=127.0.0.1:9000 --database=<tmp>/ts.json
+bin/timesheet config set database.path <tmp>/ts.json --config=<tmp>/timesheet.json   # manual check: a scratch configuration naming a scratch database
+bin/timesheet init --template=share/timesheet/database-template.json --config=<tmp>/timesheet.json
+TIMESHEET_PASSWORD='<12+ chars, 6+ distinct>' bin/timesheet user add root --profile=ADMIN --config=<tmp>/timesheet.json
+bin/timesheet run --listen=127.0.0.1:9000 --config=<tmp>/timesheet.json
 ```
 
 - `make check`, `go vet`, the tab grep and the comment grep must pass before every commit ([Checks before a commit](doc/CODING.md#checks-before-a-commit)).
 - Rebuild before a manual check: templates and assets are embedded.
 - Keep manual checks away from `var/lib/timesheet/timesheet-database.json`, which holds real data: `bin/timesheet.sh` and the `--database=var/lib/timesheet/…` examples of `README.md` and `doc/OPERATIONS.md` use it.
-- Always give `--database` to a command that opens a database: without it, the path comes from `database.path` of `etc/timesheet/timesheet.json`, which is `/var/lib/timesheet/timesheet-database.json`, the database of the Debian package.
+- No path has a default: without `--config`, every setting takes its default; a command that opens the database needs `--database` when the configuration names none; `config show` and `config set` need `--config`, and `init` needs `--template`. `etc/timesheet/timesheet.json` names `/var/lib/timesheet/timesheet-database.json`, the database of the Debian package, so give a scratch configuration as above, or `--database` alone, for a manual check.
 - Create the directory of a scratch database first (`mkdir -m 700`), in the session scratchpad: it must exist, belong to you and not be writable by others unless sticky, so `/tmp` itself, owned by root, is refused.
 
 ## DOCUMENTATION

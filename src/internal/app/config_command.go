@@ -47,6 +47,9 @@ func NewConfigCommand(settings *Settings, logger *slog.Logger) *ConfigCommand {
 func (c *ConfigCommand) Run(out io.Writer) error {
     file := NewServerFile(c.settings.Config())
     configuration, err := file.Load()
+    if errors.Is(err, ErrMissingServerFile) && (c.settings.Command() == "config set") {
+        configuration, err = activity.NewDefaultServerConfiguration(), nil
+    }
     if err != nil {
         return err
     }

@@ -61,13 +61,13 @@ func NewUsage(program string) *Usage {
                 {"version", "show the version"},
             }},
             {title: "Common options", options: [][2]string{
-                {"--database=<file>", "single database (default database.path of the configuration)"},
-                {"--config=<file>", "server configuration (default " + DefaultConfig + ")"},
+                {"--database=<file>", "single database (database.path of --config when absent; no default)"},
+                {"--config=<file>", "server configuration (the defaults without it; required by config show and config set)"},
                 {"--log-level=<level>", "debug, info, warn or error (default info, server.log_level of the configuration for run)"},
                 {"-h, --help", "show this help"},
             }},
             {title: "Options of init", options: [][2]string{
-                {"--template=<file>", "configuration template (default " + DefaultTemplate + ")"},
+                {"--template=<file>", "configuration template (required)"},
             }},
             {title: "Options of run", options: [][2]string{
                 {"--listen=<address>", "listen address (default the one of the configuration)"},

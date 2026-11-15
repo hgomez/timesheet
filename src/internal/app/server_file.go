@@ -44,6 +44,8 @@ const (
     serverDirectoryMode = 0o755
 )
 
+var ErrMissingServerFile = errors.New("the server configuration does not exist")
+
 // ---------------------------------------------------------------------------
 // ServerFile implementation
 // ---------------------------------------------------------------------------
@@ -59,7 +61,7 @@ func (f *ServerFile) Path() string {
 func (f *ServerFile) Load() (activity.ServerConfiguration, error) {
     file, err := os.Open(f.path)
     if errors.Is(err, fs.ErrNotExist) {
-        return activity.NewDefaultServerConfiguration(), nil
+        return activity.ServerConfiguration{}, fmt.Errorf("%w: %s", ErrMissingServerFile, f.path)
     }
     if err != nil {
         return activity.ServerConfiguration{}, err
@@ -110,7 +112,7 @@ func (f *ServerFile) Save(configuration activity.ServerConfiguration) error {
     if err := os.MkdirAll(directory, serverDirectoryMode); err != nil {
         return err
     }
-    temp, err := os.CreateTemp(directory, "." + filepath.Base(f.path) + ".*.tmp")
+    temp, err := os.CreateTemp(directory, filepath.Base(f.path) + ".*" + activity.TemporarySuffix)
     if err != nil {
         return err
     }

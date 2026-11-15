@@ -102,6 +102,12 @@ func fixedNow() time.Time {
     return time.Date(2026, time.November, 8, 10, 0, 0, 0, time.UTC)
 }
 
+func testServerConfiguration() ServerConfiguration {
+    configuration := NewDefaultServerConfiguration()
+    configuration.Database.Path = "/srv/timesheet/timesheet-database.json"
+    return configuration
+}
+
 // ---------------------------------------------------------------------------
 // End-Of-File
 // ---------------------------------------------------------------------------
