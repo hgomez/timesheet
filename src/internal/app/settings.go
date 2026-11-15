@@ -152,7 +152,7 @@ func (s *Settings) check() error {
         }
     }
     if s.explicit["database"] && !activity.ValidDatabasePath(s.database) {
-        return NewUsageError("--database names a file, not a directory, whose name does not end with " + activity.LockSuffix + ", " + activity.SessionsSuffix + " or " + activity.TemporarySuffix)
+        return NewUsageError("--database names a file, not a directory, . or .., whose name does not end with " + activity.LockSuffix + ", " + activity.SessionsSuffix + " or " + activity.TemporarySuffix + " in any case")
     }
     if strings.HasPrefix(s.command, "config ") && !s.explicit["config"] {
         return NewUsageError(s.command + ": --config is required")
@@ -232,10 +232,24 @@ func (s *Settings) HasConfig() bool {
 }
 
 func (s *Settings) Paths() string {
+    paths := s.quoted("--database=" + s.database)
     if s.HasConfig() {
-        return "--database=" + s.database + " --config=" + s.config
+        config, err := filepath.Abs(s.config)
+        if err != nil {
+            config = s.config
+        }
+        paths += " " + s.quoted("--config=" + config)
     }
-    return "--database=" + s.database
+    return paths
+}
+
+func (s *Settings) quoted(argument string) string {
+    for _, letter := range argument {
+        if !strings.ContainsRune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-./=:@%+,", letter) {
+            return "'" + strings.ReplaceAll(argument, "'", "'\\''") + "'"
+        }
+    }
+    return argument
 }
 
 func (s *Settings) TrustedProxies() []string {

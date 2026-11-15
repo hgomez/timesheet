@@ -68,7 +68,7 @@ make install DESTDIR=/tmp/stage
 - It fails when `bin/timesheet` is missing.
 - It replaces an `/etc/timesheet/timesheet.json` already there: save your own first.
 - It creates neither the service account, nor the database directory, nor the service. The [Debian package](#build-the-debian-package) does.
-- The server configuration names the database `/var/lib/timesheet/timesheet-database.json` (`database.path`): the installed binary finds it through the configuration, without `--database`.
+- The server configuration names the database `/var/lib/timesheet/timesheet-database.json` (`database.path`): the installed binary given `--config` finds it through the configuration, without `--database`.
 - Give the installed binary `--config=/etc/timesheet/timesheet.json` and, for `init`, `--template=/usr/share/timesheet/database-template.json`.
 
 ## CLEAN
@@ -107,4 +107,4 @@ Never run `make mrproper` without a backup of the database and a commit of your 
 bin/timesheet version
 ```
 
-It prints the release number, the commit the binary was built from and its date, and `modified` when the tree had uncommitted changes. Releasing a new version is described in [CODING.md](CODING.md#release).
+It prints the release number, the commit the binary was built from and its date, and `modified` when the tree had uncommitted changes; a binary built from an archive, outside a git checkout, prints only the release number. Releasing a new version is described in [CODING.md](CODING.md#release).

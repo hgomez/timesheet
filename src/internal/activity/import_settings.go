@@ -28,9 +28,9 @@ import (
 // ---------------------------------------------------------------------------
 
 type ImportSettings struct {
-    Start          *Date                    `json:"start"`
-    PublicHolidays *PublicHolidayZone       `json:"public_holidays"`
-    Counters       map[string]ImportCounter `json:"counters"`
+    Start          *Date                     `json:"start"`
+    PublicHolidays *PublicHolidayZone        `json:"public_holidays"`
+    Counters       map[string]*ImportCounter `json:"counters"`
     order          []string
 }
 

@@ -59,6 +59,10 @@ func (a ImportAdjustment) Problems(config Configuration, calendar Calendar, hori
     return problems
 }
 
+func (a ImportAdjustment) compare(b ImportAdjustment) int {
+    return a.Date.Compare(b.Date)
+}
+
 func (a ImportAdjustment) Adjustment(id string, rule CounterRule) Adjustment {
     return Adjustment{ID: id, Date: a.Date, Counter: rule.ID, Amount: a.Amount, Reason: a.Reason}
 }

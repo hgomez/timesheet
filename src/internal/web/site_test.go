@@ -569,6 +569,14 @@ func TestStaleOrPartialFormsAreRefused(t *testing.T) {
     if _, calendar, _ := site.database.Account("demo"); calendar.Days[activity.NewDate(2026, time.October, 5)].Comment != "kept" {
         t.Fatal("a stale grid overwrote the saved entry")
     }
+    staleAdjustment := url.Values{"csrf": {user.token(body)}, "revision": {whole.Get("revision")}, "action": {"add"}, "date": {"2026-10-05"}, "counter": {"CP"}, "amount": {"zero"}, "reason": {"test"}}
+    if status, _, _ := user.post("/dashboard/adjustments", staleAdjustment); status != http.StatusConflict {
+        t.Fatalf("stale adjustment with an invalid amount: %d", status)
+    }
+    staleAdjustment.Set("revision", "abc")
+    if status, _, _ := user.post("/dashboard/adjustments", staleAdjustment); status != http.StatusBadRequest {
+        t.Fatalf("unreadable revision of an adjustment: %d", status)
+    }
     adjust := url.Values{"csrf": {user.token(body)}, "revision": {user.field(body, "revision")}, "date": {"2026-10-05"}, "counter": {"CP"}, "amount": {"1"}, "reason": {"test"}}
     if status, _, _ := user.post("/dashboard/adjustments", adjust); status != http.StatusBadRequest {
         t.Fatalf("adjustment without action: %d", status)

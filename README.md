@@ -134,7 +134,7 @@ This section goes from the sources to a running server on your workstation. To i
 
    ```text
    Database created: …/var/lib/timesheet/timesheet-database.json
-   Now create an administrator: timesheet user add <login> --profile=ADMIN --database=…/var/lib/timesheet/timesheet-database.json --config=etc/timesheet/timesheet.json
+   Now create an administrator: timesheet user add <login> --profile=ADMIN --database=…/var/lib/timesheet/timesheet-database.json --config=…/etc/timesheet/timesheet.json
    ```
 
    - The command it prints is the next step; from the repository root, prefix it with `bin/`. The database starts with the activity codes and counters of the configuration template and no account.

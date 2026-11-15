@@ -131,18 +131,16 @@ func (a *Application) Run(ctx context.Context) int {
     if settings.HasConfig() {
         server, err = configuration.Load()
     }
-    if err == nil {
-        err = settings.ResolveDatabase(string(server.Database.Path))
-    }
-    if err == nil {
-        server.Database.Path = activity.NullableText(settings.Database())
-    }
     if (err != nil) && (settings.Command() == "run") {
         return a.fail(logger, "cannot load " + configuration.Path(), err)
+    }
+    if err == nil {
+        err = settings.ResolveDatabase(string(server.Database.Path))
     }
     if err != nil {
         return a.report(err)
     }
+    server.Database.Path = activity.NullableText(settings.Database())
     switch settings.Command() {
         case "init":
             return a.report(NewInitCommand(settings, server, logger).Run(a.stdout))

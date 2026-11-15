@@ -24,10 +24,12 @@ class ChromePage {
         this.toggle = document.querySelector('button.theme-toggle');
         this.icon = (this.toggle === null) ? null : this.toggle.querySelector('img');
         this.menus = [...document.querySelectorAll('details.nav-menu, details.user-menu, details.account-delete')];
+        this.theme = '';
     }
 
     start() {
-        this.apply(this.stored());
+        this.theme = this.stored();
+        this.apply(this.theme);
         if (this.toggle !== null) {
             this.toggle.hidden = false;
             this.toggle.addEventListener('click', () => this.switchTheme());
@@ -64,17 +66,16 @@ class ChromePage {
     }
 
     effective() {
-        const theme = this.stored();
-        if (theme !== '') {
-            return theme;
+        if (this.theme !== '') {
+            return this.theme;
         }
         return this.window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
 
     switchTheme() {
-        const theme = (this.effective() === 'dark') ? 'light' : 'dark';
-        this.store(theme);
-        this.apply(theme);
+        this.theme = (this.effective() === 'dark') ? 'light' : 'dark';
+        this.store(this.theme);
+        this.apply(this.theme);
     }
 
     apply(theme) {

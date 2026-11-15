@@ -686,6 +686,17 @@ func TestCommandsRunWithTheDefaultsWithoutConfiguration(t *testing.T) {
     if run := runCommand(t, "", "user", "list", database); (run.code != ExitOK) || !strings.Contains(run.stdout, "alone") {
         t.Fatalf("user list without --config: %+v", run)
     }
+    spaced := filepath.Join(directory, "with space")
+    os.Mkdir(spaced, 0o700)
+    if run := runCommand(t, "", "init", template, "--database=" + filepath.Join(spaced, "a.json")); (run.code != ExitOK) || !strings.Contains(run.stdout, "--profile=ADMIN '--database=" + filepath.Join(spaced, "a.json") + "'\n") {
+        t.Fatalf("the hint quotes a path with a space: %+v", run)
+    }
+    if run := runCommand(t, "", "run", "--listen=127.0.0.1:0"); (run.code != ExitUsage) || !strings.Contains(run.stderr, "timesheet: run: no database: give --database or set database.path in --config") {
+        t.Fatalf("run without database: %+v", run)
+    }
+    if run := runCommand(t, "", "user", "list", "--database=" + directory + "/."); run.code != ExitUsage {
+        t.Fatalf("a directory given as database: %+v", run)
+    }
     if run := runCommand(t, "", "init", template); (run.code != ExitUsage) || !strings.Contains(run.stderr, "init: no database: give --database or set database.path in --config") {
         t.Fatalf("init without --config nor --database: %+v", run)
     }

@@ -59,7 +59,11 @@ func (i *Importer) Run(calendar Calendar, imported ImportFile, options ImportOpt
     next := calendar.Clone()
     report := ImportReport{Problems: i.apply(&next, imported.Settings), Warnings: []ImportProblem{}, Settings: imported.Settings != nil}
     if imported.Settings != nil {
-        report.Counters = len(imported.Settings.Counters)
+        for _, given := range imported.Settings.Counters {
+            if given != nil {
+                report.Counters++
+            }
+        }
     }
     days := map[Date]DayEntry{}
     for d, entry := range imported.Days {
@@ -180,6 +184,9 @@ func (i *Importer) apply(calendar *Calendar, settings *ImportSettings) []ImportP
     slices.Sort(ids)
     for _, id := range ids {
         given := settings.Counters[id]
+        if given == nil {
+            continue
+        }
         rule, known := i.config.Counter(id)
         if !known || rule.Archived {
             problems = append(problems, ImportProblem{Kind: importCounterUnknown, Detail: strconv.QuoteToASCII(id)})

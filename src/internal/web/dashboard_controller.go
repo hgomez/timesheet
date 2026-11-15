@@ -145,11 +145,7 @@ func (c *DashboardController) Save(w http.ResponseWriter, r *http.Request) {
         c.render(w, r, ws, PageActivity, http.StatusConflict, m, nil, nil, "Ce mois n'est pas modifiable : il est validé, précède le début du suivi ou dépasse l'horizon de planification de 24 mois.")
         return
     }
-    if revision, err := strconv.ParseInt(r.PostFormValue("revision"), 10, 64); err != nil {
-        c.errors.BadRequest(w, r)
-        return
-    } else if revision != ws.Calendar.Revision {
-        c.render(w, r, ws, PageActivity, http.StatusConflict, m, nil, nil, "Les données ont changé entre-temps (autre onglet ?). Rechargez la page avant de recommencer.")
+    if !c.upToDate(w, r, ws, m) {
         return
     }
     submitted := map[activity.Date]activity.DayEntry{}
@@ -190,6 +186,19 @@ func (c *DashboardController) Save(w http.ResponseWriter, r *http.Request) {
     c.renderer.Redirect(w, r, ws.PagePath(PageActivity, m), "saved")
 }
 
+func (c *DashboardController) upToDate(w http.ResponseWriter, r *http.Request, ws *Workspace, m activity.Month) bool {
+    revision, err := strconv.ParseInt(r.PostFormValue("revision"), 10, 64)
+    if err != nil {
+        c.errors.BadRequest(w, r)
+        return false
+    }
+    if revision != ws.Calendar.Revision {
+        c.render(w, r, ws, PageActivity, http.StatusConflict, m, nil, nil, "Les données ont changé entre-temps (autre onglet ?). Rechargez la page avant de recommencer.")
+        return false
+    }
+    return true
+}
+
 func (c *DashboardController) save(w http.ResponseWriter, r *http.Request, ws *Workspace, page string, calendar activity.Calendar, m activity.Month) bool {
     revision, err := strconv.ParseInt(r.PostFormValue("revision"), 10, 64)
     if err != nil {
@@ -225,6 +234,9 @@ func (c *DashboardController) Validate(w http.ResponseWriter, r *http.Request) {
     if !ok {
         return
     }
+    if !c.upToDate(w, r, ws, m) {
+        return
+    }
     closing := activity.NewMonthClosing(ws.Book, activity.NewIdentifierGenerator(c.random))
     calendar, err := closing.Validate(m, c.clock.Now().UTC(), ws.Today)
     if err != nil {
@@ -241,6 +253,9 @@ func (c *DashboardController) Validate(w http.ResponseWriter, r *http.Request) {
 func (c *DashboardController) Reopen(w http.ResponseWriter, r *http.Request) {
     ws, m, ok := c.workspace(w, r, false)
     if !ok {
+        return
+    }
+    if !c.upToDate(w, r, ws, m) {
         return
     }
     closing := activity.NewMonthClosing(ws.Book, activity.NewIdentifierGenerator(c.random))
@@ -280,10 +295,13 @@ func (c *DashboardController) Adjust(w http.ResponseWriter, r *http.Request) {
             c.errors.BadRequest(w, r)
             return
     }
+    if m.IsZero() {
+        m = ws.Today.Month()
+    }
+    if !c.upToDate(w, r, ws, m) {
+        return
+    }
     if alert != "" {
-        if m.IsZero() {
-            m = ws.Today.Month()
-        }
         c.render(w, r, ws, PageActivity, http.StatusUnprocessableEntity, m, nil, nil, alert)
         return
     }

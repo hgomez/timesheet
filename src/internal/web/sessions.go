@@ -224,9 +224,10 @@ func (s *Sessions) CloseAccount(login account.Login, keep string) {
 func (s *Sessions) Count(login account.Login) int {
     s.mu.Lock()
     defer s.mu.Unlock()
+    now := s.clock.Now()
     count := 0
     for _, session := range s.sessions {
-        if session.login == login {
+        if (session.login == login) && !session.Expired(now, s.sliding, s.absolute) {
             count++
         }
     }

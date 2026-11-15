@@ -52,14 +52,17 @@ func ValidDatabasePath(path string) bool {
     if (path == "") || strings.HasSuffix(path, "/") {
         return false
     }
-    name := filepath.Base(path)
+    name := strings.ToLower(filepath.Base(path))
+    if (name == ".") || (name == "..") {
+        return false
+    }
     return !strings.HasSuffix(name, LockSuffix) && !strings.HasSuffix(name, SessionsSuffix) && !strings.HasSuffix(name, TemporarySuffix)
 }
 
 func (s DatabaseSettings) Validate() error {
     check := NewSettingCheck("database")
     if (s.Path != "") && !ValidDatabasePath(string(s.Path)) {
-        return check.Fail("path", "a file whose name does not end with " + LockSuffix + ", " + SessionsSuffix + " or " + TemporarySuffix + " is expected")
+        return check.Fail("path", "a file, not . or .., whose name does not end with " + LockSuffix + ", " + SessionsSuffix + " or " + TemporarySuffix + " in any case is expected")
     }
     return check.Integer("max_bytes", s.MaxBytes, minDatabaseBytes, maxDatabaseBytes)
 }

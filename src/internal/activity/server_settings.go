@@ -110,6 +110,25 @@ func (s ServerSettings) MarshalJSON() ([]byte, error) {
     return json.Marshal(copied)
 }
 
+func (s ServerSettings) validOriginHost(host string, name string) bool {
+    if strings.HasSuffix(host, ":") {
+        return false
+    }
+    if net.ParseIP(name) != nil {
+        return true
+    }
+    name = strings.TrimSuffix(strings.ToLower(name), ".")
+    if (name == "") || (len(name) > 253) {
+        return false
+    }
+    for _, letter := range name {
+        if ((letter < 'a') || (letter > 'z')) && ((letter < '0') || (letter > '9')) && (letter != '-') && (letter != '.') {
+            return false
+        }
+    }
+    return true
+}
+
 func (s ServerSettings) Validate() error {
     check := NewSettingCheck("server")
     if _, port, err := net.SplitHostPort(s.Listen); (err != nil) || (port == "") {
@@ -127,7 +146,7 @@ func (s ServerSettings) Validate() error {
         if (err == nil) && (parsed.Port() != "") {
             port, err = strconv.Atoi(parsed.Port())
         }
-        if (err != nil) || (origin != strings.TrimSpace(origin)) || ((parsed.Scheme != "http") && (parsed.Scheme != "https")) || (parsed.Hostname() == "") || (port < 1) || (port > 65535) || ((parsed.Path != "") && (parsed.Path != "/")) || (parsed.RawQuery != "") || parsed.ForceQuery || (parsed.Fragment != "") || (parsed.User != nil) || ((scheme != "") && (parsed.Scheme != scheme)) {
+        if (err != nil) || (origin != strings.TrimSpace(origin)) || ((parsed.Scheme != "http") && (parsed.Scheme != "https")) || !s.validOriginHost(parsed.Host, parsed.Hostname()) || (port < 1) || (port > 65535) || ((parsed.Path != "") && (parsed.Path != "/")) || (parsed.RawQuery != "") || parsed.ForceQuery || (parsed.Fragment != "") || (parsed.User != nil) || ((scheme != "") && (parsed.Scheme != scheme)) {
             return check.Fail(fmt.Sprintf("origins[%d]", i), "origins scheme://host[:port], all http or all https, are expected")
         }
         scheme = parsed.Scheme

@@ -73,11 +73,17 @@ then
 elif [ "${arg_create_database}" = 'yes' ] && [ ! -e "${arg_database}" ]
 then
     case "${arg_database}" in
+        "${arg_home}"/*/../*|"${arg_home}"/../*)
+            echo "timesheet: ${arg_database} is not a plain path inside ${arg_home}, create it with timesheet init" >&2
+            ;;
         "${arg_home}"/*)
-            runuser -u "${arg_user}" -- /usr/bin/timesheet init --config="${arg_config}" --template="${arg_template}"
+            runuser -u "${arg_user}" -- /usr/bin/timesheet init --config="${arg_config}" --template="${arg_template}" || echo "timesheet: cannot create ${arg_database}, create it with timesheet init" >&2
+            ;;
+        /*)
+            echo "timesheet: ${arg_database} is outside ${arg_home}, create it with timesheet init" >&2
             ;;
         *)
-            echo "timesheet: ${arg_database} is outside ${arg_home}, create it with timesheet init" >&2
+            echo "timesheet: ${arg_database} is a relative path, create it with timesheet init" >&2
             ;;
     esac
 fi

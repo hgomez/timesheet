@@ -142,6 +142,19 @@ func TestImportedPublicHolidaysAreChecked(t *testing.T) {
     }
 }
 
+func TestImportedNullCounterKeepsTheSettings(t *testing.T) {
+    importer := NewImporter(authorConfiguration(), NewManualClock(time.Date(2026, time.April, 15, 10, 0, 0, 0, time.UTC)), NewIdentifierGenerator(rand.Reader), time.UTC)
+    calendar := authorCalendar(t, "2026-01")
+    imported, err := NewImportFile([]byte(`{"format": "timesheet-import", "version": 1, "settings": {"counters": {"TPC": null, "NOPE": null, "CP": {"enabled": true}}}}`))
+    if err != nil {
+        t.Fatal(err)
+    }
+    report, err := importer.Run(calendar, imported, NewImportOptions(), day(t, "2026-04-15"), month(t, "2027-04"))
+    if (err != nil) || (len(report.Problems) != 0) || (report.Counters != 1) || (report.Calendar.Settings.Counters["TPC"].Amount == nil) || !report.Calendar.Settings.Counters["TPC"].Amount.Equal(*calendar.Settings.Counters["TPC"].Amount) {
+        t.Fatalf("a null counter must keep the stored settings: %v %+v %+v", err, report.Problems, report.Calendar.Settings.Counters["TPC"])
+    }
+}
+
 func TestImportedAdjustmentWithoutDateIsRefused(t *testing.T) {
     importer := NewImporter(authorConfiguration(), NewManualClock(time.Date(2026, time.April, 15, 10, 0, 0, 0, time.UTC)), NewIdentifierGenerator(rand.Reader), time.UTC)
     for _, adjustment := range []string{`{"counter": "CP", "amount": "1", "reason": "x"}`, `{"date": null, "counter": "CP", "amount": "1", "reason": "x"}`} {

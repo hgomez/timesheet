@@ -115,6 +115,10 @@ func (c *DataController) Import(w http.ResponseWriter, r *http.Request) {
         c.errors.BadRequest(w, r)
         return
     }
+    if revision != ws.Calendar.Revision {
+        c.store(w, r, ws, activity.ErrStaleRevision)
+        return
+    }
     file, _, err := r.FormFile("file")
     if err != nil {
         c.page(w, r, ws, http.StatusUnprocessableEntity, PageModel{Alert: "Choisissez un fichier à importer."})
@@ -132,7 +136,7 @@ func (c *DataController) Import(w http.ResponseWriter, r *http.Request) {
         return
     }
     options := activity.NewImportOptions()
-    options.Replace, options.Validate = r.PostFormValue("replace") != "", r.PostFormValue("validate") != ""
+    options.Replace, options.Validate = r.PostFormValue("replace") == "on", r.PostFormValue("validate") == "on"
     importer := activity.NewImporter(ws.Config, c.clock, activity.NewIdentifierGenerator(c.random), ws.Location)
     report, err := importer.Run(ws.Calendar, imported, options, ws.Today, ws.Horizon())
     if err != nil {
@@ -170,6 +174,10 @@ func (c *DataController) Reset(w http.ResponseWriter, r *http.Request) {
     revision, err := strconv.ParseInt(r.PostFormValue("revision"), 10, 64)
     if err != nil {
         c.errors.BadRequest(w, r)
+        return
+    }
+    if revision != ws.Calendar.Revision {
+        c.store(w, r, ws, activity.ErrStaleRevision)
         return
     }
     if r.PostFormValue("confirm") != string(ws.Owner.Login) {

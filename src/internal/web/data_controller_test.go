@@ -108,18 +108,22 @@ func TestDataImportRefusesBadRequests(t *testing.T) {
         t.Fatal("a refused import must not write")
     }
     user.upload("/dashboard/data/import", form, "septembre.json", septemberImport(t))
-    if status, _, body := user.upload("/dashboard/data/import", form, "septembre.json", septemberImport(t)); (status != http.StatusUnprocessableEntity) || !strings.Contains(body, "01/09/2026 : une saisie existe déjà") {
-        t.Errorf("existing entries: %d", status)
-    }
     stale := form.Get("revision")
-    form.Set("replace", "on")
-    if status, _, body := user.upload("/dashboard/data/import", form, "septembre.json", septemberImport(t)); (status != http.StatusConflict) || !strings.Contains(body, "Les données ont changé entre-temps") {
-        t.Errorf("stale revision: %d", status)
+    if status, _, body := user.upload("/dashboard/data/import", form, "septembre.json", `{"format": "timesheet-import", "version": 1, "days": {"2026-09-05": {"am": "ZZ", "pm": "ZZ"}}}`); (status != http.StatusConflict) || !strings.Contains(body, "Les données ont changé entre-temps") {
+        t.Errorf("stale revision, before the problems of the file: %d", status)
     }
     form.Set("revision", user.field(user.page("/dashboard/data"), "revision"))
     if form.Get("revision") == stale {
         t.Fatal("the import must raise the revision of the page")
     }
+    if status, _, body := user.upload("/dashboard/data/import", form, "septembre.json", septemberImport(t)); (status != http.StatusUnprocessableEntity) || !strings.Contains(body, "01/09/2026 : une saisie existe déjà") {
+        t.Errorf("existing entries: %d", status)
+    }
+    form.Set("replace", "off")
+    if status, _, _ := user.upload("/dashboard/data/import", form, "septembre.json", septemberImport(t)); status != http.StatusUnprocessableEntity {
+        t.Errorf("a checkbox counts only with the value on: %d", status)
+    }
+    form.Set("replace", "on")
     if status, _, _ := user.upload("/dashboard/data/import", form, "septembre.json", strings.Replace(septemberImport(t), "Vacances", "Congé d'été", 1)); status != http.StatusSeeOther {
         t.Errorf("replace: %d", status)
     }

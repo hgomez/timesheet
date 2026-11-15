@@ -27,6 +27,8 @@ import (
     "path/filepath"
     "strings"
     "testing"
+
+    "timesheet/internal/activity"
 )
 
 // ---------------------------------------------------------------------------
@@ -62,6 +64,26 @@ func TestSecureFileLiteralNamesAndLateChecks(t *testing.T) {
     defer os.Chmod(directory, 0o700)
     if err := file.Write([]byte("{}")); !errors.Is(err, ErrInsecureDirectory) {
         t.Fatalf("write in a world-writable directory: %v", err)
+    }
+}
+
+func TestSecureFileRefusesADirectoryBeforeLocking(t *testing.T) {
+    directory := t.TempDir()
+    os.Chmod(directory, 0o700)
+    logger := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
+    folder := filepath.Join(directory, "proj")
+    os.Mkdir(folder, 0o700)
+    sibling := filepath.Join(directory, "proj.42.tmp")
+    os.WriteFile(sibling, []byte("keep"), 0o600)
+    database := NewDatabase(folder, logger, testMaxBytes, activity.NewDefaultLimitSettings())
+    if err := database.Lock(); !errors.Is(err, ErrInsecureFile) {
+        t.Fatalf("a directory as database: %v", err)
+    }
+    if _, err := os.Stat(sibling); err != nil {
+        t.Fatal("a refused database removed a file of its directory")
+    }
+    if _, err := os.Stat(folder + activity.LockSuffix); err == nil {
+        t.Fatal("a refused database left a lock file")
     }
 }
 

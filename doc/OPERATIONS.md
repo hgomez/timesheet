@@ -79,7 +79,7 @@ The server configuration file holds the settings of the server and of its operat
 | `server.log_level` | The lowest level of the logs of the server. | `info` |
 | `server.tls_cert`, `server.tls_key` | A certificate pair to serve HTTPS, or `null`. | `null` |
 | `server.*_timeout`, `server.max_*_bytes` | The timeouts and the request sizes of the server. | 5 s, 15 s, 30 s, 1 min, 10 s; 8 KiB, 256 KiB, 2048 bytes |
-| `database.path` | The database file. | `/var/lib/timesheet/timesheet-database.json` |
+| `database.path` | The database file. | none (`null`); `/var/lib/timesheet/timesheet-database.json` in the shipped file |
 | `database.max_bytes` | The largest database file. | 64 MiB |
 | `sessions.*` | The expiry of the sessions and their number per account. | 8 h without activity, 24 h at most, 64 |
 | `login.*` | The life of the login form and the login throttle. | 1 h; 1 s doubling up to 5 min |
@@ -198,7 +198,7 @@ With `https` origins, the session cookies are marked `Secure` and the server sen
 
 | | Repository | Package |
 | --- | --- | --- |
-| Read the logs | the standard error of `bin/timesheet.sh` or `bin/timesheet run --config=etc/timesheet/timesheet.json` | `journalctl -u timesheet` |
+| Read the logs | the standard error of `bin/timesheet.sh` or of `bin/timesheet run` | `journalctl -u timesheet` |
 | Change the level | `bin/timesheet config set server.log_level warn --config=etc/timesheet/timesheet.json`, or `bin/timesheet.sh --log-level=warn` for one run | `timesheet config set server.log_level warn --config=/etc/timesheet/timesheet.json` as root, then `systemctl restart timesheet` |
 | Retention | what you keep of the standard error | the settings of the journal (`/etc/systemd/journald.conf`) |
 
@@ -285,7 +285,7 @@ Its installation script creates, each when missing:
 
 - the system account `timesheet`;
 - the directory `/var/lib/timesheet`, mode 0700, owned by that account;
-- the database at the `database.path` of `/etc/timesheet/timesheet.json`, `/var/lib/timesheet/timesheet-database.json` in the shipped file. A path outside `/var/lib/timesheet` is not created: the script warns, and you create it with `timesheet init`. When the server configuration cannot be read, the script warns and creates no database.
+- the database at the `database.path` of `/etc/timesheet/timesheet.json`, `/var/lib/timesheet/timesheet-database.json` in the shipped file. A path outside `/var/lib/timesheet`, a relative path or a path with `..` is not created: the script warns, and you create it with `timesheet init`. When `init` fails, the script warns too and the installation goes on. When the server configuration cannot be read, or names no database (`database.path` is `null`), the script warns and creates no database.
 
 The installation script leaves an existing directory as it is. The unit (`StateDirectory=`) gives `/var/lib/timesheet` to the account `timesheet` at each start of the service; an existing directory keeps its mode (systemd only warns when it differs from 0700).
 
@@ -315,7 +315,7 @@ The installation script leaves an existing directory as it is. The unit (`StateD
 2. If the database was created before the server settings moved to `/etc/timesheet/timesheet.json`, stop the service (`systemctl stop timesheet`) and migrate it first, as described at the end of [Upgrade](#upgrade).
 3. If you changed `/etc/timesheet/timesheet.json` by hand and it still holds the key `addr`, rename it `listen` before or right after the installation ([Listening address renamed](SPECIFICATIONS.md#listening-address-renamed)): otherwise the service refuses to start and the installation warns that the file cannot be read. Replace `--addr` by `--listen` in your drop-ins too.
 4. Install the new package, as root: `apt install ./_dist/timesheet_<version>_amd64.deb`. The package restarts the service.
-5. When both you and the new package changed `/etc/timesheet/timesheet.json`, `apt` asks which version to keep. Keeping yours keeps your values: the keys the new version added take their default.
+5. When both you and the new package changed `/etc/timesheet/timesheet.json`, `apt` asks which version to keep. Keeping yours keeps your values: the keys the new version added take their default, except `database.path`, which has none: a file without it names no database, and the service then refuses to start (`run: no database`). Add it with `timesheet config set database.path /var/lib/timesheet/timesheet-database.json --config=/etc/timesheet/timesheet.json` ([No default path and no hidden companion file](SPECIFICATIONS.md#no-default-path-and-no-hidden-companion-file)).
 6. Check the journal: `journalctl -u timesheet`.
 
 ### Options of the service
@@ -444,7 +444,8 @@ No path has a default any more, and the files next to the database lost their le
 
 - give `--config`, or `--database` to run with the defaults, to every command that opens the database, `--config` to `config show` and `config set`, and `--template` to `init`; the unit of the package already gives `--config`;
 - a command that opens the database needs `--database` when the configuration names none: the shipped file names it;
-- the former `.<name>.sessions` is no longer read, so its users log in again: stop the server and delete it, with the former `.<name>.lock`.
+- the former `.<name>.sessions` is no longer read, so its users log in again: stop the server and delete it, with the former `.<name>.lock`;
+- the former and the new lock do not exclude each other: stop a former server before running any command of the new version, from the sources (`make` then a command) as on a package.
 
 Other points:
 
@@ -463,7 +464,7 @@ The errors of the commands are prefixed with `timesheet:`. Those of `run` are lo
 | `config show: --config is required` (exit 2) | `config show` or `config set` is run without `--config`. | Give the file to print or change. |
 | `init: --template names the configuration template, a file` (exit 2) | `init` is run without `--template`. | Give `--template=share/timesheet/database-template.json` from the sources, `--template=/usr/share/timesheet/database-template.json` on a package. |
 | `the server configuration does not exist: <file>` | `--config` names a missing file. | Fix the path, or create the file with `config set database.path <file> --config=<file>`. |
-| `database.path: a file whose name does not end with .lock, .sessions or .tmp is expected` | `database.path` names a file that ends like a lock, session or temporary file, or a directory. | Set another name with `config set database.path <file>`, or `null`. |
+| `database.path: a file, not . or .., whose name does not end with .lock, .sessions or .tmp in any case is expected` | `database.path` names a file that ends like a lock, session or temporary file, or a directory. | Set another name with `config set database.path <file>`, or `null`. |
 | `open share/timesheet/database-template.json: no such file or directory` | `init` is run with a relative `--template` from another directory. | Go to the root, or give an absolute `--template`. |
 | `cannot lock …` with `the directory does not exist` | `run` is started with a wrong `--database` or `database.path`, or a relative path from another directory. | Run `bin/timesheet.sh`, or give `--database`. |
 | `the database does not exist, run init first`, or a permission error, naming `/var/lib/timesheet/timesheet-database.json` | A command of the sources is run without `--database`: the database of `etc/timesheet/timesheet.json` is the one of the package. | Give `--database=var/lib/timesheet/timesheet-database.json`. |
@@ -478,7 +479,7 @@ The errors of the commands are prefixed with `timesheet:`. Those of `run` are lo
 | `… belongs to another user` | The command runs as another user than the owner of the file, such as root on a package. | Run it as the owner: `runuser -u timesheet -- …` on a package. |
 | `malformed database: json: unknown field "server"` | The database was created before the server settings moved to their own file. | Follow [Upgrade](#upgrade). |
 | `the password needs at least 12 characters…` | The password is refused by the policy. | Choose a longer or more varied one. |
-| `level=WARN msg="no administrator account"` at start | The database has no enabled administrator: the server runs, but nobody can administer it, and nobody can log in when it has no account. | Stop the server, create one with `user add <login> --profile=ADMIN` (or promote an account with `user profile <login> ADMIN`), then start it again. |
+| `level=WARN msg="no administrator account"` at start | The database has no enabled administrator: the server runs, but nobody can administer it, and nobody can log in when it has no account. | Stop the server, create one with the command of the hint, `user add <login> --profile=ADMIN` with the `--database` and `--config` of the server (or promote an account with `user profile <login> ADMIN`), then start it again. |
 | `cannot lock …` with `the file is used by another process` | Another instance already serves this database. | Use that instance, or stop it. |
 | `cannot listen on 127.0.0.1:8080` with `address already in use` | Another program, or an instance serving another database, uses the port. | Stop it, or start with `--listen=127.0.0.1:8081`: the accepted origins then follow that address. |
 | `the file is used by another process … (stop the server or use /admin/accounts)`, or `(stop the server first)` | A command that needs the server stopped is run while the server holds the database. | Stop the server first, or act from « Administration ». |

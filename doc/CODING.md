@@ -458,7 +458,7 @@ Both static style sheets are hand-written.
 20. facts
 21. accounts
 
-The rules of a same subject follow each other, without any title comment: the selectors name what they style.
+The rules of a same subject follow each other, without any title comment: the selectors name what they style. A narrow-window rule of a subject placed after « responsive » stays in a media block at the end of that subject, since a later rule of the same specificity would override it.
 
 ### Selectors
 
@@ -701,7 +701,7 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 - The packaging lives in `debian/`.
 - `debian/rules` only calls `dh`, and skips `dh_dwz`, which fails on a Go binary.
 - The package takes its files from `make install`: the binary, the configuration template, the import template, the example database and the server configuration `/etc/timesheet/timesheet.json`, the file of the repository as is, which debhelper registers as a configuration file.
-- `debian/postinst` reads the database path with `timesheet config show database.path`; it never fails on an unreadable configuration, and creates the database only inside `/var/lib/timesheet`.
+- `debian/postinst` reads the database path with `timesheet config show database.path --config=/etc/timesheet/timesheet.json`; it never fails on an unreadable configuration, a configuration without database or a failed `init`, and creates the database only at a plain absolute path inside `/var/lib/timesheet`.
 - The unit runs `timesheet run --config=/etc/timesheet/timesheet.json`: the database comes from that file.
 - How to build the package is described in [BUILD.md](BUILD.md#build-the-debian-package), how to install and run it in [OPERATIONS.md](OPERATIONS.md#debian-package).
 

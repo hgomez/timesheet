@@ -545,12 +545,12 @@ The reasons are given in [SECURITY.md, Threat model](SECURITY.md#threat-model).
 ### Month save
 
 1. The controller loads the calendar of the account, with its revision.
-2. It compares the revision read from the form with that revision before anything else (400 when unreadable, 409 when stale), so that a refused page never hands a fresh revision to a stale tab.
+2. Right after checking that the month can be edited, it compares the revision read from the form with that revision (400 when unreadable, 409 when stale), so that a refused page never hands a fresh revision to a stale tab.
 3. It rebuilds the day entries of the month from the form.
 4. It checks each entry with `Bookkeeper.CheckEntry`.
 5. It saves the whole calendar, giving the store the revision it loaded, so that a save never replaces a newer calendar with a stale copy.
 
-The settings page compares the account revision the same way, before its own checks; the data page gives the store the revision of the page. The configuration page compares the configuration revision before writing.
+The validation, the reopening and the adjustments compare the revision the same way, before their own checks, and so do the settings page and the data page. The configuration page compares the configuration revision before writing.
 
 ### Validation and reopening
 
@@ -595,7 +595,7 @@ The word "configuration" names the configuration section of the database; the se
 
 ### Configuration and its template
 
-1. `init` initialises the database from the configuration template `share/timesheet/database-template.json`.
+1. `init` initialises the database from the configuration template given by `--template`, `share/timesheet/database-template.json` in the repository.
 2. Afterwards, the activity codes, the counters and their colours live in the database.
 3. An administrator edits them on the configuration page, `/admin/settings`.
 

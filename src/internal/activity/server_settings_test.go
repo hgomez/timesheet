@@ -62,6 +62,13 @@ func TestServerSettingsValidationNamesTheField(t *testing.T) {
             t.Errorf("%s: got %v", listen, err)
         }
     }
+    for origin, valid := range map[string]bool{"http://host:": false, "http://my_host:8080": false, "http://[fe80::1%25eth0]:8080": false, "http://hé.example": false, "http://[::1]:8080": true, "http://127.0.0.1:8080": true, "http://Timesheet.Example:8080": true, "http://.": false, "http://timesheet.example.:8080": true} {
+        server := NewDefaultServerSettings().Clone()
+        server.Origins = []string{origin}
+        if err := server.Validate(); (err == nil) != valid {
+            t.Errorf("%s: got %v", origin, err)
+        }
+    }
     emptied := NewDefaultServerSettings().Clone()
     emptied.TrustedProxies = nil
     if data, err := json.Marshal(emptied); (err != nil) || !strings.Contains(string(data), `"trusted_proxies":[]`) || !strings.Contains(string(data), `"tls_cert":null`) || !strings.Contains(string(data), `"keep_alive_timeout":"1m"`) {

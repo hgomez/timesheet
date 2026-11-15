@@ -32,6 +32,21 @@ import (
 // Sessions tests
 // ---------------------------------------------------------------------------
 
+func TestExpiredSessionsAreNotCounted(t *testing.T) {
+    clock := activity.NewManualClock(time.Date(2026, time.November, 11, 21, 0, 0, 0, time.UTC))
+    sessions := NewSessions(clock, strings.NewReader(strings.Repeat("a", 256)), false, activity.NewDefaultSessionSettings())
+    if _, err := sessions.Open("oponcet", ""); err != nil {
+        t.Fatal(err)
+    }
+    if sessions.Count("oponcet") != 1 {
+        t.Fatal("an open session is counted")
+    }
+    clock.Advance(activity.NewDefaultSessionSettings().IdleTimeout.Std() + time.Minute)
+    if count := sessions.Count("oponcet"); count != 0 {
+        t.Fatalf("an expired session is still counted: %d", count)
+    }
+}
+
 func TestSessionsSurviveARestart(t *testing.T) {
     clock := activity.NewManualClock(time.Date(2026, time.November, 11, 21, 0, 0, 0, time.UTC))
     archive := &memoryArchive{}

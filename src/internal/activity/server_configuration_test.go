@@ -41,7 +41,7 @@ func TestDefaultServerConfigurationNamesNoDatabase(t *testing.T) {
     if err := testServerConfiguration().Validate(); err != nil {
         t.Fatal(err)
     }
-    for path, valid := range map[string]bool{"db/ts.json": true, "db/.ts.json": true, "db/ts.json.lock": false, "db/ts.json.sessions": false, "db/ts.json.1.tmp": false, "db/": false, "": false} {
+    for path, valid := range map[string]bool{"db/ts.json": true, "db/.ts.json": true, "db/ts.json.lock": false, "db/ts.json.sessions": false, "db/ts.json.1.tmp": false, "db/": false, "": false, "db/.": false, "db/..": false, "..": false, "db/ts.json.LOCK": false, "db/ts.json.Sessions": false, "db/TS.JSON": true} {
         if ValidDatabasePath(path) != valid {
             t.Errorf("%q: valid %v expected", path, valid)
         }

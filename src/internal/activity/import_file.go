@@ -76,13 +76,13 @@ func NewImportFileOf(calendar Calendar, config Configuration) ImportFile {
     start := calendar.Settings.Start
     book := NewBookkeeper(config, calendar)
     zone := book.PublicHolidayZone()
-    settings := &ImportSettings{Start: &start, PublicHolidays: &zone, Counters: map[string]ImportCounter{}}
+    settings := &ImportSettings{Start: &start, PublicHolidays: &zone, Counters: map[string]*ImportCounter{}}
     for _, rule := range config.Counters {
         if rule.Archived {
             continue
         }
         enabled, amount, initial := book.Enabled(rule), book.Amount(rule), calendar.Settings.Counters[rule.ID].Initial.normal()
-        settings.Counters[rule.ID] = ImportCounter{Enabled: &enabled, Amount: &amount, Initial: &initial}
+        settings.Counters[rule.ID] = &ImportCounter{Enabled: &enabled, Amount: &amount, Initial: &initial}
         settings.order = append(settings.order, rule.ID)
     }
     days := map[Date]DayEntry{}
@@ -93,9 +93,7 @@ func NewImportFileOf(calendar Calendar, config Configuration) ImportFile {
     for _, adjustment := range calendar.Adjustments {
         adjustments = append(adjustments, ImportAdjustment{Date: adjustment.Date, Counter: adjustment.Counter, Amount: adjustment.Amount, Reason: adjustment.Reason})
     }
-    slices.SortStableFunc(adjustments, func(a ImportAdjustment, b ImportAdjustment) int {
-        return a.Date.Compare(b.Date)
-    })
+    slices.SortStableFunc(adjustments, ImportAdjustment.compare)
     return ImportFile{Format: ImportFormat, Version: ImportVersion, Settings: settings, Days: days, Adjustments: adjustments}
 }
 

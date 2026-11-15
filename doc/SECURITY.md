@@ -111,7 +111,7 @@ Each row is a known limit that the application does not remove. The column "Boun
 | The session file gives the CSRF tokens. | Someone reads the session file. | It does not give the means to use a session. | Protect it like the database. |
 | The database and the backups are not encrypted. | root, the service account or a holder of a backup reads the file. | Every comment and absence reason is readable in clear. | File modes, protected backups. See [Data protection](#data-protection). |
 | Login timing differs for some accounts. | A stored hash has a number of iterations other than `passwords.iterations`. | The decoy hash uses the configured number. | Change `passwords.iterations` rarely; a password change rewrites the hash with the configured number. |
-| The operator weakens a setting. | Whoever can write the server configuration lowers a duration, a delay or a limit. | Every setting is bounded by the program: at least 600 000 iterations, an initial login delay of at least 100 ms, sessions of at most 30 days, at most 16 384 sessions in all, HSTS of at least 24 h. The file is owned by root on a package. | Protect the file like the binary; read `config show` after a change. |
+| The operator weakens a setting. | Whoever can write the server configuration lowers a duration, a delay or a limit. | Every setting is bounded by the program: at least 600 000 iterations, an initial login delay of at least 100 ms, sessions of at most 30 days, at most 16 384 sessions in all, HSTS of at least 24 h. The file is owned by root on a package. | Protect the file like the binary; read `config show --config=<file>` after a change. |
 | A security fix of Go needs a rebuild. | A vulnerability is fixed in the Go standard library. | The binary is statically linked. | Rebuild and reinstall the binary or the package. |
 
 Glossary of the terms of this table:
@@ -398,7 +398,7 @@ The commands that act on the file are in [Command line](SPECIFICATIONS.md#comman
 - The login form, shown before any session, uses a double-submitted token: the same random value is sent in the cookie `ts_login` and in the form, and both must match.
 - The cookie `ts_login` has a `Max-Age` of `login.form_lifetime` (3600 seconds by default, 1 min to 24 h) and is renewed each time the login form is shown. Its token is reused, so several tabs share it. Once the browser drops it, the login posted from the old form is refused (403).
 - A missing or wrong token is refused with status 403.
-- The import of the data page posts `multipart/form-data`: the guard parses it in memory (`maxMultipartMemory`, 8 MiB, above the largest `server.max_body_bytes`) before reading the token, so that no file part is written to a temporary file; a body beyond `server.max_body_bytes` is refused with 400 before any processing.
+- The import of the data page posts `multipart/form-data`: the guard parses it in memory (`maxMultipartMemory`, 8 MiB, at least the largest `server.max_body_bytes`) before reading the token, so that no file part is written to a temporary file; a body beyond `server.max_body_bytes` is refused with 400 before any processing.
 
 ### Origin check
 

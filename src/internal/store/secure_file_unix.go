@@ -62,6 +62,9 @@ func (a *SecureFile) Lock() error {
     if err := a.inspectDirectory(false); err != nil {
         return err
     }
+    if info, err := os.Lstat(a.path); (err == nil) && !info.Mode().IsRegular() {
+        return fmt.Errorf("%w: %s is not a regular file", ErrInsecureFile, a.path)
+    }
     path := a.lockPath()
     file, err := os.OpenFile(path, os.O_RDWR | os.O_CREATE | syscall.O_NOFOLLOW | syscall.O_NONBLOCK, 0o600)
     if errors.Is(err, syscall.ELOOP) {

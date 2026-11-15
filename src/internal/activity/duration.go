@@ -38,13 +38,6 @@ type durationUnit struct {
 
 var ErrInvalidDuration = errors.New("activity: invalid duration (a whole number of milliseconds, such as 500ms, 30s, 5m or 8h)")
 
-var durationUnits = []durationUnit{
-    {size: time.Hour, symbol: "h", label: "h"},
-    {size: time.Minute, symbol: "m", label: "min"},
-    {size: time.Second, symbol: "s", label: "s"},
-    {size: time.Millisecond, symbol: "ms", label: "ms"},
-}
-
 // ---------------------------------------------------------------------------
 // Duration implementation
 // ---------------------------------------------------------------------------
@@ -71,13 +64,23 @@ func (d Duration) Label() string {
     return strconv.FormatInt(count, 10) + " " + unit.label
 }
 
+func (d Duration) units() []durationUnit {
+    return []durationUnit{
+        {size: time.Hour, symbol: "h", label: "h"},
+        {size: time.Minute, symbol: "m", label: "min"},
+        {size: time.Second, symbol: "s", label: "s"},
+        {size: time.Millisecond, symbol: "ms", label: "ms"},
+    }
+}
+
 func (d Duration) split() (int64, durationUnit) {
-    for _, unit := range durationUnits {
+    units := d.units()
+    for _, unit := range units {
         if (d.Std() % unit.size) == 0 {
             return int64(d.Std() / unit.size), unit
         }
     }
-    last := durationUnits[len(durationUnits) - 1]
+    last := units[len(units) - 1]
     return int64(d.Std() / last.size), last
 }
 
