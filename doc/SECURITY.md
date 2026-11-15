@@ -106,6 +106,7 @@ Each row is a known limit that the application does not remove. The column "Boun
 | Plain HTTP on a shared host. | Another user or web service on the same host. | Cookies are shared by every port of a host name. | TLS even on the loopback. See [Transport](#transport). |
 | Group members can delete or replace the files. | The database directory is writable by its group. | A warning is logged. | Remove the group write right. See [Files](#files). |
 | Another user can block the program. | The database is in a sticky directory shared with other users. | That user creates the lock or session file first. | Use a directory of the service account. |
+| An administrator with a public password. | The example database is served on a network or used as a real database. | Its account `demo`, profile `ADMIN`, has the documented password `demonstration`. | Use it only on the loopback, in a copy; never as a real database. See [Example database](OPERATIONS.md#example-database). |
 | A permanent password known to the operator. | `user add` or `user passwd` set the password. | The operator typed it. | Ask the user to change it from the profile page (« Mon profil »). |
 | The session file gives the CSRF tokens. | Someone reads the session file. | It does not give the means to use a session. | Protect it like the database. |
 | The database and the backups are not encrypted. | root, the service account or a holder of a backup reads the file. | Every comment and absence reason is readable in clear. | File modes, protected backups. See [Data protection](#data-protection). |

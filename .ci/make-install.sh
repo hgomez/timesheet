@@ -45,6 +45,9 @@ arg_dst_config="${arg_confdir}/timesheet.json"
 arg_src_database="${arg_srcdir}/share/timesheet/database-template.json"
 arg_dst_database="${arg_datadir}/database-template.json"
 
+arg_src_example="${arg_srcdir}/share/timesheet/database-example.json"
+arg_dst_example="${arg_datadir}/database-example.json"
+
 arg_src_import="${arg_srcdir}/share/timesheet/import-template.json"
 arg_dst_import="${arg_datadir}/import-template.json"
 
@@ -65,6 +68,12 @@ install -D -m 644 "${arg_src_config}" "${arg_dst_config}"            || exit 1
 # ----------------------------------------------------------------------------
 
 install -D -m 644 "${arg_src_database}" "${arg_dst_database}"        || exit 1
+
+# ----------------------------------------------------------------------------
+# install the example database
+# ----------------------------------------------------------------------------
+
+install -D -m 644 "${arg_src_example}" "${arg_dst_example}"          || exit 1
 
 # ----------------------------------------------------------------------------
 # install the import template

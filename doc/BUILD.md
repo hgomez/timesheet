@@ -60,6 +60,7 @@ make install DESTDIR=/tmp/stage
 | --- | --- | --- |
 | `bin/timesheet` | `$(DESTDIR)/usr/bin/timesheet` | 755 |
 | `share/timesheet/database-template.json` (configuration template) | `$(DESTDIR)/usr/share/timesheet/` | 644 |
+| `share/timesheet/database-example.json` (example database) | `$(DESTDIR)/usr/share/timesheet/` | 644 |
 | `share/timesheet/import-template.json` (import template) | `$(DESTDIR)/usr/share/timesheet/` | 644 |
 | `etc/timesheet/timesheet.json` (server configuration, as is: the database at `/var/lib/timesheet/timesheet-database.json`) | `$(DESTDIR)/etc/timesheet/` | 644 |
 

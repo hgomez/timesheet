@@ -71,6 +71,7 @@ etc/timesheet/
   timesheet.json                  server configuration: address, origins, database path, timeouts, sessions, login, limits
 share/timesheet/
   database-template.json          configuration template read by init
+  database-example.json           anonymized example database, account demo
   import-template.json            fictitious example of an import file
 var/lib/timesheet/                database of the repository, given with --database, its lock and the session file
 debian/                           Debian packaging

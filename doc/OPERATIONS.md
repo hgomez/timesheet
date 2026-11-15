@@ -12,6 +12,7 @@ It is written for the operator, the person who runs the server and has a shell o
 - [NETWORK AND SECURITY](#network-and-security)
 - [LOGS](#logs)
 - [IMPORTING](#importing)
+- [EXAMPLE DATABASE](#example-database)
 - [DEBIAN PACKAGE](#debian-package)
 - [BACKUP AND RESTORE](#backup-and-restore)
 - [RECOVERY](#recovery)
@@ -30,6 +31,7 @@ Every procedure below gives two forms:
 | Database | `var/lib/timesheet/timesheet-database.json`, given with `--database` | `/var/lib/timesheet/timesheet-database.json`, the `database.path` of the server configuration |
 | Server configuration | `etc/timesheet/timesheet.json` | `/etc/timesheet/timesheet.json` |
 | Configuration template | `share/timesheet/database-template.json` | `/usr/share/timesheet/database-template.json` |
+| Example database | `share/timesheet/database-example.json` | `/usr/share/timesheet/database-example.json` |
 | Import template | `share/timesheet/import-template.json` | `/usr/share/timesheet/import-template.json` |
 | Sessions | `.timesheet-database.json.sessions`, next to the database | the same, in `/var/lib/timesheet/` |
 | Server | `bin/timesheet.sh`, or `bin/timesheet run --database=var/lib/timesheet/timesheet-database.json`, in the foreground | the unit `timesheet.service` |
@@ -241,6 +243,29 @@ To import:
 - The spreadsheet and the file made from it hold personal data. Keep them out of the repository, and give the file by a path outside it: a file inside the repository may be committed by mistake.
 - On a package, the command runs as the account `timesheet` (`runuser -u timesheet -- timesheet import … --config=/etc/timesheet/timesheet.json`): the file must be readable by that account.
 
+## EXAMPLE DATABASE
+
+`share/timesheet/database-example.json` is an anonymized database with one account and nearly three years of entries, from November 2023 to December 2026, validated up to October 2026 ([Example database](SPECIFICATIONS.md#example-database)). To try the application with it, without touching your database:
+
+1. Copy it, mode 0600, into a directory of your own:
+
+   ```sh
+   mkdir -m 700 ~/timesheet-example
+   install -m 600 share/timesheet/database-example.json ~/timesheet-example/timesheet-database.json
+   ```
+
+2. Start a server on it, on another port if a server already runs on 8080:
+
+   ```sh
+   bin/timesheet run --listen=127.0.0.1:8081 --database="$HOME/timesheet-example/timesheet-database.json"
+   ```
+
+3. Open `http://127.0.0.1:8081` and log in with the login `demo` and the password `demonstration`.
+
+- The password is public: never serve this database on a network, and never use it as a real database.
+- Every change is written into the copy; copy the file again to start over.
+- On a package, the file is `/usr/share/timesheet/database-example.json`.
+
 ## DEBIAN PACKAGE
 
 ### What the package installs
@@ -250,7 +275,7 @@ The package is built as described in [BUILD.md](BUILD.md#build-the-debian-packag
 It installs:
 
 - `/usr/bin/timesheet`;
-- the configuration template and the import template in `/usr/share/timesheet/`;
+- the configuration template, the example database and the import template in `/usr/share/timesheet/`;
 - the server configuration `/etc/timesheet/timesheet.json`, the file of the repository installed as is, whose `database.path` is `/var/lib/timesheet/timesheet-database.json`; it is a configuration file of the package: an upgrade keeps your changes;
 - the unit `timesheet.service`, which runs `timesheet run --config=/etc/timesheet/timesheet.json` as the account `timesheet`; the database comes from that file.
 

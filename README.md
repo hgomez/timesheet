@@ -43,6 +43,7 @@ This README is the entry point: what the application does, how to try it from th
 | --- | --- |
 | Understand what the application does | [Concepts](doc/USER-GUIDE.md#concepts), [Pages](doc/USER-GUIDE.md#pages) and [Accounts](doc/USER-GUIDE.md#accounts) |
 | Try it on your workstation | [Requirements](#requirements), then [Getting started](#getting-started) |
+| Try it with example data | [Example database](doc/OPERATIONS.md#example-database) |
 | Use it day after day | [User guide](doc/USER-GUIDE.md) |
 | Bring an existing history in | [Importing](doc/OPERATIONS.md#importing) |
 | Build it, run the tests, build the package | [doc/BUILD.md](doc/BUILD.md) |
@@ -67,7 +68,7 @@ bin/    timesheet (built), timesheet.sh (runs the server on the configuration an
 debian/ Debian packaging (package, systemd unit, post-installation script)
 doc/    ARCHITECTURE.md  BUILD.md  CODING.md  OPERATIONS.md  SECURITY.md  SPECIFICATIONS.md  USER-GUIDE.md  timesheet.png
 etc/    timesheet/timesheet.json (the server configuration, installed as is by the package)
-share/  timesheet/ (configuration template read by init, import template)
+share/  timesheet/ (configuration template read by init, example database, import template)
 src/    Go sources
 var/    lib/timesheet/ (database of the repository, given with --database, its lock and its session file)
 ```
@@ -78,7 +79,7 @@ var/    lib/timesheet/ (database of the repository, given with --database, its l
 | --- | --- |
 | [doc/USER-GUIDE.md](doc/USER-GUIDE.md) | Concepts, activity codes, pages and profiles; the tasks of the employee and of the administrator; the labels shown on screen. |
 | [doc/BUILD.md](doc/BUILD.md) | Requirements, `make` targets, installation of the files, Debian package. |
-| [doc/OPERATIONS.md](doc/OPERATIONS.md) | Commands, server configuration, network, logs, import, Debian package, backup, recovery, upgrade, troubleshooting. |
+| [doc/OPERATIONS.md](doc/OPERATIONS.md) | Commands, server configuration, network, logs, import, example database, Debian package, backup, recovery, upgrade, troubleshooting. |
 | [doc/SPECIFICATIONS.md](doc/SPECIFICATIONS.md) | The functional reference: glossary, profiles, entries, counters and bookkeeping, pages, routes, database schema, server configuration, command line, import format, logs, limits, personal data, simplifications, migration notes. |
 | [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) | Packages, entities, HTTP chain, concurrency, persistence, lifecycle. Start with [Packages](doc/ARCHITECTURE.md#packages). |
 | [doc/SECURITY.md](doc/SECURITY.md) | Threat model, sessions, passwords, login throttling, transport, data protection, accepted risks. |

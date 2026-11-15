@@ -25,6 +25,7 @@ import (
     "net/http"
     "os"
     "path/filepath"
+    "reflect"
     "regexp"
     "strings"
     "testing"
@@ -502,6 +503,27 @@ func TestImportTemplateIsValid(t *testing.T) {
     _, calendar, _ := openTestDatabase(t, database).Account("demo")
     if (len(calendar.Days) != 31) || (len(calendar.Adjustments) != 1) || !calendar.IsValidated(activity.NewMonth(2026, time.January)) {
         t.Fatalf("import template read as %d days, %d adjustments", len(calendar.Days), len(calendar.Adjustments))
+    }
+}
+
+func TestDatabaseExampleIsValid(t *testing.T) {
+    directory, database := newTestDirectory(t)
+    data, err := os.ReadFile(filepath.Join("..", "..", "..", "share", "timesheet", "database-example.json"))
+    if err != nil {
+        t.Fatal(err)
+    }
+    writeTestFile(t, filepath.Join(directory, "ts.json"), string(data))
+    example := openTestDatabase(t, database)
+    configuration, defaults := example.Configuration(), activity.NewDefaultConfiguration()
+    if !reflect.DeepEqual(configuration.Activities, defaults.Activities) || !reflect.DeepEqual(configuration.Counters, defaults.Counters) {
+        t.Fatalf("the configuration of the example database differs from NewDefaultConfiguration")
+    }
+    demo, calendar, found := example.Account("demo")
+    if !found || (demo.Profile != account.ProfileAdmin) || (demo.State != account.StateEnabled) || !demo.Password.Verify("demonstration") {
+        t.Fatalf("example account: %+v", demo)
+    }
+    if !calendar.IsValidated(activity.NewMonth(2023, time.November)) || !calendar.IsValidated(activity.NewMonth(2026, time.October)) || calendar.IsValidated(activity.NewMonth(2026, time.November)) {
+        t.Fatalf("the example database is not validated from 2023-11 to 2026-10")
     }
 }
 

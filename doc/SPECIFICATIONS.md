@@ -48,6 +48,7 @@ Every change of behaviour, screen, label, route, form field, computation rule, d
 - [SESSION FILE](#session-file)
 - [SERVER CONFIGURATION](#server-configuration)
 - [CONFIGURATION TEMPLATE](#configuration-template)
+- [EXAMPLE DATABASE](#example-database)
 - [MIGRATION NOTES](#migration-notes)
 - [LOGS](#logs)
 - [SECURITY REQUIREMENTS](#security-requirements)
@@ -145,6 +146,7 @@ The number of extra days comes from the employment contract: the application doe
 | day entry | What is entered for one day: a code for the morning, a code for the afternoon, a comment. |
 | default amount | The accrual amount of a counter in the configuration. |
 | effective amount | The own amount of an employee when set, otherwise the default amount. |
+| example database | The anonymized database `share/timesheet/database-example.json`, to try the application ([Example database](#example-database)). |
 | feeding code | An activity code that credits its counter. |
 | forecast | The future entries computed up to the end of the period of each counter: accruals, planned leave, roundings and zeroings. |
 | frozen entry | A ledger entry written at the validation of a month. |
@@ -2218,7 +2220,7 @@ After a validation, importing the same file again fails: its days and adjustment
 
 ### Source data
 
-The spreadsheet an employee converts, and the import file made from it, are personal data. They never enter the repository: the tests build synthetic import files.
+The spreadsheet an employee converts, and the import file made from it, are personal data. They never enter the repository: the tests build synthetic import files, and the [example database](#example-database) is anonymized.
 
 ## DATABASE
 
@@ -2557,6 +2559,19 @@ These limits apply only to a write that grows the database: a lowered limit neve
 - It is read by `init` only, strictly, 1 MiB at most, and validated like the configuration.
 - Editing it afterwards has no effect on an existing database: codes, counters and default colours are then edited in the [configuration page](#configuration-page).
 - The settings of the server are not in the database: see [Server configuration](#server-configuration).
+
+## EXAMPLE DATABASE
+
+- `share/timesheet/database-example.json` is a complete database, to try the application with the data of nearly three years. It is installed next to the configuration template.
+- Its configuration is the one of the [configuration template](#configuration-template).
+- It holds one account: login `demo`, name « Compte de démonstration », profile `ADMIN`, password `demonstration`.
+- Its tracking start is 2023-11-27; every day is entered from that date to 2026-12-31.
+- The months from November 2023 to October 2026 are validated, each on its last day at 23:59:59 in `Europe/Paris`; the later months are open.
+- `CP` is enabled, `TPC` enabled with the own amount `7/12`, `RTT` disabled; three adjustments complete the balances of `CP`.
+- It was made from a real history, anonymized: the identity is replaced, the comments are reduced to « Vacances », the names of the holidays, « Conférence », « Congé » and « Absence », and the reasons of the adjustments are neutral. The calendar is kept.
+- To use it, copy it with the mode 0600 into a directory of your own and give the copy with `--database` ([OPERATIONS.md](OPERATIONS.md#example-database)).
+- Its password is public: it is never served on a network nor used as a real database.
+- A test loads it: same configuration as the template, the account `demo` and its password, months validated from November 2023 to October 2026. A change of the [database](#database) schema updates it.
 
 ## MIGRATION NOTES
 
