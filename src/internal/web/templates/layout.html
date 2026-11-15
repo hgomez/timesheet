@@ -86,6 +86,7 @@
                     <ul>
                         <li><a href="/dashboard/profile"{{if eq .Section "profile"}} aria-current="page"{{end}}>Mon profil</a></li>
                         <li><a href="/dashboard/settings"{{if eq .Section "settings"}} aria-current="page"{{end}}>Mes réglages</a></li>
+                        <li><a href="/dashboard/data"{{if eq .Section "data"}} aria-current="page"{{end}}>Mes données</a></li>
                         <li>
                             <form method="post" action="/logout">
                                 <input type="hidden" name="csrf" value="{{.Chrome.CSRF}}">

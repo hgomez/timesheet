@@ -53,6 +53,10 @@ func (n *Notices) Message(code string) string {
             return "Le mot de passe a été changé."
         case "name":
             return "Le nom a été enregistré."
+        case "imported":
+            return "L'import a été enregistré."
+        case "erased":
+            return "Vos données ont été supprimées : le suivi recommence au premier jour du mois."
         case "created":
             return "Le compte a été créé."
         case "disabled":

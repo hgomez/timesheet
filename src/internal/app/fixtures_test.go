@@ -86,7 +86,7 @@ func writeTestImport(t *testing.T, path string) {
                 days[d.String()] = activity.DayEntry{AM: "TT", PM: "TT"}
         }
     }
-    data, err := json.Marshal(map[string]any{"format": ImportFormat, "version": ImportVersion, "settings": map[string]any{"start": "2025-01-01", "counters": map[string]any{"CP": map[string]any{"initial": "2.29"}, "TPC": map[string]any{"enabled": true, "amount": "7/12", "initial": "0"}}}, "days": days, "adjustments": []map[string]string{{"date": "2025-01-31", "counter": "CP", "amount": "1", "reason": "Récupération d'un jour férié"}}})
+    data, err := json.Marshal(map[string]any{"format": activity.ImportFormat, "version": activity.ImportVersion, "settings": map[string]any{"start": "2025-01-01", "counters": map[string]any{"CP": map[string]any{"initial": "2.29"}, "TPC": map[string]any{"enabled": true, "amount": "7/12", "initial": "0"}}}, "days": days, "adjustments": []map[string]string{{"date": "2025-01-31", "counter": "CP", "amount": "1", "reason": "Récupération d'un jour férié"}}})
     if err != nil {
         t.Fatal(err)
     }

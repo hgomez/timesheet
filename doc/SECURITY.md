@@ -126,6 +126,8 @@ Glossary of the terms of this table:
 
 - Every route that writes activity works on the account of the session.
 - No route that writes activity takes the account from the URL or the form.
+- The export, the import and the deletion of the data page « Données » (`/dashboard/data/export`, `/dashboard/data/import`, `/dashboard/data/reset`) work on the account of the session only; an `ADMIN` cannot download, import nor erase the data of another account.
+- The deletion of the data asks the login retyped and the CSRF token of the session; it cannot be undone, except by restoring a backup.
 
 ### Another account
 
@@ -396,6 +398,7 @@ The commands that act on the file are in [Command line](SPECIFICATIONS.md#comman
 - The login form, shown before any session, uses a double-submitted token: the same random value is sent in the cookie `ts_login` and in the form, and both must match.
 - The cookie `ts_login` has a `Max-Age` of `login.form_lifetime` (3600 seconds by default, 1 min to 24 h) and is renewed each time the login form is shown. Its token is reused, so several tabs share it. Once the browser drops it, the login posted from the old form is refused (403).
 - A missing or wrong token is refused with status 403.
+- The import of the data page posts `multipart/form-data`: the guard parses it in memory (`maxMultipartMemory`, 8 MiB, above the largest `server.max_body_bytes`) before reading the token, so that no file part is written to a temporary file; a body beyond `server.max_body_bytes` is refused with 400 before any processing.
 
 ### Origin check
 
@@ -615,6 +618,8 @@ The fields, the events and their levels are in [Logs](SPECIFICATIONS.md#logs).
 
 - The spreadsheet that the yearly summary is modelled on, and any import file made from real data, are never committed to the repository.
 - Tests build synthetic import files.
+- An uploaded import file is decoded strictly (unknown fields refused, 8 MiB at most) and never stored as a file: only its days, settings and adjustments, once checked, enter the database.
+- The file downloaded from the data page « Données » holds the comments and adjustment reasons of the account: it is sent with `Cache-Control: no-store` and is the responsibility of the person once downloaded.
 
 ## REPORTING A VULNERABILITY
 

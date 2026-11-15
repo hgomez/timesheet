@@ -104,7 +104,7 @@ web → {activity, account}
 
 | Package | Role | May import (project packages) |
 | --- | --- | --- |
-| `internal/activity` | Domain: quantities, dates, configuration, calendar, holidays, counter bookkeeping, month closing, indicators, summary, colours, clocks | nothing |
+| `internal/activity` | Domain: quantities, dates, configuration, calendar, holidays, counter bookkeeping, month closing, indicators, summary, colours, clocks, import and export files | nothing |
 | `internal/account` | Logins, profiles, states, password policy and hashes, account record, session record, account errors | nothing |
 | `internal/store` | `SecureFile` (hardened private file, lock), `Database` (the single JSON database) and `SessionFile` (the saved sessions) | `activity`, `account` |
 | `internal/web` | HTTP adaptation: HTTP chain of guards, sessions, controllers, view builders, HTML templates, assets | `activity`, `account` (`store` in tests) |
@@ -222,6 +222,28 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | `Clock` | interface | Time source |
 | `SystemClock` | service | Clock of the system |
 | `ManualClock` | service | Clock set by hand; it drives the tests |
+
+#### Import
+
+| Entity | Kind | Role |
+| --- | --- | --- |
+| `ImportFile` | record | The JSON import file: strict decoding within `MaxImportSize` (`NewImportFile`), the export of a calendar (`NewImportFileOf`), its indented encoding (`Encode`) |
+| `ImportSettings` | record | Settings of the import file |
+| `ImportCounter` | record | Settings of one counter in the import file |
+| `ImportAdjustment` | record | Adjustment in the import file |
+| `Importer` | service | Applies an import file to a calendar, with its `ImportOptions` (replace, validate, period) |
+| `ImportReport` | record | Result of an import: next calendar, problems, warnings, days read, missing half-days, months validated, month where the validation stopped |
+| `ImportProblem` | value | Problem or warning of an import, with its English text (`Text`, command line) and its French text (`Label`, pages) |
+
+`Importer.Run`:
+
+1. applies the settings like the settings page (« Réglages »);
+2. checks every day with `Bookkeeper.CheckEntry`;
+3. checks the adjustments like the activity page;
+4. lists the missing half-days;
+5. validates the imported months when asked.
+
+It is shared by `app.ImportCommand` (database lock, options, English report) and `web.DataController` (data page « Données », French report). The format is specified in [SPECIFICATIONS.md, Import](SPECIFICATIONS.md#import).
 
 ### internal/account
 
@@ -367,6 +389,7 @@ A write runs these steps under one `sync.RWMutex`:
 | `DashboardController` | `/dashboard/`, `/dashboard/activity…`, `/dashboard/month…`, `/dashboard/year/…`, `/dashboard/adjustments`, `/dashboard/colors.css`, and the read-only pages `/admin/accounts/{login}/dashboard`, `…/month/…`, `…/year/…` |
 | `SettingsController` | `/dashboard/settings` |
 | `ProfileController` | `/dashboard/profile` (name, password, sessions) |
+| `DataController` | `/dashboard/data` and its routes `/dashboard/data/export`, `/dashboard/data/import`, `/dashboard/data/reset` |
 | `AdminServerController` | `/admin/` |
 | `AdminController` | `/admin/accounts`, `/admin/accounts/{login}` |
 | `AdminSettingsController` | `/admin/settings` |
@@ -385,33 +408,13 @@ A write runs these steps under one `sync.RWMutex`:
 | `ConfigCommand` | service | `config show`, `config set` |
 | `UserCommand` | service | `user add`, `user profile`, `user passwd`, `user del`, `user list` |
 | `SessionCommand` | service | `session clear` |
-| `ImportCommand` | service | `import` |
+| `ImportCommand` | service | `import`: database lock, options, file reading and English report of `activity.Importer` |
 | `PasswordReader` | service | Reads a password from `TIMESHEET_PASSWORD`, from the terminal without echo, or from a line of the standard input |
 | `TLSProvider` | service | Provided TLS certificate pair |
 | `BuildInfo` | value | Version of the release (`ReleaseVersion`) with the commit, its date and its state, from the build information |
 | `ServerErrorLog` | service | Sends the errors of `http.Server` to the logger |
 
 `PasswordReader` reads the terminal through termios and `syscall` in `password_reader_linux.go`; `password_reader_other.go` covers the other platforms.
-
-#### Import
-
-| Entity | Kind | Role |
-| --- | --- | --- |
-| `ImportFile` | record | The JSON import file |
-| `ImportSettings` | record | Settings of the import file |
-| `ImportCounter` | record | Settings of one counter in the import file |
-| `ImportAdjustment` | record | Adjustment in the import file |
-
-`ImportCommand`:
-
-1. decodes the file strictly, within a size bound;
-2. applies the settings like the settings page (« Réglages »);
-3. checks every day with `Bookkeeper.CheckEntry`;
-4. checks the adjustments like the activity page;
-5. prints a report;
-6. validates the imported months when asked.
-
-The format is specified in [SPECIFICATIONS.md, Import](SPECIFICATIONS.md#import).
 
 ## PAGES AND THE CODE THAT SERVES THEM
 
@@ -430,6 +433,7 @@ The routes and their answers are specified in [SPECIFICATIONS.md, Routes](SPECIF
 | Year page (« Année ») | `/dashboard/year/{year}` | `DashboardController` | `YearView` | `year.html` | `chrome_page.js` |
 | Settings page (« Réglages ») | `/dashboard/settings` | `SettingsController` | none (the controller builds its record) | `settings.html` | `chrome_page.js` |
 | Profile page (« Mon profil ») | `/dashboard/profile` | `ProfileController` | none (the controller builds its record) | `profile.html` | `chrome_page.js` |
+| Data page (« Données ») | `/dashboard/data`, `/dashboard/data/export`, `/dashboard/data/import`, `/dashboard/data/reset` | `DataController` | none (the controller builds its record) | `data.html` | `chrome_page.js` |
 | Colours of the codes | `/dashboard/colors.css` | `DashboardController` | none | none (generated style sheet) | none |
 | Server page (« Serveur ») | `/admin/` | `AdminServerController` | none (the controller builds its record from the version and the server configuration read at start) | `admin_server.html` | `chrome_page.js` |
 | Accounts (« Comptes ») | `/admin/accounts` | `AdminController` | none (the controller builds its records) | `admin_accounts.html` | `chrome_page.js` |

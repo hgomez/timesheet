@@ -32,6 +32,7 @@ This README is the entry point: what the application does, how to try it from th
 - The activity codes and the counters are configurable. The holiday calendar and the rules are French: the application is not meant, as it stands, for another country.
 - The rules are choices of the application, simpler than common French practice: see [Simplifications](doc/SPECIFICATIONS.md#simplifications).
 - One static binary, no external service: it runs on a workstation or a small server.
+- Each user imports a file, exports their data in the same JSON format and erases them, from « Mes données ».
 - Although it supports several accounts, it is essentially meant for personal use.
 - The database is, for now, a single JSON file; SQLite and other databases are planned for the future.
 - The web interface is in French. The French labels quoted in this document (« Tableau de bord », « Activité »…) are the ones shown on screen. The command line, code and documentation are in English.

@@ -58,6 +58,7 @@ The legal holidays are built in. They name the rows of the grid, refuse leave (a
 | « Année » | Consultation only: the totals of the year, the calendar, the summary of the calendar year and one section per counter. The summary is modelled on a spreadsheet: a carry-forward row « Report N-1 », one row per month and totals. |
 | « Mon profil » | Identity, name shown in the menu, password, open sessions. |
 | « Réglages » | Tracking start, counters enabled, own accrual amounts, initial balances, colours of the codes. Its menu entry is « Mes réglages ». |
+| « Données » | Import of a file, export of your data in the same format, deletion of your data to start the tracking again. Its menu entry is « Mes données ». |
 | « Administration » | For administrators: the software version and the server settings, read-only (« Serveur »), the accounts (« Comptes ») and the configuration of the activity codes and counters (« Configuration »). |
 
 - The menu under the user's name shows the profile and leads to « Mon profil » and « Mes réglages ». It also logs out (« Se déconnecter »).
@@ -144,6 +145,24 @@ An adjustment can be deleted while its month is open.
 - « Année »: the calendar and the summary of the year.
 - A negative balance is accepted and shown in red.
 - At the end of a period without carry-over, the balance is brought to zero, even when negative.
+
+### Import or export your data
+
+1. Open « Mes données » in the menu under your name: the page « Données ».
+2. In the section « Importer des données », choose a file in « Fichier d'import », tick « Remplacer les jours déjà saisis » to overwrite the days already entered and « Valider les mois importés » to validate the imported months, then click « Vérifier ».
+3. Read the report at the top of the page: in red the problems, in yellow the points to check (half-days left without entry, a validation that would stop), in green what would be imported. Nothing is written.
+4. Click « Importer » to save. Validated months are never changed: a file that touches one is refused.
+5. In the section « Exporter mes données », below, « Exporter » saves a file `timesheet-<login>-<date>.json`: your settings, your days with their comments and your adjustments, in the import format. It does not hold the history of the validations.
+
+The file is limited to 256 KiB by default; a larger file is imported by the administrator with the command `import` ([Importing](OPERATIONS.md#importing)).
+
+### Start your tracking again
+
+1. Export your data first if you want to keep them.
+2. In « Mes données », section « Supprimer mes données », retype your login in « Retapez votre identifiant pour confirmer ».
+3. Click the red button « Supprimer mes données ».
+
+Your days, adjustments, months (validated ones included) and settings are erased: the tracking starts again on the first day of the current month, like a new account. Your login, name and password are kept. This cannot be undone.
 
 ## FOR THE ADMINISTRATOR
 

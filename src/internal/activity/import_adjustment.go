@@ -15,13 +15,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package app
+package activity
 
 import (
     "strconv"
     "strings"
-
-    "timesheet/internal/activity"
 )
 
 // ---------------------------------------------------------------------------
@@ -29,37 +27,36 @@ import (
 // ---------------------------------------------------------------------------
 
 type ImportAdjustment struct {
-    Date    activity.Date     `json:"date"`
-    Counter string            `json:"counter"`
-    Amount  activity.Quantity `json:"amount"`
-    Reason  string            `json:"reason"`
+    Date    Date     `json:"date"`
+    Counter string   `json:"counter"`
+    Amount  Quantity `json:"amount"`
+    Reason  string   `json:"reason"`
 }
 
 // ---------------------------------------------------------------------------
 // ImportAdjustment implementation
 // ---------------------------------------------------------------------------
 
-func (a ImportAdjustment) Problems(config activity.Configuration, calendar activity.Calendar, horizon activity.Month) []string {
-    prefix := "adjustment of " + a.Date.String() + ": "
+func (a ImportAdjustment) Problems(config Configuration, calendar Calendar, horizon Month) []ImportProblem {
     m := a.Date.Month()
     if a.Date.IsZero() || !calendar.Tracks(a.Date) || calendar.IsValidated(m) || m.After(horizon) {
-        return []string{prefix + "the date must fall in an open month, from the tracking start"}
+        return []ImportProblem{{Date: a.Date, Kind: importAdjustmentOutside}}
     }
     rule, known := config.Counter(a.Counter)
     if !known || rule.Archived {
-        return []string{prefix + "counter " + strconv.QuoteToASCII(a.Counter) + " unknown or archived"}
+        return []ImportProblem{{Date: a.Date, Kind: importAdjustmentCounter, Detail: strconv.QuoteToASCII(a.Counter)}}
     }
-    problems := []string{}
-    if a.Amount.IsZero() || (a.Amount.Abs().Cmp(activity.NewQuantity(maxImportedDays, 1)) > 0) {
-        problems = append(problems, prefix + "a non-zero quantity between -366 and 366 is expected")
+    problems := []ImportProblem{}
+    if a.Amount.IsZero() || (a.Amount.Abs().Cmp(NewQuantity(maxImportedDays, 1)) > 0) {
+        problems = append(problems, ImportProblem{Date: a.Date, Kind: importAdjustmentQuantity})
     }
-    if (a.Reason == "") || (a.Reason != strings.TrimSpace(a.Reason)) || !activity.NewTextPolicy().Accepts(a.Reason, activity.MaxReasonLength) {
-        problems = append(problems, prefix + "a reason is required, one line of 200 characters at most")
+    if (a.Reason == "") || (a.Reason != strings.TrimSpace(a.Reason)) || !NewTextPolicy().Accepts(a.Reason, MaxReasonLength) {
+        problems = append(problems, ImportProblem{Date: a.Date, Kind: importAdjustmentReason})
     }
     return problems
 }
 
-func (a ImportAdjustment) Exists(calendar activity.Calendar, rule activity.CounterRule) bool {
+func (a ImportAdjustment) Exists(calendar Calendar, rule CounterRule) bool {
     for _, existing := range calendar.Adjustments {
         if (existing.Date == a.Date) && (existing.Counter == rule.ID) && existing.Amount.Equal(a.Amount) && (existing.Reason == a.Reason) {
             return true
@@ -68,8 +65,8 @@ func (a ImportAdjustment) Exists(calendar activity.Calendar, rule activity.Count
     return false
 }
 
-func (a ImportAdjustment) Adjustment(id string, rule activity.CounterRule) activity.Adjustment {
-    return activity.Adjustment{ID: id, Date: a.Date, Counter: rule.ID, Amount: a.Amount, Reason: a.Reason}
+func (a ImportAdjustment) Adjustment(id string, rule CounterRule) Adjustment {
+    return Adjustment{ID: id, Date: a.Date, Counter: rule.ID, Amount: a.Amount, Reason: a.Reason}
 }
 
 // ---------------------------------------------------------------------------

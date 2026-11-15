@@ -1,5 +1,5 @@
 /*
- * import_settings.go - Copyright (c) 2023-2026 - Olivier Poncet
+ * import_report.go - Copyright (c) 2023-2026 - Olivier Poncet
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,17 +15,41 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package app
-
-import "timesheet/internal/activity"
+package activity
 
 // ---------------------------------------------------------------------------
-// ImportSettings declaration
+// ImportReport declaration
 // ---------------------------------------------------------------------------
 
-type ImportSettings struct {
-    Start    *activity.Date           `json:"start,omitempty"`
-    Counters map[string]ImportCounter `json:"counters,omitempty"`
+type ImportReport struct {
+    Calendar    Calendar
+    Problems    []ImportProblem
+    Warnings    []ImportProblem
+    Settings    bool
+    Counters    int
+    Dates       []Date
+    Missing     []ImportMissing
+    Adjustments int
+    Validated   []Month
+    Stopped     Month
+    StopReason  error
+}
+
+type ImportMissing struct {
+    Month Month
+    Dates []Date
+}
+
+// ---------------------------------------------------------------------------
+// ImportReport implementation
+// ---------------------------------------------------------------------------
+
+func (r ImportReport) First() Month {
+    return r.Dates[0].Month()
+}
+
+func (r ImportReport) Last() Month {
+    return r.Dates[len(r.Dates) - 1].Month()
 }
 
 // ---------------------------------------------------------------------------

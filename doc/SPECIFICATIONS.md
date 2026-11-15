@@ -37,6 +37,7 @@ Every change of behaviour, screen, label, route, form field, computation rule, d
 - [YEAR PAGE](#year-page)
 - [PROFILE PAGE](#profile-page)
 - [SETTINGS PAGE](#settings-page)
+- [DATA PAGE](#data-page)
 - [ADMINISTRATION](#administration)
 - [COLOURS](#colours)
 - [ROUTES](#routes)
@@ -440,10 +441,10 @@ The limits are set in the [section limits](#section-limits) of the server config
 
 How long the limit lasts:
 
-- Validated entries are never removed.
+- Validated entries are never removed, except by the [deletion of the data](#deletion-of-the-data), which empties the account.
 - With every day entered and every month validated, the default limit is reached after about ten years of tracking.
 - It is reached sooner with long comments or many reopenings: each reopening adds a reversal per entry of the month.
-- Nothing in the application then frees space.
+- Nothing else in the application then frees space.
 
 ## ACTIVITY CODES
 
@@ -731,7 +732,7 @@ An entry has:
 
 - There is one debit or credit entry per day and per counter: a day with `CP` in the morning and `RTT` in the afternoon gives two debits.
 - When two codes of the same counter share a day, the label is the one of the morning code.
-- Once the month is validated, the label of a debit or a credit keeps the comment of its day, even if the day is edited after a reopening, until the account is deleted. This includes the reason of an absence entered `ABS` ([Personal data](#personal-data)).
+- Once the month is validated, the label of a debit or a credit keeps the comment of its day, even if the day is edited after a reopening, until the data of the account or the account itself is deleted. This includes the reason of an absence entered `ABS` ([Personal data](#personal-data)).
 
 ### Open month
 
@@ -840,7 +841,7 @@ The validation form is not shown for a month before the tracking start, and the 
 These invariants are checked by the tests:
 
 1. The balance equals the sum of the entries.
-2. A validated month is never rewritten.
+2. A validated month is never rewritten; only the [deletion of the data](#deletion-of-the-data) erases the whole tracking of an account at once.
 3. The frozen entries equal the provisional ones computed just before the validation.
 4. Reopening then validating again, without any change of day entries, settings or rules in between, gives the same balance.
 5. A reopened month is recomputed with the rules in force at the reopening.
@@ -887,6 +888,7 @@ When the tracking started before the month, the number of tracked days is the nu
 | Year page | « Année \<année> » | `/dashboard/year/{year}` | connected | [Year page](#year-page) |
 | Profile page | « Mon profil » | `/dashboard/profile` | connected | [Profile page](#profile-page) |
 | Settings page | « Réglages » | `/dashboard/settings` | connected | [Settings page](#settings-page) |
+| Data page | « Données » | `/dashboard/data` | connected | [Data page](#data-page) |
 | Server page | « Serveur » | `/admin/` | `ADMIN` | [Server page](#server-page) |
 | Accounts page | « Comptes » | `/admin/accounts` | `ADMIN` | [Accounts page](#accounts-page) |
 | Account page | « Compte \<login> » | `/admin/accounts/{login}` | `ADMIN` | [Account page](#account-page) |
@@ -917,7 +919,7 @@ When the tracking started before the month, the number of tracked days is the nu
 | Family | Pages | Entries | `aria-label` of the `<nav>` |
 | --- | --- | --- | --- |
 | public | home, login, logout, error pages for a guest | for a guest, a link to `/login` shown as an icon only, an arrow entering a door drawn in the text colour, with `title` and `aria-label` « Se connecter »; for a connected browser, a « Tableau de bord » button, preceded for an `ADMIN` by an « Administration » button; nothing on the login page | « Navigation principale » |
-| dashboard | dashboard, activity, month, year, profile and settings pages | for an `ADMIN`, « Administration », a link to `/admin/`; then « Tableau de bord », « Activité », « Mois », « Année » | « Navigation principale » |
+| dashboard | dashboard, activity, month, year, profile, settings and data pages | for an `ADMIN`, « Administration », a link to `/admin/`; then « Tableau de bord », « Activité », « Mois », « Année » | « Navigation principale » |
 | admin | server, accounts, account, configuration pages and read-only views | « Tableau de bord », a link to `/dashboard/`; then « Serveur », « Comptes », « Configuration » | « Navigation de l'administration » |
 
 - The current entry carries `aria-current="page"` and is highlighted.
@@ -972,7 +974,8 @@ The panel is a `<nav aria-label="Compte">`, the same on every page of the dashbo
 1. the profile as its heading (`<p class="menu-heading">`): « Administrateur » or « Utilisateur »;
 2. « Mon profil »;
 3. « Mes réglages », which opens the settings page « Réglages »;
-4. the form « Se déconnecter ».
+4. « Mes données », which opens the data page « Données »;
+5. the form « Se déconnecter ».
 
 - The entry of the current page carries `aria-current="page"`.
 - « Administration » is not in the user menu: it is an entry of the header ([Navigation of each family](#navigation-of-each-family)).
@@ -1430,6 +1433,56 @@ The problems listed under « Réglages non enregistrés. » are:
 - « \<compteur> : solde initial invalide (entre -366 et 366). »;
 - « \<libellé du code> : couleur invalide. ».
 
+## DATA PAGE
+
+- Route `/dashboard/data`, entry « Mes données » of the user menu, after « Mes réglages »; `h1` « Données ».
+- The page imports a file, exports the data of the account, both in the [import format](#file-format), and erases them; each in a section, in this order.
+
+- The section « Importer des données » posts `multipart/form-data` to `POST /dashboard/data/import`: the file « Fichier d'import », the checkboxes « Remplacer les jours déjà saisis » (`replace`) and « Valider les mois importés » (`validate`), and two buttons, « Vérifier » (`action=check`) and « Importer » (`action=import`).
+- The import follows the rules of the command `import` ([Import](#import)): the checkboxes stand for `--replace` and `--validate`, « Vérifier » for `--dry-run`. There is no `--from` nor `--to`: the whole file is read.
+- It works while the server runs, on the account of the viewer only, with the account revision of the page.
+- The file is bounded by `server.max_body_bytes` (256 KiB by default), as every request body; a larger file is imported with the command `import`.
+- « Vérifier » writes nothing and shows the report at the top of the page ([Main content](#main-content)): the notice « Vérification réussie : le fichier peut être importé. Rien n'a été enregistré. » with its details, after the warnings if any.
+- « Importer » saves the import and comes back (303) with the notice `imported`; on a problem nothing is written, and the alert lists the problems at the top of the page.
+- The section « Exporter mes données » explains what the file holds; its button « Exporter » sends `GET /dashboard/data/export` ([Export](#export)).
+- The section « Supprimer mes données » comes last ([Deletion of the data](#deletion-of-the-data)).
+
+### Report of an import
+
+The report is spread over the three levels of messages:
+
+| Level | Message | Details |
+| --- | --- | --- |
+| alert (red) | « L'import est refusé : rien n'a été enregistré. Corrigez le fichier puis recommencez. » | the problems, in the French texts of [Errors](#errors), each with its date written `jj/mm/aaaa` |
+| warning (yellow) | « Points à vérifier : » | the warnings « Date de début avancée du \<date> au \<date> » and « Ajustement du \<date> déjà présent, ignoré »; month by month, « Demi-journées non renseignées en \<mois> : \<dates>. »; « Validation arrêtée en \<mois>. \<raison> » when a month cannot be validated, the reason being « Ce mois n'est pas dans le fichier. » or the reason of [Refusals of the activity page](#refusals-of-the-activity-page) |
+| notice (green), « Vérifier » only | « Vérification réussie : le fichier peut être importé. Rien n'a été enregistré. » | « Réglages lus : date de début au \<date>, \<n> compteur(s). » when the file has `settings`; « \<n> jour(s) lu(s), de \<mois> à \<mois>. »; « \<n> ajustement(s) lu(s). »; with « Valider les mois importés », « Mois validés : de \<mois> à \<mois> (\<n>). » |
+
+The missing half-days and the validation are computed only when there is no problem.
+
+### Deletion of the data
+
+- The section « Supprimer mes données » explains what is erased and asks « Retapez votre identifiant pour confirmer » (`confirm`); its button « Supprimer mes données » is red (class `danger`).
+- It posts to `POST /dashboard/data/reset`, on the account of the viewer only.
+- The confirmation must be the login exactly, case included.
+- It erases the whole tracking of the account: day entries, adjustments, history of the months, ledger entries (validated months included), settings (counters, own amounts, initial balances, colours).
+- The account starts again like a new one: tracking start on the first day of the current month in `server.timezone`, every counter and colour by default.
+- The identity, the name, the profile, the password and the sessions are kept.
+- It is the only operation that removes validated entries ([Invariants](#invariants)).
+- Success: 303 to `/dashboard/data`, notice `erased`.
+
+### Refusals of the data page
+
+| Case | Status | Message |
+| --- | --- | --- |
+| `action` other than `check` or `import` | 400 | page « Requête invalide » |
+| body beyond `server.max_body_bytes` | 400 | page « Requête invalide » |
+| no file | 422 | « Choisissez un fichier à importer. » |
+| file that cannot be decoded (not JSON, unknown field, wrong `format` or `version`, beyond 8 MiB) | 422 | « Le fichier n'est pas un import valide : un objet JSON au format timesheet-import, version 1, sans champ inconnu. » |
+| problems of the import | 422 | « L'import est refusé : rien n'a été enregistré. Corrigez le fichier puis recommencez. », with the report |
+| deletion: confirmation other than the login | 422 | « Retapez exactement votre identifiant pour confirmer la suppression de vos données. » |
+| the data changed since the page was shown | 409 | « Les données ont changé entre-temps (autre onglet ?). Rechargez la page avant de recommencer. » |
+| the account would grow beyond its [size limits](#size-of-an-account) | 413 | « Les données de ce compte atteignent la taille maximale autorisée. » |
+
 ## ADMINISTRATION
 
 ### Server page
@@ -1709,6 +1762,10 @@ The label of the code (grid) or its identifier (year calendar) is always written
 | `/dashboard/year/{year}` | GET | connected | [year page](#year-page): totals, calendar, summary and counters |
 | `/dashboard/adjustments` | POST | connected | adds (`action=add`) or deletes (`action=delete`, `id`) an adjustment; 303 to the activity page of its month; any other `action` gets 400 |
 | `/dashboard/profile` | GET | connected | [profile page](#profile-page) |
+| `/dashboard/data` | GET | connected | [data page](#data-page) |
+| `/dashboard/data/export` | GET | connected | downloads the data of the account in the import format ([Export](#export)) |
+| `/dashboard/data/import` | POST | connected | checks or imports a file in the import format ([Data page](#data-page)) |
+| `/dashboard/data/reset` | POST | connected | erases the whole tracking of the account ([Deletion of the data](#deletion-of-the-data)) |
 | `/dashboard/profile` | POST | connected | `action=name` saves the name; `action=sessions` closes every session of the account; `action=password` changes the password; any other `action` gets 400 |
 | `/dashboard/settings` | GET | connected | [settings page](#settings-page) |
 | `/dashboard/settings` | POST | connected | saves the user settings |
@@ -1756,7 +1813,7 @@ The refusals below come in the order in which the server checks them: a request 
 | 13 | 401 | wrong login or password, disabled account | the login form with « Identifiant ou mot de passe incorrect. » |
 | 14 | 404 | invalid year or month, unknown login under `/admin/accounts/` | page « Page introuvable » |
 | 15 | 400 | unknown `action`, unreadable revision | page « Requête invalide » |
-| 16 | 409, 413, 422 | refusals of a page | the page again, with an alert: [activity page](#refusals-of-the-activity-page), [settings page](#refusals-of-the-settings-page), [profile page](#refusals-of-the-profile-page), [accounts page](#refusals-of-the-accounts-page), [account page](#refusals-of-the-account-page), [configuration page](#refusals-of-the-configuration-page) |
+| 16 | 409, 413, 422 | refusals of a page | the page again, with an alert: [activity page](#refusals-of-the-activity-page), [settings page](#refusals-of-the-settings-page), [profile page](#refusals-of-the-profile-page), [data page](#refusals-of-the-data-page), [accounts page](#refusals-of-the-accounts-page), [account page](#refusals-of-the-account-page), [configuration page](#refusals-of-the-configuration-page) |
 | 17 | 500 | write error, the database file beyond `database.max_bytes` (64 MiB by default) included | page « Erreur interne » |
 
 Every error page offers « Revenir à l'accueil ». The answers of rows 2 to 17 carry the security headers ([SECURITY.md](SECURITY.md#pages)) and a line in the access log ([Logs](#logs)).
@@ -1796,11 +1853,13 @@ The code `change-password` is not kept: the profile page shows it as a warning, 
 | `profile` | « Le profil a été changé. » | a profile changed |
 | `reset` | « Le mot de passe provisoire a été enregistré. » | a password reset |
 | `configuration` | « La configuration a été enregistrée. » | a change of the configuration |
+| `imported` | « L'import a été enregistré. » | an import from the data page |
+| `erased` | « Vos données ont été supprimées : le suivi recommence au premier jour du mois. » | a deletion of the data from the data page |
 | `change-password` | « Choisissez un nouveau mot de passe avant de continuer. » | any request of an account with a provisional password, `GET` included ([Provisional password](#provisional-password)) |
 
 ## FORM FIELDS
 
-Every form posts `application/x-www-form-urlencoded` data. Every form of a connected page carries the CSRF token of the session in the hidden field `csrf`. A checkbox is checked when its value is `on`.
+Every form posts `application/x-www-form-urlencoded` data, except the import of the data page, which posts `multipart/form-data`. Every form of a connected page carries the CSRF token of the session in the hidden field `csrf`. A checkbox is checked when its value is `on`.
 
 ### Login and logout
 
@@ -1858,6 +1917,16 @@ Every form posts `application/x-www-form-urlencoded` data. Every form of a conne
 | Password | `current` | « Mot de passe actuel », password, 256 characters | the current password |
 | Password | `password` | « Nouveau mot de passe », password, 12 to 256 characters | the new password |
 | Password | `confirm` | « Confirmation », password, 12 to 256 characters | the new password again |
+
+### Fields of the data page
+
+| Form | Field | Control | Content |
+| --- | --- | --- | --- |
+| Import | `file` | « Fichier d'import », file, `.json` | the file to import |
+| Import | `replace` | « Remplacer les jours déjà saisis », checkbox | replaces the entries already made at the dates of the file |
+| Import | `validate` | « Valider les mois importés », checkbox | validates the imported months afterwards |
+| Import | `action` | button « Vérifier » or « Importer » | `check` or `import` |
+| Deletion of the data | `confirm` | « Retapez votre identifiant pour confirmer », text, 32 characters | the login, retyped |
 
 ### Fields of the administration
 
@@ -2115,6 +2184,7 @@ Imports days, adjustments and settings into an account ([Import](#import)).
 ### What the import reads
 
 - `import LOGIN FILE.json` reads a JSON file of the format `timesheet-import` and writes its content into the account `LOGIN`.
+- The same import is offered to every account in its data page ([Data page](#data-page)), in French, without `--from` and `--to`.
 - The application reads no spreadsheet. A spreadsheet is converted to this format outside the application: its categories become activity codes, its notes comments, and the hand corrections of a balance that the rules do not explain become adjustments.
 
 ### File format
@@ -2208,25 +2278,25 @@ Settings follow the rules of the [settings page](#settings-page):
 - Every problem is listed, prefixed with `error: `, then the command exits with 1 and nothing is written.
 - Problems of days and adjustments carry their date; problems of settings do not.
 - A file with no day and no adjustment within `--from` and `--to`, and no `settings`, is refused (`no day to import`). A file holding only `"settings": {}` is accepted.
-- The messages are in English, except the refusals of the grid and the labels of counters, which are the French texts of the pages.
+- The command line writes the messages in English, except the refusals of the grid and the labels of counters, which are the French texts of the pages. The data page writes them in French, and adds « Le fichier ne contient aucun jour à importer » for `no day to import`.
 
-| Problem | Text after `error: ` |
-| --- | --- |
-| Day beyond the planning horizon | `<date>: beyond the planning horizon` |
-| Day in a validated month | `<date>: the month is validated` |
-| Day already entered, without `--replace` | `<date>: an entry already exists (use --replace)` |
-| Day refused by the grid rules | `<date>: <problem>`, the problem being the French text of [Refusals of the activity page](#refusals-of-the-activity-page) |
-| File starting before a validated tracking start | `the file starts before the tracking start, already validated` |
-| Adjustment outside an open tracked month | `adjustment of <date>: the date must fall in an open month, from the tracking start` |
-| Adjustment on an unknown or archived counter | `adjustment of <date>: counter "<ID>" unknown or archived` |
-| Adjustment quantity | `adjustment of <date>: a non-zero quantity between -366 and 366 is expected` |
-| Adjustment reason | `adjustment of <date>: a reason is required, one line of 200 characters at most` |
-| `start` locked | `tracking start: a month is already validated, it can no longer change` |
-| `start` after an adjustment | `tracking start: adjustments are dated before <date>` |
-| Unknown or archived counter in `settings` | `counter "<ID>" unknown or archived` |
-| Own amount | `<counter>: invalid accrual amount (between 0 and 366)` |
-| Initial balance | `<counter>: invalid initial balance (between -366 and 366)` |
-| Initial balance locked | `<counter>: a month is already validated, the initial balances can no longer change` |
+| Problem | Text after `error: ` | Text of the page |
+| --- | --- | --- |
+| Day beyond the planning horizon | `<date>: beyond the planning horizon` | « \<jj/mm/aaaa> : au-delà de l'horizon de planification » |
+| Day in a validated month | `<date>: the month is validated` | « \<jj/mm/aaaa> : le mois est validé » |
+| Day already entered, without `--replace` | `<date>: an entry already exists (use --replace)` | « \<jj/mm/aaaa> : une saisie existe déjà (cochez « Remplacer les jours déjà saisis ») » |
+| Day refused by the grid rules | `<date>: <problem>`, the problem being the French text of [Refusals of the activity page](#refusals-of-the-activity-page) | « \<jj/mm/aaaa> : \<problème> » |
+| File starting before a validated tracking start | `the file starts before the tracking start, already validated` | « Le fichier commence avant la date de début, déjà validée » |
+| Adjustment outside an open tracked month | `adjustment of <date>: the date must fall in an open month, from the tracking start` | « Ajustement du \<jj/mm/aaaa> : la date doit tomber dans un mois ouvert, à partir de la date de début » |
+| Adjustment on an unknown or archived counter | `adjustment of <date>: counter "<ID>" unknown or archived` | « Ajustement du \<jj/mm/aaaa> : compteur "\<ID>" inconnu ou archivé » |
+| Adjustment quantity | `adjustment of <date>: a non-zero quantity between -366 and 366 is expected` | « Ajustement du \<jj/mm/aaaa> : une quantité non nulle entre -366 et 366 est attendue » |
+| Adjustment reason | `adjustment of <date>: a reason is required, one line of 200 characters at most` | « Ajustement du \<jj/mm/aaaa> : un motif est requis, une ligne de 200 caractères au plus » |
+| `start` locked | `tracking start: a month is already validated, it can no longer change` | « Date de début : un mois est déjà validé, elle ne peut plus changer » |
+| `start` after an adjustment | `tracking start: adjustments are dated before <date>` | « Date de début : des ajustements sont datés avant le \<jj/mm/aaaa> » |
+| Unknown or archived counter in `settings` | `counter "<ID>" unknown or archived` | « Compteur "\<ID>" inconnu ou archivé » |
+| Own amount | `<counter>: invalid accrual amount (between 0 and 366)` | « \<compteur> : montant d'acquisition invalide (entre 0 et 366) » |
+| Initial balance | `<counter>: invalid initial balance (between -366 and 366)` | « \<compteur> : solde initial invalide (entre -366 et 366) » |
+| Initial balance locked | `<counter>: a month is already validated, the initial balances can no longer change` | « \<compteur> : un mois est déjà validé, les soldes initiaux ne peuvent plus changer » |
 
 ### Report
 
@@ -2253,6 +2323,25 @@ With `--validate`, and only when days were imported:
 5. A month whose history already holds a later event (it was reopened since) is recorded as validated at the time of the import, so that its history stays in order.
 
 After a validation, importing the same file again fails: its days and adjustments fall in validated months. A different `start` or initial balance would also be refused, since they are locked.
+
+### Export
+
+`GET /dashboard/data/export` downloads the data of the viewer's own account in the import format:
+
+- `format` and `version`;
+- `settings`: the tracking start, and for every counter set by the account, `enabled` when chosen, `amount` when set, and `initial`;
+- `days`: every stored day entry, with its comment;
+- `adjustments`: every adjustment, open or frozen in a validated month, by date.
+
+| Header | Value |
+| --- | --- |
+| `Content-Type` | `application/json; charset=utf-8` |
+| `Content-Disposition` | `attachment; filename="timesheet-<login>-<aaaa-mm-jj>.json"`, the date of today |
+| `Cache-Control` | `no-store` |
+
+- The file is indented with two spaces; quantities keep their written form.
+- It does not hold the history of the months (validations, reopenings) nor the ledger: they are computed again. Imported into an empty account with « Valider les mois importés », it gives the same balances, the months being validated on their last day.
+- It can be imported again with the command `import`, or from the data page within `server.max_body_bytes`.
 
 ### Source data
 
@@ -2738,6 +2827,9 @@ time=2026-11-13T16:40:12.345+01:00 level=INFO msg=request client=203.0.113.9 pee
 | `settings saved` | INFO | `login` | a save of the settings page |
 | `name changed` | INFO | `login`, `by` | a name change, profile page or account page |
 | `password changed` | INFO | `login` | a password change in the profile page |
+| `import saved` | INFO | `login`, `days`, `adjustments`, `validated` | an import from the data page; the fields are counts |
+| `data exported` | INFO | `login` | a download of the data from the data page |
+| `data erased` | INFO | `login` | a deletion of the data from the data page |
 | `password change refused` | WARN | `login` | a wrong current password, or a concurrent change (409) |
 | `all sessions closed` | INFO | `login` | « Déconnecter toutes mes sessions » |
 | `account created` | INFO | `login`, `profile`, `by` | an account created from the web |
@@ -2871,7 +2963,7 @@ These are choices of the application. Each one gives the way to reach the expect
 ### What is sensitive
 
 - The `ABS` code with its comment, and free comments in general, can reveal health or family events.
-- The label of a frozen debit or credit keeps the comment of its day, the comment of an `ABS` day included, until the account is deleted ([Ledger entries](#ledger-entries)).
+- The label of a frozen debit or credit keeps the comment of its day, the comment of an `ABS` day included, until the data or the account is deleted ([Ledger entries](#ledger-entries)).
 
 ### Inventory
 
@@ -2879,19 +2971,21 @@ These are choices of the application. Each one gives the way to reach the expect
 | --- | --- | --- | --- | --- |
 | Login, name, profile, state, creation and last login times | database | the person; every `ADMIN` (accounts page); the operator | the account is deleted | deletion of the account |
 | Password hash | database | the operator | the next password change, or the deletion | deletion of the account |
-| Day entries, comments, adjustments and their reasons, user settings | database | the person; every `ADMIN` (read-only views); the operator | the account is deleted, also while it is disabled | the person edits an open month; deletion of the account |
-| Ledger entries with the comments frozen in their labels | database | the person; every `ADMIN`; the operator | the account is deleted, reopenings included | deletion of the account only |
+| Day entries, comments, adjustments and their reasons, user settings | database | the person; every `ADMIN` (read-only views); the operator | the account is deleted, also while it is disabled | the person edits an open month; deletion of the data; deletion of the account |
+| Ledger entries with the comments frozen in their labels | database | the person; every `ADMIN`; the operator | the account is deleted, reopenings included | deletion of the data; deletion of the account |
 | Sessions: login, creation and last activity | [session file](#session-file) | the operator | the session closes or expires | logout, `session clear` |
 | Access log: client and proxy addresses, login, path, user agent, time | logs on the standard error | the operator | as long as the service manager or the file that collects them keeps them | outside the application |
 | Events: logins, failed and throttled logins with their address key, account events with the administrator, configuration changes, saves, validations, reopenings, changes of adjustments, settings and names, with their login | logs | the operator | same | outside the application |
 | Backups of the database | wherever the operator keeps them | whoever holds them | as long as they are kept | outside the application |
 | Import files and the spreadsheets they come from | outside the application | whoever holds them | as long as they are kept | outside the application |
+| Files downloaded from the data page « Données »: settings, days with their comments, adjustments with their reasons | the computer of the person | the person, and whoever reaches that computer | as long as they are kept | outside the application |
 
 - The database and the backups are not encrypted.
 - The reads of an `ADMIN` on another account appear in the access log, with the administrator and the page read.
 - The logs never hold the content of a day ([Never logged](#never-logged)). The commands of the command line log no event.
 - Deleting an account purges neither the backups nor the logs. Restoring a backup brings back the accounts deleted since, which must then be deleted again.
 - Data are kept without automatic retention limit.
-- The application gives no export and no selective erasure: a comment frozen in a validated month is erased only with the account.
+- The person downloads their own data from the data page ([Export](#export)); an `ADMIN` cannot download the data of another account.
+- The application gives no selective erasure: a comment frozen in a validated month is erased only with the whole tracking ([Deletion of the data](#deletion-of-the-data)) or with the account.
 - The person who runs the service is responsible for the legal obligations attached to these data.
 - The protection of the files is described in [SECURITY.md](SECURITY.md#data-protection).

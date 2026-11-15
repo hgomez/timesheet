@@ -19,6 +19,7 @@ package web
 
 import (
     "crypto/subtle"
+    "mime"
     "net/http"
 
     "timesheet/internal/account"
@@ -41,8 +42,9 @@ type guardedHandler struct {
 }
 
 const (
-    settingsPath = "/dashboard/settings"
-    profilePath  = "/dashboard/profile"
+    settingsPath       = "/dashboard/settings"
+    profilePath        = "/dashboard/profile"
+    maxMultipartMemory = 8 << 20
 )
 
 // ---------------------------------------------------------------------------
@@ -81,6 +83,13 @@ func (g *AuthGuard) Optional(r *http.Request) *http.Request {
     return r
 }
 
+func (g *AuthGuard) parse(r *http.Request) error {
+    if kind, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); (err == nil) && (kind == "multipart/form-data") {
+        return r.ParseMultipartForm(maxMultipartMemory)
+    }
+    return r.ParseForm()
+}
+
 func (g *AuthGuard) ValidToken(r *http.Request, expected string) bool {
     given := r.PostFormValue("csrf")
     return (expected != "") && (subtle.ConstantTimeCompare([]byte(given), []byte(expected)) == 1)
@@ -103,7 +112,7 @@ func (h *guardedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         return
     }
     if r.Method == http.MethodPost {
-        if err := r.ParseForm(); err != nil {
+        if err := h.guard.parse(r); err != nil {
             h.guard.errors.BadRequest(w, r)
             return
         }

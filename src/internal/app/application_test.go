@@ -157,7 +157,7 @@ func TestImportRefusesInvalidFiles(t *testing.T) {
         }
     }
     large := filepath.Join(directory, "large.json")
-    writeTestFile(t, large, header + `"days": {}, "pad": "` + strings.Repeat("x", MaxImportSize) + `"}`)
+    writeTestFile(t, large, header + `"days": {}, "pad": "` + strings.Repeat("x", activity.MaxImportSize) + `"}`)
     if run := runCommand(t, "", "import", "olivier", large, database); (run.code != ExitError) || !strings.Contains(run.stderr, "larger than 8 MiB") {
         t.Errorf("large file: %+v", run)
     }

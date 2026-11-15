@@ -1,0 +1,49 @@
+{{- /*
+ * data.html - Copyright (c) 2023-2026 - Olivier Poncet
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */ -}}
+{{define "title"}}Données{{end}}
+{{define "content"}}{{with .Data}}            <header class="page-header">
+                <h1>Données</h1>
+                <p>Importer des données, exporter les vôtres ou les supprimer pour recommencer le suivi.</p>
+            </header>
+            <section>
+                <h2>Importer des données</h2>
+                <form method="post" action="{{.ImportPath}}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <label class="field"><span class="field-name">Fichier d'import</span><input type="file" name="file" accept=".json,application/json" required></label>
+                    <label class="field"><input type="checkbox" name="replace"> <span class="field-name">Remplacer les jours déjà saisis</span></label>
+                    <label class="field"><input type="checkbox" name="validate"> <span class="field-name">Valider les mois importés</span></label>
+                    <p><small>Un fichier au format timesheet-import, dans la limite de taille d'une requête (256 Kio par défaut). Les mois déjà validés ne sont pas modifiés. « Vérifier » n'enregistre rien.</small></p>
+                    <p class="actions"><button type="submit" name="action" value="check">Vérifier</button> <button type="submit" name="action" value="import">Importer</button></p>
+                </form>
+            </section>
+            <section>
+                <h2>Exporter mes données</h2>
+                <form method="get" action="{{.ExportPath}}">
+                    <p><small>Vos réglages, vos jours saisis et vos ajustements, au format d'import. L'historique des validations n'en fait pas partie : réimporté dans un compte vide avec « Valider les mois importés », le fichier redonne les mêmes soldes.</small></p>
+                    <p class="actions"><button type="submit">Exporter</button></p>
+                </form>
+            </section>
+            <section>
+                <h2>Supprimer mes données</h2>
+                <form method="post" action="{{.ResetPath}}">
+                    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                    <p><small>Efface vos jours saisis, vos ajustements, l'historique de vos mois, mois validés compris, et vos réglages : le suivi recommence au premier jour du mois, comme pour un compte neuf. Votre identité, votre nom et votre mot de passe sont conservés. Exportez d'abord vos données pour les garder.</small></p>
+                    <label class="field"><span class="field-name">Retapez votre identifiant pour confirmer</span><input type="text" name="confirm" autocapitalize="none" spellcheck="false" maxlength="32" required></label>
+                    <p class="actions"><button type="submit" class="danger">Supprimer mes données</button></p>
+                </form>
+            </section>
+{{end}}{{end}}

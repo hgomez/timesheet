@@ -208,6 +208,8 @@ What the logs hold about people is listed in [Personal data](SPECIFICATIONS.md#p
 
 Days, counter settings and adjustments can be imported from a JSON file of the format `timesheet-import`, described in [Import](SPECIFICATIONS.md#import).
 
+Each user can also import such a file into their own account, while the server runs, from the page « Données » (menu « Mes données »), and download their data in the same format ([Data page](SPECIFICATIONS.md#data-page)). The file is then bounded by `server.max_body_bytes` (256 KiB by default): raise it, or use the command below, for a larger file.
+
 - The file holds the tracking start, counter settings, days with morning, afternoon and comment, and adjustments.
 - The application reads no spreadsheet. A spreadsheet is first converted to this format outside the application, its categories becoming the activity codes.
 - `share/timesheet/import-template.json` is a small, fictitious file of this format: one month (January 2026) with a holiday, paid leave, a half-day of RTT, an absence, comments, the settings of three counters and one adjustment. Copy it as a starting point.

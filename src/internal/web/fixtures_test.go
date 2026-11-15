@@ -22,6 +22,7 @@ import (
     "crypto/rand"
     "html"
     "log/slog"
+    "mime/multipart"
     "net/http"
     "net/http/cookiejar"
     "net/http/httptest"
@@ -151,6 +152,45 @@ func (c *testClient) post(path string, form url.Values) (int, string, string) {
     var body bytes.Buffer
     body.ReadFrom(response.Body)
     return response.StatusCode, response.Header.Get("Location"), body.String()
+}
+
+func (c *testClient) upload(path string, fields url.Values, name string, content string) (int, string, string) {
+    c.site.t.Helper()
+    var payload bytes.Buffer
+    writer := multipart.NewWriter(&payload)
+    for key, values := range fields {
+        for _, value := range values {
+            writer.WriteField(key, value)
+        }
+    }
+    if name != "" {
+        part, _ := writer.CreateFormFile("file", name)
+        part.Write([]byte(content))
+    }
+    writer.Close()
+    request, _ := http.NewRequest(http.MethodPost, c.site.server.URL + path, &payload)
+    request.Header.Set("Content-Type", writer.FormDataContentType())
+    request.Header.Set("Origin", c.site.server.URL)
+    response, err := c.client.Do(request)
+    if err != nil {
+        c.site.t.Fatal(err)
+    }
+    defer response.Body.Close()
+    var body bytes.Buffer
+    body.ReadFrom(response.Body)
+    return response.StatusCode, response.Header.Get("Location"), body.String()
+}
+
+func (c *testClient) download(path string) (int, http.Header, string) {
+    c.site.t.Helper()
+    response, err := c.client.Get(c.site.server.URL + path)
+    if err != nil {
+        c.site.t.Fatal(err)
+    }
+    defer response.Body.Close()
+    var body bytes.Buffer
+    body.ReadFrom(response.Body)
+    return response.StatusCode, response.Header, body.String()
 }
 
 type memoryArchive struct {

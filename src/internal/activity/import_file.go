@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package app
+package activity
 
 import (
     "bytes"
@@ -23,9 +23,7 @@ import (
     "errors"
     "fmt"
     "io"
-    "os"
-
-    "timesheet/internal/activity"
+    "slices"
 )
 
 // ---------------------------------------------------------------------------
@@ -33,11 +31,11 @@ import (
 // ---------------------------------------------------------------------------
 
 type ImportFile struct {
-    Format      string                             `json:"format"`
-    Version     int                                `json:"version"`
-    Settings    *ImportSettings                    `json:"settings,omitempty"`
-    Days        map[activity.Date]activity.DayEntry `json:"days"`
-    Adjustments []ImportAdjustment                 `json:"adjustments,omitempty"`
+    Format      string             `json:"format"`
+    Version     int                `json:"version"`
+    Settings    *ImportSettings    `json:"settings,omitempty"`
+    Days        map[Date]DayEntry  `json:"days"`
+    Adjustments []ImportAdjustment `json:"adjustments,omitempty"`
 }
 
 const (
@@ -46,29 +44,16 @@ const (
     MaxImportSize = 8 << 20
 )
 
-var ErrInvalidImportFile = errors.New("app: invalid import file")
+var ErrInvalidImportFile = errors.New("activity: invalid import file")
 
 // ---------------------------------------------------------------------------
 // ImportFile implementation
 // ---------------------------------------------------------------------------
 
-func NewImportFileFromFile(path string) (ImportFile, error) {
-    file, err := os.Open(path)
-    if err != nil {
-        return ImportFile{}, err
-    }
-    defer file.Close()
-    data, err := io.ReadAll(io.LimitReader(file, MaxImportSize + 1))
-    if err != nil {
-        return ImportFile{}, err
-    }
+func NewImportFile(data []byte) (ImportFile, error) {
     if len(data) > MaxImportSize {
         return ImportFile{}, fmt.Errorf("%w: larger than %d MiB", ErrInvalidImportFile, MaxImportSize >> 20)
     }
-    return NewImportFile(data)
-}
-
-func NewImportFile(data []byte) (ImportFile, error) {
     imported := ImportFile{}
     decoder := json.NewDecoder(bytes.NewReader(data))
     decoder.DisallowUnknownFields()
@@ -82,9 +67,41 @@ func NewImportFile(data []byte) (ImportFile, error) {
         return ImportFile{}, fmt.Errorf("%w: format %q version %d expected", ErrInvalidImportFile, ImportFormat, ImportVersion)
     }
     if imported.Days == nil {
-        imported.Days = map[activity.Date]activity.DayEntry{}
+        imported.Days = map[Date]DayEntry{}
     }
     return imported, nil
+}
+
+func NewImportFileOf(calendar Calendar) ImportFile {
+    start := calendar.Settings.Start
+    settings := &ImportSettings{Start: &start, Counters: map[string]ImportCounter{}}
+    for id, stored := range calendar.Settings.Counters {
+        initial := stored.Initial
+        settings.Counters[id] = ImportCounter{Enabled: stored.Enabled, Amount: stored.Amount, Initial: &initial}
+    }
+    days := map[Date]DayEntry{}
+    for d, entry := range calendar.Days {
+        days[d] = entry
+    }
+    adjustments := []ImportAdjustment{}
+    for _, adjustment := range calendar.Adjustments {
+        adjustments = append(adjustments, ImportAdjustment{Date: adjustment.Date, Counter: adjustment.Counter, Amount: adjustment.Amount, Reason: adjustment.Reason})
+    }
+    slices.SortStableFunc(adjustments, func(a ImportAdjustment, b ImportAdjustment) int {
+        return a.Date.Compare(b.Date)
+    })
+    return ImportFile{Format: ImportFormat, Version: ImportVersion, Settings: settings, Days: days, Adjustments: adjustments}
+}
+
+func (f ImportFile) Encode() ([]byte, error) {
+    var data bytes.Buffer
+    encoder := json.NewEncoder(&data)
+    encoder.SetEscapeHTML(false)
+    encoder.SetIndent("", "  ")
+    if err := encoder.Encode(f); err != nil {
+        return nil, err
+    }
+    return data.Bytes(), nil
 }
 
 // ---------------------------------------------------------------------------
