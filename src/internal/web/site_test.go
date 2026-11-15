@@ -196,11 +196,11 @@ func TestMonthLifecycle(t *testing.T) {
     if strings.Contains(body, "<script>alert") || !strings.Contains(body, "&lt;script&gt;alert(1)&lt;/script&gt; &amp; co") {
         t.Fatal("the comment is not escaped")
     }
-    if !strings.Contains(body, `<option value="WE" selected>Week-end</option>`) || !strings.Contains(body, "<small>Samedi</small>") {
-        t.Fatal("a Saturday must be entered as WE and keep its name")
+    if !strings.Contains(body, `<option value="WE" selected>Week-end</option>`) || !strings.Contains(body, "<small>Week-end</small>") || !strings.Contains(body, "<small>Semaine</small>") || strings.Contains(body, "<small>Samedi</small>") {
+        t.Fatal("a Saturday must be entered as WE and labelled Week-end, a working day Semaine")
     }
     _, _, november := user.get("/dashboard/activity/2026/11")
-    if !strings.Contains(november, `<select name="am:2026-11-11" aria-label="Matin du 11 novembre"><option value="" selected>Aucun</option>`) || !strings.Contains(november, "Jour férié : Armistice") {
+    if !strings.Contains(november, `<select name="am:2026-11-11" aria-label="Matin du 11 novembre"><option value="" selected>Aucun</option>`) || !strings.Contains(november, "<small>Armistice 1918</small>") || strings.Contains(november, "Jour férié : ") {
         t.Fatal("a holiday must stay to be entered and keep its name")
     }
     weekend := user.monthForm(body, map[string]string{"am:2026-09-12": "CP"})

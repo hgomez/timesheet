@@ -237,11 +237,12 @@ func (v *MonthView) day(ws *Workspace, d activity.Date, stored activity.DayEntry
     holidays := ws.Book.Holidays()
     record := dayRecord{Date: d.String(), Label: d.Label(), Problems: problems}
     states := []string{}
+    record.Kind = "Semaine"
     if name, holiday := holidays.Name(d); holiday {
-        record.Kind = "Jour férié : " + name
+        record.Kind = name
         states = append(states, "is-holiday")
     } else if d.IsWeekend() {
-        record.Kind = strings.ToUpper(d.WeekdayName()[:1]) + d.WeekdayName()[1:]
+        record.Kind = "Week-end"
         states = append(states, "is-weekend")
     }
     if d == ws.Today {

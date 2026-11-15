@@ -311,7 +311,7 @@ Accounts created on the command line do not have the flag, and `user passwd` cle
 - Each half-day holds an activity code or nothing.
 - Every day is entered, weekends and holidays included: the template has the codes `WE` « Week-end » and `JF` « Jour férié » for them.
 - Nothing is prefilled.
-- The calendar only names the rows: the weekday for a weekend (« Samedi », « Dimanche »), « Jour férié : \<nom> » for a legal holiday.
+- The calendar only names the rows: the name of the holiday for a legal holiday (« Noël »), « Week-end » for a Saturday or a Sunday, « Semaine » for a working day.
 - The calendar refuses a consuming code on a weekend or a legal holiday ([Day kinds](#day-kinds)).
 
 ### Comments
@@ -348,9 +348,9 @@ Lengths count characters (Unicode code points), not bytes.
 
 | Kind | Definition | Row label | Consuming code |
 | --- | --- | --- | --- |
-| Weekend day | Saturday or Sunday | the weekday | refused |
-| Legal holiday | one of the [legal holidays](#legal-holidays), on any weekday | « Jour férié : \<nom> » | refused |
-| Working day | Monday to Friday, not a legal holiday | none | allowed |
+| Weekend day | Saturday or Sunday | « Week-end » | refused |
+| Legal holiday | one of the [legal holidays](#legal-holidays), on any weekday | the name of the holiday, « \<nom> » | refused |
+| Working day | Monday to Friday, not a legal holiday | « Semaine » | allowed |
 
 - A code that is not consuming can be entered on any day, and credits its counter wherever it is entered.
 - The indicators Jours fériés and Ouvrés follow the calendar of legal holidays, whatever is entered.
@@ -374,7 +374,7 @@ Lengths count characters (Unicode code points), not bytes.
 | « Noël » | 25 December |
 
 - Easter Sunday follows the Meeus/Butcher algorithm.
-- A holiday falling on a weekend keeps its name on the row.
+- A holiday falling on a weekend is labelled with its name on the row, not « Week-end ».
 
 ### Today and time zone
 
@@ -1120,7 +1120,7 @@ The section then holds a legend of the codes and of the half-day states, and the
 #### Grid
 
 - The grid is a `<table>` with one row per day, captioned « Saisie de \<Mois> \<année> : \<n> j non renseigné(s) ».
-- Each row starts with a `<th scope="row">` holding the `<time>` and, for a weekend or a holiday, the weekday or « Jour férié : \<nom> ».
+- Each row starts with a `<th scope="row">` holding the `<time>` and the label of its day kind: the name of the holiday, « Week-end » or « Semaine » ([Day kinds](#day-kinds)).
 - The columns are « Jour », « Matin », « Après-midi », « Journée » (only when the month is editable) and « Commentaire ».
 - Each `<select>` and comment field is named by an `aria-label`: « Matin du 3 novembre », « Après-midi du 3 novembre », « Journée du 3 novembre », « Commentaire du 3 novembre ».
 - The lists offer the codes of [Codes offered in a grid](#codes-offered-in-a-grid).
