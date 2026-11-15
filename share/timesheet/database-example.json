@@ -31,7 +31,7 @@
       },
       {
         "id": "CP",
-        "label": "Congés payés",
+        "label": "Congé payé",
         "consumes": "CP",
         "feeds": null,
         "color": "#e01b24",
@@ -94,7 +94,7 @@
       },
       {
         "id": "WE",
-        "label": "Week-end",
+        "label": "Week-ends",
         "short_label": "WE",
         "enabled_by_default": true,
         "accrual": {
@@ -107,7 +107,7 @@
       },
       {
         "id": "JF",
-        "label": "Jour férié",
+        "label": "Jours fériés",
         "short_label": "JF",
         "enabled_by_default": true,
         "accrual": {
@@ -133,7 +133,7 @@
       },
       {
         "id": "CSS",
-        "label": "Congé sans solde",
+        "label": "Congés sans solde",
         "short_label": "CSS",
         "enabled_by_default": true,
         "accrual": {
@@ -146,7 +146,7 @@
       },
       {
         "id": "RTT",
-        "label": "Récupération temps de travail",
+        "label": "Récupérations temps de travail",
         "short_label": "RTT",
         "enabled_by_default": true,
         "accrual": {
@@ -159,7 +159,7 @@
       },
       {
         "id": "TP",
-        "label": "Temps partiel",
+        "label": "Temps partiels",
         "short_label": "TP",
         "enabled_by_default": true,
         "accrual": {
@@ -172,7 +172,7 @@
       },
       {
         "id": "TPC",
-        "label": "Temps partiel complémentaire",
+        "label": "Temps partiels complémentaires",
         "short_label": "TPC",
         "enabled_by_default": false,
         "accrual": {
@@ -185,7 +185,7 @@
       },
       {
         "id": "ABS",
-        "label": "Absence",
+        "label": "Absences",
         "short_label": "ABS",
         "enabled_by_default": true,
         "accrual": {
@@ -7887,7 +7887,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés",
+          "label": "Congé payé",
           "ref": null,
           "created": "2024-01-31T22:59:59Z"
         },
@@ -10494,7 +10494,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -10505,7 +10505,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -10527,7 +10527,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -10571,7 +10571,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -10582,7 +10582,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -10593,7 +10593,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -10604,7 +10604,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -10648,7 +10648,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -10659,7 +10659,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -10670,7 +10670,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -10681,7 +10681,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-08-31T21:59:59Z"
         },
@@ -12122,7 +12122,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2024-12-31T22:59:59Z"
         },
@@ -12232,7 +12232,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-01-31T22:59:59Z"
         },
@@ -12243,7 +12243,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-01-31T22:59:59Z"
         },
@@ -12474,7 +12474,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés",
+          "label": "Congé payé",
           "ref": null,
           "created": "2025-01-31T22:59:59Z"
         },
@@ -13354,7 +13354,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-04-30T21:59:59Z"
         },
@@ -13365,7 +13365,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-04-30T21:59:59Z"
         },
@@ -13376,7 +13376,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-04-30T21:59:59Z"
         },
@@ -13387,7 +13387,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-04-30T21:59:59Z"
         },
@@ -14850,7 +14850,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -14861,7 +14861,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -14872,7 +14872,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -14927,7 +14927,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -14938,7 +14938,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -14949,7 +14949,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -14960,7 +14960,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -15004,7 +15004,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -15015,7 +15015,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -15026,7 +15026,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -15037,7 +15037,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2025-08-31T21:59:59Z"
         },
@@ -15950,7 +15950,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés",
+          "label": "Congé payé",
           "ref": null,
           "created": "2025-11-30T22:59:59Z"
         },
@@ -16478,7 +16478,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés",
+          "label": "Congé payé",
           "ref": null,
           "created": "2025-12-31T22:59:59Z"
         },
@@ -16489,7 +16489,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés",
+          "label": "Congé payé",
           "ref": null,
           "created": "2025-12-31T22:59:59Z"
         },
@@ -16588,7 +16588,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-01-31T22:59:59Z"
         },
@@ -17600,7 +17600,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-03-31T21:59:59Z"
         },
@@ -17633,7 +17633,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-04-30T21:59:59Z"
         },
@@ -17644,7 +17644,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-04-30T21:59:59Z"
         },
@@ -17655,7 +17655,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-04-30T21:59:59Z"
         },
@@ -19184,7 +19184,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19195,7 +19195,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19206,7 +19206,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19217,7 +19217,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19261,7 +19261,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19272,7 +19272,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19283,7 +19283,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19294,7 +19294,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19338,7 +19338,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19349,7 +19349,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19360,7 +19360,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19371,7 +19371,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés, Vacances",
+          "label": "Congé payé, Vacances",
           "ref": null,
           "created": "2026-08-31T21:59:59Z"
         },
@@ -19800,7 +19800,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés",
+          "label": "Congé payé",
           "ref": null,
           "created": "2026-10-31T22:59:59Z"
         },
@@ -19811,7 +19811,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés",
+          "label": "Congé payé",
           "ref": null,
           "created": "2026-10-31T22:59:59Z"
         },
@@ -20108,7 +20108,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés",
+          "label": "Congé payé",
           "ref": null,
           "created": "2026-10-31T22:59:59Z"
         },
@@ -20119,7 +20119,7 @@
           "counter": "CP",
           "kind": "debit",
           "amount": "-1",
-          "label": "Congés payés",
+          "label": "Congé payé",
           "ref": null,
           "created": "2026-10-31T22:59:59Z"
         },

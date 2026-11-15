@@ -119,14 +119,14 @@ The number of extra days comes from the employment contract: the application doe
 | Term | Meaning |
 | --- | --- |
 | `TT` | Code and counter « Temps de travail »: a worked half-day. |
-| `WE` | Code and counter « Week-end »: a weekend half-day. |
-| `JF` | Code and counter « Jour férié »: a half-day entered as a holiday. A "day entered `JF`" is not always a [public holiday](#public-holidays). |
-| `CP` | Code and counter « Congés payés »: paid leave. |
-| `CSS` | Code and counter « Congé sans solde »: unpaid leave. |
-| `RTT` | Code and counter « Récupération temps de travail »: days off granted for working beyond 35 hours a week. |
-| `TP` | Code and counter « Temps partiel »: the weekly day off of a part-time employee, entered by hand. |
-| `TPC` | Code and counter « Temps partiel complémentaire »: extra days off some employers grant to part-time employees, managed like `RTT`. The name is the template's, not a legal notion. |
-| `ABS` | Code and counter « Absence »: an absence, its reason going into the comment. |
+| `WE` | Code « Week-end » and counter « Week-ends »: a weekend half-day. |
+| `JF` | Code « Jour férié » and counter « Jours fériés »: a half-day entered as a holiday. A "day entered `JF`" is not always a [public holiday](#public-holidays). |
+| `CP` | Code « Congé payé » and counter « Congés payés »: paid leave. |
+| `CSS` | Code « Congé sans solde » and counter « Congés sans solde »: unpaid leave. |
+| `RTT` | Code « Récupération temps de travail » and counter « Récupérations temps de travail »: days off granted for working beyond 35 hours a week. |
+| `TP` | Code « Temps partiel » and counter « Temps partiels »: the weekly day off of a part-time employee, entered by hand. |
+| `TPC` | Code « Temps partiel complémentaire » and counter « Temps partiels complémentaires »: extra days off some employers grant to part-time employees, managed like `RTT`. The name is the template's, not a legal notion. |
+| `ABS` | Code « Absence » and counter « Absences »: an absence, its reason going into the comment. |
 | AA | The WCAG 2 contrast level of 4.5:1 for normal text. |
 | account | The record of one person: login, name, profile, state, password hash and data. |
 | accrual | A credit given by the rule of a counter, every month or every year. |
@@ -500,7 +500,7 @@ How long the limit lasts:
 | `TT` | « Temps de travail » | feeds | `TT` | `#33d17a` |
 | `WE` | « Week-end » | feeds | `WE` | `#9a9996` |
 | `JF` | « Jour férié » | feeds | `JF` | `#ff7800` |
-| `CP` | « Congés payés » | consumes | `CP` | `#e01b24` |
+| `CP` | « Congé payé » | consumes | `CP` | `#e01b24` |
 | `CSS` | « Congé sans solde » | feeds | `CSS` | `#e01b24` |
 | `RTT` | « Récupération temps de travail » | consumes | `RTT` | `#e01b24` |
 | `TP` | « Temps partiel » | feeds | `TP` | `#3584e4` |
@@ -555,17 +555,19 @@ The bounds on denominators and magnitude keep every sum exact and readable back.
 
 ### Counters of the template
 
+The labels of the counters are in the plural, those of the codes in the singular: the counter « Congés payés » is fed or consumed by the code « Congé payé ».
+
 | Counter | Label | Short label | Accrual | Fed by | Period start | Carry over | Enabled by default |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `TT` | « Temps de travail » | `TT` | none (0 a year) | `TT`: worked days of the year | `01-01` | no | yes |
-| `WE` | « Week-end » | `WE` | none (0 a year) | `WE`: weekend days entered in the year | `01-01` | no | yes |
-| `JF` | « Jour férié » | `JF` | none (0 a year) | `JF`: days entered `JF` in the year | `01-01` | no | yes |
+| `WE` | « Week-ends » | `WE` | none (0 a year) | `WE`: weekend days entered in the year | `01-01` | no | yes |
+| `JF` | « Jours fériés » | `JF` | none (0 a year) | `JF`: days entered `JF` in the year | `01-01` | no | yes |
 | `CP` | « Congés payés » | `CP` | 2.08 a month | none (consumed by `CP`) | `06-01` | yes | yes |
-| `CSS` | « Congé sans solde » | `CSS` | none (0 a year) | `CSS`: unpaid leave days of the year | `01-01` | no | yes |
-| `RTT` | « Récupération temps de travail » | `RTT` | 8/12 a month (8 days a year) | none (consumed by `RTT`) | `01-01` | no | yes |
-| `TP` | « Temps partiel » | `TP` | none (0 a year) | `TP`: part-time days of the year | `01-01` | no | yes |
-| `TPC` | « Temps partiel complémentaire » | `TPC` | 0 a month: each employee concerned sets an own amount, `7/12` in the [worked example](#worked-example) | none (consumed by `TPC`) | `01-01` | no | no |
-| `ABS` | « Absence » | `ABS` | none (0 a year) | `ABS`: absence days of the year | `01-01` | no | yes |
+| `CSS` | « Congés sans solde » | `CSS` | none (0 a year) | `CSS`: unpaid leave days of the year | `01-01` | no | yes |
+| `RTT` | « Récupérations temps de travail » | `RTT` | 8/12 a month (8 days a year) | none (consumed by `RTT`) | `01-01` | no | yes |
+| `TP` | « Temps partiels » | `TP` | none (0 a year) | `TP`: part-time days of the year | `01-01` | no | yes |
+| `TPC` | « Temps partiels complémentaires » | `TPC` | 0 a month: each employee concerned sets an own amount, `7/12` in the [worked example](#worked-example) | none (consumed by `TPC`) | `01-01` | no | no |
+| `ABS` | « Absences » | `ABS` | none (0 a year) | `ABS`: absence days of the year | `01-01` | no | yes |
 
 ### Accrual
 
@@ -1254,7 +1256,7 @@ The table « Totaux de l'année » of the [year page](#totals-of-the-year), redu
 ### Counter statements
 
 - One section per counter that is enabled, or that has entries or cancelled entries in the month, in the order of the configuration.
-- The `h2` is the label of the counter (« Temps de travail », « Week-end »...), with the badge « provisoire » while the statement has provisional lines.
+- The `h2` is the label of the counter (« Temps de travail », « Week-ends »...), with the badge « provisoire » while the statement has provisional lines.
 - The table is captioned « Relevé \<compteur> de \<Mois> \<année> », for instance « Relevé Congés payés de Février 2026 ».
 
 | Row or column | Content |
@@ -2419,7 +2421,7 @@ The spreadsheet an employee converts, and the import file made from it, are pers
   "configuration": {
     "revision": 3,
     "public_holidays": "fr-metropole",
-    "activities": [ { "id": "CP", "label": "Congés payés", "consumes": "CP", "feeds": null, "color": "#e01b24", "archived": false } ],
+    "activities": [ { "id": "CP", "label": "Congé payé", "consumes": "CP", "feeds": null, "color": "#e01b24", "archived": false } ],
     "counters": [ { "id": "CP", "label": "Congés payés", "short_label": "CP", "enabled_by_default": true, "accrual": { "every": "month", "amount": "2.08" }, "period_start": "06-01", "carry_over": true, "archived": false } ]
   },
   "accounts": [

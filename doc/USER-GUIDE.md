@@ -42,7 +42,7 @@ The database starts with these codes and counters (from the configuration templa
 | `TP` | « Temps partiel » | Feeds | The weekly day off of a part-time contract (TP, temps partiel). |
 | `CSS` | « Congé sans solde » | Feeds | Unpaid leave. |
 | `ABS` | « Absence » | Feeds | Absences; the reason goes into the comment. |
-| `CP` | « Congés payés » | Consumes | Paid leave (CP, congés payés). |
+| `CP` | « Congé payé » | Consumes | Paid leave (CP, congés payés). |
 | `RTT` | « Récupération temps de travail » | Consumes | RTT days. RTT stands for réduction du temps de travail: days off granted for working beyond 35 hours a week. |
 | `TPC` | « Temps partiel complémentaire » | Consumes | Complementary part-time days, managed like RTT. |
 

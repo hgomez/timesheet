@@ -28,7 +28,7 @@
     },
     {
       "id": "CP",
-      "label": "Congés payés",
+      "label": "Congé payé",
       "consumes": "CP",
       "feeds": null,
       "color": "#e01b24",
@@ -91,7 +91,7 @@
     },
     {
       "id": "WE",
-      "label": "Week-end",
+      "label": "Week-ends",
       "short_label": "WE",
       "enabled_by_default": true,
       "accrual": {
@@ -104,7 +104,7 @@
     },
     {
       "id": "JF",
-      "label": "Jour férié",
+      "label": "Jours fériés",
       "short_label": "JF",
       "enabled_by_default": true,
       "accrual": {
@@ -130,7 +130,7 @@
     },
     {
       "id": "CSS",
-      "label": "Congé sans solde",
+      "label": "Congés sans solde",
       "short_label": "CSS",
       "enabled_by_default": true,
       "accrual": {
@@ -143,7 +143,7 @@
     },
     {
       "id": "RTT",
-      "label": "Récupération temps de travail",
+      "label": "Récupérations temps de travail",
       "short_label": "RTT",
       "enabled_by_default": true,
       "accrual": {
@@ -156,7 +156,7 @@
     },
     {
       "id": "TP",
-      "label": "Temps partiel",
+      "label": "Temps partiels",
       "short_label": "TP",
       "enabled_by_default": true,
       "accrual": {
@@ -169,7 +169,7 @@
     },
     {
       "id": "TPC",
-      "label": "Temps partiel complémentaire",
+      "label": "Temps partiels complémentaires",
       "short_label": "TPC",
       "enabled_by_default": false,
       "accrual": {
@@ -182,7 +182,7 @@
     },
     {
       "id": "ABS",
-      "label": "Absence",
+      "label": "Absences",
       "short_label": "ABS",
       "enabled_by_default": true,
       "accrual": {

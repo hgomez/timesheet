@@ -101,7 +101,7 @@ func TestDataImportRefusesBadRequests(t *testing.T) {
     if status, _, body := user.upload("/dashboard/data/import", form, "x.json", `{"format": "timesheet-import", "version": 1, "days": {}, "extra": 1}`); (status != http.StatusUnprocessableEntity) || !strings.Contains(body, "n&#39;est pas un import valide") {
         t.Errorf("invalid file: %d", status)
     }
-    if status, _, body := user.upload("/dashboard/data/import", form, "x.json", `{"format": "timesheet-import", "version": 1, "days": {"2026-09-05": {"am": "CP", "pm": "CP"}, "2029-01-03": {"am": "TT", "pm": "TT"}}}`); (status != http.StatusUnprocessableEntity) || !strings.Contains(body, `<p role="alert">L&#39;import est refusé`) || !strings.Contains(body, "<li>03/01/2029 : au-delà de l&#39;horizon de planification</li>") || !strings.Contains(body, "<li>05/09/2026 : Matin : « Congés payés » est décompté") || (strings.Index(body, `<ul class="alert-details">`) > strings.Index(body, "<h1>Données</h1>")) {
+    if status, _, body := user.upload("/dashboard/data/import", form, "x.json", `{"format": "timesheet-import", "version": 1, "days": {"2026-09-05": {"am": "CP", "pm": "CP"}, "2029-01-03": {"am": "TT", "pm": "TT"}}}`); (status != http.StatusUnprocessableEntity) || !strings.Contains(body, `<p role="alert">L&#39;import est refusé`) || !strings.Contains(body, "<li>03/01/2029 : au-delà de l&#39;horizon de planification</li>") || !strings.Contains(body, "<li>05/09/2026 : Matin : « Congé payé » est décompté") || (strings.Index(body, `<ul class="alert-details">`) > strings.Index(body, "<h1>Données</h1>")) {
         t.Errorf("refused import: %d %s", status, body)
     }
     if _, calendar, _ := site.database.Account("demo"); len(calendar.Days) != 0 {
