@@ -176,7 +176,7 @@ The number of extra days comes from the employment contract: the application doe
 | reversal | An entry of opposite amount that cancels an earlier entry, labelled « Contre-passation : \<motif> ». |
 | revision | A number raised by each write, used to refuse a form shown before another write. |
 | rounding | The adjustment that rounds a carried balance up to the next whole day. |
-| server page | The page `/admin/` that shows the server configuration read-only ([Server page](#server-page)). |
+| server page | The page `/admin/` that shows the name, version and licence of the software, then the server configuration read-only ([Server page](#server-page)). |
 | server configuration | The file `etc/timesheet/timesheet.json` (`/etc/timesheet/timesheet.json` in the Debian package) holding the settings of the server and of its operation: address, origins, database path, timeouts, sessions, login throttle, password hashing and capacity ([Server configuration](#server-configuration)). |
 | statement | The table of the entries of one counter for one month, with opening and closing balances. |
 | summary | The yearly table of the movements of every counter ([Yearly summary](#yearly-summary)). |
@@ -989,7 +989,7 @@ The panel is a `<nav aria-label="Compte">`, the same on every page of the dashbo
 
 - The footer is centred and has no link.
 - It shows the brand: the logo and « Timesheet ».
-- When connected, the brand carries the version: the release number written in the program (`ReleaseVersion` of `BuildInfo`), the same as the first entry of `debian/changelog`.
+- It never shows the version, connected or not: the version appears only on the [server page](#server-page).
 - It ends with two lines: « Logiciel libre sous licence GNU GPL version 2 ou ultérieure », then « Copyright © 2023-\<année> - Olivier Poncet. », the year being the current one.
 
 ### Columns of tiles
@@ -1421,9 +1421,21 @@ The problems listed under « Réglages non enregistrés. » are:
 
 Route `/admin/`, first entry « Serveur » of the administration navigation, and target of the entry « Administration » of the user menu; `h1` « Serveur ».
 
+#### Software
+
+The first section, « Logiciel », comes before every server setting, with the same presentation:
+
+| Fact | Value |
+| --- | --- |
+| « Nom » | `Timesheet` |
+| « Version » | the release number written in the program (`ReleaseVersion` of `BuildInfo`), the same as the first entry of `debian/changelog` |
+| « Licence » | `GNU GPL version 2 ou ultérieure` |
+
+No other page shows the version.
+
 #### Server settings shown
 
-- The page shows, read-only, every setting of the [server configuration](#server-configuration), one section with its `h2` and its list of facts per group:
+- After it, the page shows, read-only, every setting of the [server configuration](#server-configuration), one section with its `h2` and its list of facts per group:
 
 | Group | Facts |
 | --- | --- |

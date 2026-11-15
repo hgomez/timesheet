@@ -515,14 +515,33 @@ func TestNegativeBalancesAreMarkedInTheStatements(t *testing.T) {
     }
 }
 
+func TestVersionIsShownOnlyOnTheServerPage(t *testing.T) {
+    site := newTestSite(t)
+    admin := site.client().login("root")
+    for _, path := range []string{"/", "/dashboard/", "/dashboard/profile", "/admin/accounts", "/admin/settings"} {
+        if _, _, page := admin.get(path); strings.Contains(page, "<dd><code>test</code></dd>") || strings.Contains(page, "version test") {
+            t.Errorf("%s shows the version", path)
+        }
+    }
+    if _, _, page := site.client().get("/"); strings.Contains(page, "version test") {
+        t.Error("the public home page shows the version")
+    }
+    if _, _, page := admin.get("/admin/"); strings.Count(page, "test</code>") != 1 {
+        t.Error("the server page must show the version once, in the section Logiciel")
+    }
+}
+
 func TestServerPageShowsEveryServerSetting(t *testing.T) {
     site := newTestSite(t)
     admin := site.client().login("root")
     _, _, body := admin.get("/admin/")
-    for _, text := range []string{"<h1>Serveur</h1>", `<a href="/admin/" aria-current="page">Serveur</a>`, "<h2>Sessions</h2>", "<dt>Origines publiques</dt>", "<dd><code>http://127.0.0.1:8080</code></dd>\n                    <dd><code>http://localhost:8080</code></dd>", "<dd><code>10.0.0.0/8</code></dd>\n                    <dd><code>172.16.0.0/12</code></dd>", "<dt>Expiration sans activité</dt>", "<dd><code>8 h</code></dd>", "<dd><code>1 min</code></dd>", "<dt>Taille maximale</dt>", "<dd><code>64 Mio</code></dd>", "<dd><code>256 Kio</code></dd>", "<dd><code>2048 octets</code></dd>", "<dt>Certificat TLS</dt>", "<dd><code>aucun</code></dd>", "<dd><code>/var/lib/timesheet/timesheet-database.json</code></dd>"} {
+    for _, text := range []string{"<h2>Logiciel</h2>", "<dt>Nom</dt>", "<dd><code>Timesheet</code></dd>", "<dt>Version</dt>", "<dd><code>test</code></dd>", "<dt>Licence</dt>", "<dd><code>GNU GPL version 2 ou ultérieure</code></dd>", "<h1>Serveur</h1>", `<a href="/admin/" aria-current="page">Serveur</a>`, "<h2>Sessions</h2>", "<dt>Origines publiques</dt>", "<dd><code>http://127.0.0.1:8080</code></dd>\n                    <dd><code>http://localhost:8080</code></dd>", "<dd><code>10.0.0.0/8</code></dd>\n                    <dd><code>172.16.0.0/12</code></dd>", "<dt>Expiration sans activité</dt>", "<dd><code>8 h</code></dd>", "<dd><code>1 min</code></dd>", "<dt>Taille maximale</dt>", "<dd><code>64 Mio</code></dd>", "<dd><code>256 Kio</code></dd>", "<dd><code>2048 octets</code></dd>", "<dt>Certificat TLS</dt>", "<dd><code>aucun</code></dd>", "<dd><code>/var/lib/timesheet/timesheet-database.json</code></dd>"} {
         if !strings.Contains(body, text) {
             t.Errorf("missing %q", text)
         }
+    }
+    if software, network := strings.Index(body, "<h2>Logiciel</h2>"), strings.Index(body, "<h2>Réseau</h2>"); (software < 0) || (network < 0) || (software > network) {
+        t.Errorf("the section Logiciel must come before the server settings: %d, %d", software, network)
     }
     if _, _, page := admin.get("/admin/settings"); strings.Contains(page, "Réseau") || strings.Contains(page, "<dt>Origines publiques</dt>") {
         t.Error("the configuration page must no longer show the server settings")

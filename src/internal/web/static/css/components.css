@@ -780,11 +780,6 @@ body > footer .brand {
     font-weight: 600;
 }
 
-body > footer .brand small {
-    color: var(--ink-soft);
-    font-weight: normal;
-}
-
 @media (max-width: 1120px) {
     .positions ul, .features ul {
         grid-template-columns: repeat(2, minmax(0, 1fr));

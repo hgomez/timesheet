@@ -32,7 +32,6 @@ type Chrome struct {
     Initials     string
     ProfileLabel string
     CSRF         string
-    Version      string
     Year         int
 }
 

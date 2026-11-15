@@ -288,7 +288,7 @@ A write runs these steps under one `sync.RWMutex`:
 | Entity | Kind | Role |
 | --- | --- | --- |
 | `Repository` | interface | Port to the database, implemented by `store.Database` |
-| `SiteDependencies` | record | Dependencies given to the site: repository, session archive, clock, random source, logger, origins, server configuration, trusted proxies, local prefixes, hash iterations, version |
+| `SiteDependencies` | record | Dependencies given to the site: repository, session archive, clock, random source, logger, origins, server configuration, trusted proxies, local prefixes, hash iterations, version (shown by the server page only) |
 | `Site` | service | Assembly of the routes and of the HTTP chain |
 
 #### HTTP chain
@@ -330,7 +330,7 @@ A write runs these steps under one `sync.RWMutex`:
 | --- | --- | --- |
 | `Renderer` | service | Parses each view with `layout.html` and the partial of its page family, and renders a page |
 | `PageModel` | record | What a view receives: chrome, section, notice, alerts, CSRF token, data |
-| `Chrome` | record | Chrome of the page: viewer, initials, CSRF token of the menu forms, current path, version, year |
+| `Chrome` | record | Chrome of the page: viewer, initials, CSRF token of the menu forms, current path, year |
 | `ErrorPages` | service | Error pages (404, 403, other statuses) |
 | `Notices` | service | Fixed table from a notice code to its message |
 | `EmbeddedAssets` | service | Embedded templates and static files |
@@ -431,7 +431,7 @@ The routes and their answers are specified in [SPECIFICATIONS.md, Routes](SPECIF
 | Settings page (« Réglages ») | `/dashboard/settings` | `SettingsController` | none (the controller builds its record) | `settings.html` | `chrome_page.js` |
 | Profile page (« Mon profil ») | `/dashboard/profile` | `ProfileController` | none (the controller builds its record) | `profile.html` | `chrome_page.js` |
 | Colours of the codes | `/dashboard/colors.css` | `DashboardController` | none | none (generated style sheet) | none |
-| Server page (« Serveur ») | `/admin/` | `AdminServerController` | none (the controller builds its record from the server configuration read at start) | `admin_server.html` | `chrome_page.js` |
+| Server page (« Serveur ») | `/admin/` | `AdminServerController` | none (the controller builds its record from the version and the server configuration read at start) | `admin_server.html` | `chrome_page.js` |
 | Accounts (« Comptes ») | `/admin/accounts` | `AdminController` | none (the controller builds its records) | `admin_accounts.html` | `chrome_page.js` |
 | Account (« Compte … ») | `/admin/accounts/{login}` | `AdminController` | none (the controller builds its record) | `admin_account.html` | `chrome_page.js` |
 | Read-only pages of an account | `/admin/accounts/{login}/dashboard`, `…/month/{year}/{month}`, `…/year/{year}` | `DashboardController` | `DashboardView`, `MonthView`, `YearView` | `dashboard.html`, `month.html`, `year.html` | `chrome_page.js` |

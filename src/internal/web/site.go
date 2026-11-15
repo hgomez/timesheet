@@ -46,7 +46,7 @@ type notFoundHandler struct {
 func NewSite(deps SiteDependencies) (*Site, error) {
     assets := NewEmbeddedAssets()
     today := NewToday(deps.Clock, deps.Server.Server.Location())
-    renderer, err := NewRenderer(assets.Templates(), deps.Version, today, deps.Logger)
+    renderer, err := NewRenderer(assets.Templates(), today, deps.Logger)
     if err != nil {
         return nil, err
     }
@@ -68,7 +68,7 @@ func NewSite(deps SiteDependencies) (*Site, error) {
     settings := NewSettingsController(loader, deps.Repository, renderer, errors, deps.Logger)
     profile := NewProfileController(throttle, address, loader, deps.Repository, sessions, renderer, errors, deps.Random, deps.Iterations, deps.Logger)
     admin := NewAdminController(deps.Repository, sessions, today, renderer, errors, deps.Clock, deps.Random, deps.Iterations, deps.Logger)
-    server := NewAdminServerController(deps.Server, renderer)
+    server := NewAdminServerController(deps.Server, deps.Version, renderer)
     configuration := NewAdminSettingsController(deps.Repository, renderer, errors, deps.Logger)
     user := account.ProfileUser
     root := account.ProfileAdmin

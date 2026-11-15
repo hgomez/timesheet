@@ -37,7 +37,6 @@ import (
 type Renderer struct {
     views    map[string]*template.Template
     families map[string]string
-    version  string
     clock    yearSource
     logger   *slog.Logger
 }
@@ -52,8 +51,8 @@ const layoutFile = "layout.html"
 // Renderer implementation
 // ---------------------------------------------------------------------------
 
-func NewRenderer(templates fs.FS, version string, clock yearSource, logger *slog.Logger) (*Renderer, error) {
-    r := &Renderer{views: map[string]*template.Template{}, families: map[string]string{}, version: version, clock: clock, logger: logger}
+func NewRenderer(templates fs.FS, clock yearSource, logger *slog.Logger) (*Renderer, error) {
+    r := &Renderer{views: map[string]*template.Template{}, families: map[string]string{}, clock: clock, logger: logger}
     files, err := fs.Glob(templates, "*.html")
     if err != nil {
         return nil, err
@@ -98,7 +97,7 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
         r.fail(w, fmt.Errorf("unknown view %q", view))
         return
     }
-    model.Chrome = Chrome{Family: family, Section: model.Section, Path: req.URL.Path, Version: r.version, Year: r.clock.Year()}
+    model.Chrome = Chrome{Family: family, Section: model.Section, Path: req.URL.Path, Year: r.clock.Year()}
     if viewer != nil {
         model.Chrome.Connected = true
         model.Chrome.Admin = viewer.IsAdmin()

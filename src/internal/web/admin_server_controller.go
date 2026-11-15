@@ -30,6 +30,7 @@ import (
 
 type AdminServerController struct {
     server   activity.ServerConfiguration
+    version  string
     renderer *Renderer
 }
 
@@ -51,8 +52,8 @@ type serverFactRecord struct {
 // AdminServerController implementation
 // ---------------------------------------------------------------------------
 
-func NewAdminServerController(server activity.ServerConfiguration, renderer *Renderer) *AdminServerController {
-    return &AdminServerController{server: server, renderer: renderer}
+func NewAdminServerController(server activity.ServerConfiguration, version string, renderer *Renderer) *AdminServerController {
+    return &AdminServerController{server: server, version: version, renderer: renderer}
 }
 
 func (c *AdminServerController) Show(w http.ResponseWriter, r *http.Request) {
@@ -62,6 +63,11 @@ func (c *AdminServerController) Show(w http.ResponseWriter, r *http.Request) {
 func (c *AdminServerController) groups() []serverGroupRecord {
     server, database, sessions, login, limits := c.server.Server, c.server.Database, c.server.Sessions, c.server.Login, c.server.Limits
     return []serverGroupRecord{
+        {Title: "Logiciel", Facts: []serverFactRecord{
+            {"Nom", c.one("Timesheet")},
+            {"Version", c.one(c.version)},
+            {"Licence", c.one("GNU GPL version 2 ou ultérieure")},
+        }},
         {Title: "Réseau", Facts: []serverFactRecord{
             {"Adresse d'écoute", c.one(server.Listen)},
             {"Origines publiques", c.many(server.Origins)},

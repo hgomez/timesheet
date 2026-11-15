@@ -58,7 +58,7 @@ The legal holidays are built in. They name the rows of the grid, refuse leave (a
 | « Année » | Consultation only: the totals of the year, the calendar, the summary of the calendar year and one section per counter. The summary is modelled on a spreadsheet: a carry-forward row « Report N-1 », one row per month and totals. |
 | « Mon profil » | Identity, name shown in the menu, password, open sessions. |
 | « Réglages » | Tracking start, counters enabled, own accrual amounts, initial balances, colours of the codes. Its menu entry is « Mes réglages ». |
-| « Administration » | For administrators: the server settings, read-only (« Serveur »), the accounts (« Comptes ») and the configuration of the activity codes and counters (« Configuration »). |
+| « Administration » | For administrators: the software version and the server settings, read-only (« Serveur »), the accounts (« Comptes ») and the configuration of the activity codes and counters (« Configuration »). |
 
 - The menu under the user's name leads to « Mon profil », « Mes réglages » and, for an administrator, « Administration ». It also logs out (« Se déconnecter »).
 - On the public pages, the arrow entering a door at the right of the header (« Se connecter » on hover) opens the login page « Connexion ».
@@ -151,7 +151,8 @@ The entry « Administration » of the menu adds three pages: « Serveur », « C
 ### Read the server settings
 
 1. Open « Administration »: the page « Serveur » comes first.
-2. It shows, read-only, the settings of the server configuration read at its start: network, requests, database, sessions, login, passwords and limits.
+2. It shows first the section « Logiciel »: name, version and licence of the software. The version is shown nowhere else.
+3. Then it shows, read-only, the settings of the server configuration read at its start: network, requests, database, sessions, login, passwords and limits.
 
 To change them, see [Server configuration](OPERATIONS.md#server-configuration).
 
