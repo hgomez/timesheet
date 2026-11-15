@@ -68,7 +68,7 @@ func NewDefaultConfiguration() Configuration {
             {ID: "JF", Label: "Jour férié", ShortLabel: "JF", EnabledByDefault: true, Accrual: Accrual{Every: EveryYear, Amount: NewQuantity(0, 1)}, PeriodStart: NewPeriodStart(time.January, 1)},
             {ID: "CP", Label: "Congés payés", ShortLabel: "CP", EnabledByDefault: true, Accrual: Accrual{Every: EveryMonth, Amount: NewQuantity(208, 100)}, PeriodStart: NewPeriodStart(time.June, 1), CarryOver: true},
             {ID: "CSS", Label: "Congé sans solde", ShortLabel: "CSS", EnabledByDefault: true, Accrual: Accrual{Every: EveryYear, Amount: NewQuantity(0, 1)}, PeriodStart: NewPeriodStart(time.January, 1)},
-            {ID: "RTT", Label: "Récupération temps de travail", ShortLabel: "RTT", EnabledByDefault: true, Accrual: Accrual{Every: EveryYear, Amount: NewQuantity(10, 1)}, PeriodStart: NewPeriodStart(time.January, 1)},
+            {ID: "RTT", Label: "Récupération temps de travail", ShortLabel: "RTT", EnabledByDefault: true, Accrual: Accrual{Every: EveryMonth, Amount: NewQuantity(8, 12)}, PeriodStart: NewPeriodStart(time.January, 1)},
             {ID: "TP", Label: "Temps partiel", ShortLabel: "TP", EnabledByDefault: true, Accrual: Accrual{Every: EveryYear, Amount: NewQuantity(0, 1)}, PeriodStart: NewPeriodStart(time.January, 1)},
             {ID: "TPC", Label: "Temps partiel complémentaire", ShortLabel: "TPC", Accrual: Accrual{Every: EveryMonth, Amount: NewQuantity(0, 1)}, PeriodStart: NewPeriodStart(time.January, 1)},
             {ID: "ABS", Label: "Absence", ShortLabel: "ABS", EnabledByDefault: true, Accrual: Accrual{Every: EveryYear, Amount: NewQuantity(0, 1)}, PeriodStart: NewPeriodStart(time.January, 1)},

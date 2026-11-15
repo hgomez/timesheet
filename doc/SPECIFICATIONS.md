@@ -57,7 +57,6 @@ Every change of behaviour, screen, label, route, form field, computation rule, d
 - [OUT OF SCOPE](#out-of-scope)
 - [SIMPLIFICATIONS](#simplifications)
 - [PERSONAL DATA](#personal-data)
-- [OPEN POINTS](#open-points)
 
 ## CONVENTIONS
 
@@ -534,7 +533,7 @@ The bounds on denominators and magnitude keep every sum exact and readable back.
 | `JF` | « Jour férié » | `JF` | none (0 a year) | `JF`: days entered `JF` in the year | `01-01` | no | yes |
 | `CP` | « Congés payés » | `CP` | 2.08 a month | none (consumed by `CP`) | `06-01` | yes | yes |
 | `CSS` | « Congé sans solde » | `CSS` | none (0 a year) | `CSS`: unpaid leave days of the year | `01-01` | no | yes |
-| `RTT` | « Récupération temps de travail » | `RTT` | 10 a year, provisional ([Open points](#open-points)) | none (consumed by `RTT`) | `01-01` | no | yes |
+| `RTT` | « Récupération temps de travail » | `RTT` | 8/12 a month (8 days a year) | none (consumed by `RTT`) | `01-01` | no | yes |
 | `TP` | « Temps partiel » | `TP` | none (0 a year) | `TP`: part-time days of the year | `01-01` | no | yes |
 | `TPC` | « Temps partiel complémentaire » | `TPC` | 0 a month: each employee concerned sets an own amount, `7/12` in the [worked example](#worked-example) | none (consumed by `TPC`) | `01-01` | no | no |
 | `ABS` | « Absence » | `ABS` | none (0 a year) | `ABS`: absence days of the year | `01-01` | no | yes |
@@ -2580,10 +2579,10 @@ These limits apply only to a write that grows the database: a lowered limit neve
 
 - `share/timesheet/database-example.json` is a complete database, to try the application with the data of nearly three years. It is installed next to the configuration template.
 - Its configuration is the one of the [configuration template](#configuration-template).
-- It holds one account: login `demo`, name « Compte de démonstration », profile `ADMIN`, password `demonstration`.
+- It holds one account: login `demo`, name « Démo », profile `ADMIN`, password `demonstration`.
 - Its tracking start is 2023-11-27; every day is entered from that date to 2026-12-31.
 - The months from November 2023 to October 2026 are validated, each on its last day at 23:59:59 in `Europe/Paris`; the later months are open.
-- `CP` is enabled, `TPC` enabled with the own amount `7/12`, `RTT` disabled; three adjustments complete the balances of `CP`.
+- `CP` and `RTT` are enabled with their default amounts, `TPC` is disabled; the complementary part-time days of the history are entered as `RTT`; three adjustments complete the balances of `CP`.
 - It was made from a real history, anonymized: the identity is replaced, the comments are reduced to « Vacances », the names of the holidays, « Conférence », « Congé » and « Absence », and the reasons of the adjustments are neutral. The calendar is kept.
 - To use it, copy it with the mode 0600 into a directory of your own and give the copy with `--database` ([OPERATIONS.md](OPERATIONS.md#example-database)).
 - Its password is public: it is never served on a network nor used as a real database.
@@ -2839,7 +2838,7 @@ These are choices of the application. Each one gives the way to reach the expect
 - Counters credit the configured amount at each accrual, whatever the absences: paid leave is not reduced for unpaid absences, and `RTT` is not reduced for absences. A code has no nature beyond its counter.
 - Sick leave has no specific accrual and no fifteen-month carry over.
 - There are no extra splitting days (jours de fractionnement).
-- The number of `RTT` days comes from a company agreement; the template's 10 days a year is provisional ([Open points](#open-points)).
+- The number of `RTT` days comes from a company agreement; the template's 8/12 a month (8 days a year) is an example, to adapt in the [configuration page](#configuration-page) or with an own amount.
 - `TPC` and the arrangement of the [worked example](#worked-example) are the arrangement of one employer, not a legal scheme.
 - Every legal holiday is treated as not worked: leave cannot be entered on a holiday that the employer makes worked, such as Whit Monday as the solidarity day. Enter the day with a code that is not consuming, for instance `JF`, and the leave taken as a negative adjustment of its counter.
 - The eleven national holidays are built in; the extra holidays of Alsace-Moselle and of the overseas territories are not.
@@ -2875,8 +2874,3 @@ These are choices of the application. Each one gives the way to reach the expect
 - The application gives no export and no selective erasure: a comment frozen in a validated month is erased only with the account.
 - The person who runs the service is responsible for the legal obligations attached to these data.
 - The protection of the files is described in [SECURITY.md](SECURITY.md#data-protection).
-
-## OPEN POINTS
-
-- The default amount of `RTT`, 10 days a year, is provisional and still to be set.
-- `RTT` is enabled by default, so every account that does not disable it receives these 10 days on 1 January.

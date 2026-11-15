@@ -146,8 +146,8 @@
       "short_label": "RTT",
       "enabled_by_default": true,
       "accrual": {
-        "every": "year",
-        "amount": "10"
+        "every": "month",
+        "amount": "8/12"
       },
       "period_start": "01-01",
       "carry_over": false,

@@ -223,16 +223,22 @@ func TestLeaveIsRefusedOnWeekendsAndHolidays(t *testing.T) {
 
 func TestYearlyCreditAndPositions(t *testing.T) {
     calendar := NewCalendar(month(t, "2026-01").First())
-    book := NewBookkeeper(authorConfiguration(), calendar, NewHolidayCalendar())
+    config := authorConfiguration()
+    for i := range config.Counters {
+        if config.Counters[i].ID == "RTT" {
+            config.Counters[i].Accrual = Accrual{Every: EveryYear, Amount: NewQuantity(10, 1)}
+        }
+    }
+    book := NewBookkeeper(config, calendar, NewHolidayCalendar())
     today := day(t, "2026-11-08")
     journal := book.Journal(book.Horizon(today))
-    rtt, _ := authorConfiguration().Counter("RTT")
+    rtt, _ := config.Counter("RTT")
     position := NewPosition(journal, rtt, today)
     expectQuantity(t, "RTT today", position.Today, "10")
     if position.ForecastDate != day(t, "2026-12-31") {
         t.Fatalf("RTT forecast date: %+v", position)
     }
-    cp, _ := authorConfiguration().Counter("CP")
+    cp, _ := config.Counter("CP")
     position = NewPosition(journal, cp, today)
     expectQuantity(t, "CP today", position.Today, "21.4")
     if position.ForecastDate != NewDate(2027, time.May, 31) {

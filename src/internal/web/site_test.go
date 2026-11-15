@@ -503,7 +503,7 @@ func TestNegativeBalancesAreMarkedInTheStatements(t *testing.T) {
     site := newTestSite(t)
     user := site.client().login("demo")
     _, _, body := user.get("/dashboard/activity/2026/10")
-    adjust := url.Values{"csrf": {user.token(body)}, "revision": {user.field(body, "revision")}, "action": {"add"}, "date": {"2026-10-05"}, "counter": {"RTT"}, "amount": {"-3"}, "reason": {"test"}}
+    adjust := url.Values{"csrf": {user.token(body)}, "revision": {user.field(body, "revision")}, "action": {"add"}, "date": {"2026-10-05"}, "counter": {"CSS"}, "amount": {"-3"}, "reason": {"test"}}
     if status, _, _ := user.post("/dashboard/adjustments", adjust); status != http.StatusSeeOther {
         t.Fatalf("adjust: %d", status)
     }
