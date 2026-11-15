@@ -73,6 +73,15 @@ Every change of behaviour, screen, label, route, form field, computation rule, d
 
 ## PURPOSE
 
+### Why this application
+
+- Some employers track the activity and the leave counters of their employees with tools that work poorly: balances out of date, wrong or hard to read, late or missing entries.
+- Timesheet lets an employee keep, on their own and independently of these tools, their activity day by day and their counters.
+- The employee then compares their own records with what the employer reports and with the payslips, month after month.
+- A gap found this way is spotted early, while the facts are still easy to establish, and can be raised with the employer.
+- A gap the employee accepts, a correction of the payslip for instance, is entered as an adjustment with its reason ([Adjustments](#adjustments)); validated months freeze the records as they stood ([Validation](#validation)).
+- Timesheet does not replace the tool of the employer nor its payroll: it is the employee's own reference to check them against.
+
 ### Scope
 
 - Timesheet is designed for employees working in France.

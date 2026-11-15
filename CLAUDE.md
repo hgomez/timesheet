@@ -1,6 +1,6 @@
 # CLAUDE.MD
 
-Timesheet: a web application for employees working in France, tracking a professional activity half-day by half-day, with the leave counters of French labour practice (paid leave, RTT, part time) kept like bank accounts, monthly closing and a yearly summary. One Go binary, standard library only, a single JSON database.
+Timesheet: a web application for employees working in France, tracking a professional activity half-day by half-day, with the leave counters of French labour practice (paid leave, RTT, part time) kept like bank accounts, monthly closing and a yearly summary. Employees keep it on their own, to check what their employer reports and their payslips against it and spot the gaps. One Go binary, standard library only, a single JSON database.
 
 ## RULES
 

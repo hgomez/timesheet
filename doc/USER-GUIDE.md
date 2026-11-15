@@ -2,6 +2,8 @@
 
 This guide describes the daily tasks of an employee and of an administrator in Timesheet, and the meaning of the labels shown on screen.
 
+Timesheet is your own record of your activity and your counters, kept independently of the tools of your employer, to compare with what the employer reports and with your payslips and to spot the gaps ([Why this application](SPECIFICATIONS.md#why-this-application)).
+
 It is written for the people who use the application. Installing and running the server are described in the [README](../README.md); the complete rules are in [SPECIFICATIONS.md](SPECIFICATIONS.md).
 
 ## CONTENTS

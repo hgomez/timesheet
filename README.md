@@ -2,9 +2,7 @@
 
 ## ABSTRACT
 
-Timesheet is a web application for employees working in France. It tracks a professional activity half-day by half-day. It keeps the leave counters of French labour practice (paid leave, RTT, complementary part-time days…) like bank accounts, with a monthly closing and a yearly summary.
-
-This README is the entry point: what the application does, how to try it from the sources, and where each detail is documented.
+Timesheet is a web application with which employees working in France keep their own record of their activity and of their leave counters, to check what their employer reports and their payslips against it.
 
 ![Timesheet](doc/timesheet.png)
 
@@ -21,6 +19,20 @@ This README is the entry point: what the application does, how to try it from th
 - [CREDITS](#credits)
 
 ## DESCRIPTION
+
+### Overview
+
+Timesheet is a personal activity and leave tracker for employees working in France. Each day of the year is split into a morning and an afternoon, and each half-day receives an activity code: working time, part time, paid leave (congés payés), RTT, public holiday, weekend, unpaid leave or absence, with a free comment for the day. From these entries, the application keeps the leave counters of French labour practice up to date.
+
+It answers a common problem. Many employers track the activity and the leave of their employees with tools that work poorly: balances shown late or wrong, entries that are not up to date, rules applied unevenly, counters on the payslip that are hard to reconcile with the days actually taken. The employee usually has no other reference than these figures, so an error can go unnoticed for months, until the facts are hard to establish and the correction hard to obtain.
+
+Timesheet gives the employee that reference. They keep, on their own and independently of the tools of their employer, their activity day by day. The application keeps each counter like a bank account: every monthly accrual of paid leave or RTT, every day of leave taken, every rounding or reset at the end of a period and every correction is a dated entry with its label, and the balance is the sum of the entries. The French rules are applied automatically: the public holidays of the chosen zone, paid leave accrued at 2.08 days a month over a June-to-May period and rounded up at its end, RTT days, part-time days and the complementary days of a part-time contract.
+
+Each month that is over is validated like a bank statement: its entries are frozen, and a later correction never erases them but reopens the month or adds a dated adjustment with its reason. The history stays complete and traceable. The dashboard (« Tableau de bord ») gives the balance of each counter today and a forecast at the end of its period, the month page (« Mois ») the statement of each counter, and the year page (« Année ») a yearly summary month by month, modelled on a spreadsheet.
+
+The employee then compares their own records with what their employer reports and with each payslip. A gap is spotted early, while the facts are still easy to establish, and can be raised with the employer, dates and figures in hand. A correction the employee accepts, an adjustment of the payslip for instance, is entered with its reason, so that the two records agree again.
+
+An existing history, kept in a spreadsheet for instance, can be converted to a JSON file and imported, and the data of an account can be exported in the same format at any time. Timesheet does not replace the tool of the employer nor its payroll: it is the employee's own reference to check them against. Although it supports several accounts, it is meant above all for personal use, on a workstation or a small server, from the sources, as a Debian package or in a container. The reasons and the scope are detailed in [Purpose](doc/SPECIFICATIONS.md#purpose).
 
 ### Features
 
