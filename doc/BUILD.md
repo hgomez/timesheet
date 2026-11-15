@@ -108,8 +108,10 @@ Never run `make mrproper` without a backup of the database and a commit of your 
 1. From the root of the repository:
 
    ```sh
-   docker build -t timesheet .
+   make docker
    ```
+
+   It runs `docker build -t timesheet .` and ends with `=== docker ok ===`.
 
 2. The build runs in two stages:
    - in `golang:1.24-alpine3.22`, `.ci/make-build.sh` and `.ci/make-install.sh` build and install the files into a staging tree, as `make` and `make install` do; `bin/timesheet-entrypoint.sh` is added as `/usr/bin/timesheet-entrypoint.sh`, and `config set` makes the server configuration listen on `0.0.0.0:8080`;

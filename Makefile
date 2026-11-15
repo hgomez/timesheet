@@ -37,6 +37,10 @@ install:
 	DESTDIR="$(DESTDIR)" .ci/make-install.sh
 	@echo "=== $@ ok ==="
 
+docker:
+	.ci/make-docker.sh
+	@echo "=== $@ ok ==="
+
 mrproper:
 	git clean -f -d -x
 	@echo "=== $@ ok ==="

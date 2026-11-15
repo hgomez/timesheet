@@ -40,6 +40,7 @@ From the repository root. The `make` targets use the private Go cache `.cache/`;
 ```sh
 make                                                       # bin/timesheet (static, CGO_ENABLED=0)
 make check                                                 # go test -race ./... (needs gcc)
+make docker                                                # container image timesheet (needs Docker, runs no test)
 GOCACHE="$PWD/.cache" GOTOOLCHAIN=local go -C src test -race -run TestMonthLifecycle ./internal/web/   # a single test
 GOCACHE="$PWD/.cache" GOTOOLCHAIN=local go -C src vet ./...   # not part of make check
 grep -rlP '^\t' --include='*.go' src                       # tab grep: must print nothing

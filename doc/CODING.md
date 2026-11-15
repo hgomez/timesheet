@@ -682,6 +682,7 @@ Steps of a change:
 | `check` | `make-check.sh` | Runs `go test -race ./...` with `CGO_ENABLED=1`; needs gcc |
 | `install` | `make-install.sh`, with `DESTDIR` | Copies `bin/timesheet` to `$(DESTDIR)/usr/bin` (mode 755), the configuration template, the import template and the example database to `$(DESTDIR)/usr/share/timesheet` (mode 644), and the server configuration to `$(DESTDIR)/etc/timesheet` (mode 644), replacing the one already there. It does not depend on `build`, so that an installation as root never compiles, and it fails when the binary is missing |
 | `clean` | `make-clean.sh` | Runs `go clean` on the packages, empties `.cache/` (compiled packages and test results, so the next build starts from scratch) and removes the binary |
+| `docker` | `make-docker.sh` | Builds the container image `timesheet` with `docker build` from the `Dockerfile` of the repository root; it does not run the tests ([Container image](#container-image)) |
 | `mrproper` | none | Runs `git clean -f -d -x`, which deletes every untracked and ignored file, the database under `var/lib/timesheet/` included |
 
 ### Go environment
