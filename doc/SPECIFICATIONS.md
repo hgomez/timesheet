@@ -473,7 +473,7 @@ How long the limit lasts:
 | --- | --- | --- | --- | --- |
 | `TT` | « Temps de travail » | feeds | `TT` | `#33d17a` |
 | `WE` | « Week-end » | feeds | `WE` | `#9a9996` |
-| `JF` | « Jour férié » | feeds | `JF` | `#9a9996` |
+| `JF` | « Jour férié » | feeds | `JF` | `#ff7800` |
 | `CP` | « Congés payés » | consumes | `CP` | `#e01b24` |
 | `CSS` | « Congé sans solde » | feeds | `CSS` | `#e01b24` |
 | `RTT` | « Récupération temps de travail » | consumes | `RTT` | `#e01b24` |

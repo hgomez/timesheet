@@ -527,7 +527,7 @@ The look is sober and professional:
 
 ### Colours of the codes
 
-- The default colours of the codes are owned by [SPECIFICATIONS.md](SPECIFICATIONS.md): `#33d17a`, `#3584e4`, `#9141ac`, `#e01b24` and `#9a9996`.
+- The default colours of the codes are owned by [SPECIFICATIONS.md](SPECIFICATIONS.md): `#33d17a`, `#3584e4`, `#9141ac`, `#e01b24`, `#9a9996` and `#ff7800`.
 - A code cell takes a black or a white ink, whichever contrasts most with its colour, which keeps every colour above 4.5:1 (WCAG AA level).
 - `TestDayClassesExistInTheStyleSheet` checks that every `day-*` class of the pages has a rule in `components.css` and every `code-*` class a rule in `/dashboard/colors.css`.
 

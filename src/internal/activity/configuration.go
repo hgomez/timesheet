@@ -54,7 +54,7 @@ func NewDefaultConfiguration() Configuration {
         Activities: []ActivityCode{
             {ID: "TT", Label: "Temps de travail", Feeds: "TT", Color: "#33d17a"},
             {ID: "WE", Label: "Week-end", Feeds: "WE", Color: "#9a9996"},
-            {ID: "JF", Label: "Jour férié", Feeds: "JF", Color: "#9a9996"},
+            {ID: "JF", Label: "Jour férié", Feeds: "JF", Color: "#ff7800"},
             {ID: "CP", Label: "Congés payés", Consumes: "CP", Color: "#e01b24"},
             {ID: "CSS", Label: "Congé sans solde", Feeds: "CSS", Color: "#e01b24"},
             {ID: "RTT", Label: "Récupération temps de travail", Consumes: "RTT", Color: "#e01b24"},

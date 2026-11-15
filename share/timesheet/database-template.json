@@ -22,7 +22,7 @@
       "label": "Jour férié",
       "consumes": null,
       "feeds": "JF",
-      "color": "#9a9996",
+      "color": "#ff7800",
       "archived": false
     },
     {
