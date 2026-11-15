@@ -28,7 +28,9 @@
             </details>
         </header>
 {{end}}
-{{define "main-links"}}                    <li><a href="/dashboard/"{{if eq .Section "dashboard"}} aria-current="page"{{end}}>Tableau de bord</a></li>
+{{define "main-links"}}
+{{- if .Chrome.Admin}}                    <li><a href="/admin/">Administration</a></li>
+{{end}}                    <li><a href="/dashboard/"{{if eq .Section "dashboard"}} aria-current="page"{{end}}>Tableau de bord</a></li>
                     <li><a href="/dashboard/activity"{{if eq .Section "activity"}} aria-current="page"{{end}}>Activité</a></li>
                     <li><a href="/dashboard/month"{{if eq .Section "month"}} aria-current="page"{{end}}>Mois</a></li>
                     <li><a href="/dashboard/year/{{.Chrome.Year}}"{{if eq .Section "year"}} aria-current="page"{{end}}>Année</a></li>

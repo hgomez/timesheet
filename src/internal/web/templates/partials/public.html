@@ -20,6 +20,9 @@
             <nav aria-label="Navigation principale">
                 <ul>
 {{- if .Chrome.Connected}}
+{{- if .Chrome.Admin}}
+                    <li><a href="/admin/">Administration</a></li>
+{{- end}}
                     <li><a href="/dashboard/">Tableau de bord</a></li>
 {{- else}}
                     <li><a href="/login" aria-label="Se connecter" title="Se connecter"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M12 3.5h3.5v13H12M3.5 10H12M8.5 6.5 12 10l-3.5 3.5"/></svg></a></li>

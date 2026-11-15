@@ -41,13 +41,24 @@ func TestUserMenuOffersProfileSettingsAndLogout(t *testing.T) {
     if strings.Contains(page, `href="/admin/"`) {
         t.Error("a user must not see the administration link")
     }
-    if _, _, page := admin.get("/dashboard/"); !strings.Contains(page, `<ul>
-                        <li><a href="/admin/">Administration</a></li>
-                        <li><a href="/dashboard/profile">Mon profil</a></li>`) {
-        t.Error("an administrator must see the administration link")
+    if _, _, page := admin.get("/dashboard/"); strings.Count(page, `<li><a href="/admin/">Administration</a></li>
+                    <li><a href="/dashboard/" aria-current="page">Tableau de bord</a></li>`) != 2 {
+        t.Error("an administrator must see the administration link left of the dashboard, in the header and in the burger menu")
     }
-    if _, _, page := admin.get("/admin/settings"); !strings.Contains(page, `<a href="/admin/" aria-current="page">Administration</a>`) || !strings.Contains(page, `<a href="/dashboard/profile">Mon profil</a>`) || !strings.Contains(page, `<a href="/dashboard/settings">Mes réglages</a>`) {
-        t.Error("the menu must keep every entry and highlight the administration")
+    if _, _, page := admin.get("/"); !strings.Contains(page, `<li><a href="/admin/">Administration</a></li>
+                    <li><a href="/dashboard/">Tableau de bord</a></li>`) {
+        t.Error("a connected administrator must see the administration link on the public pages")
+    }
+    for _, path := range []string{"/dashboard/", "/admin/settings"} {
+        _, _, page := admin.get(path)
+        menu := page[strings.Index(page, `<details class="user-menu">`):]
+        menu = menu[:strings.Index(menu, "</details>")]
+        if strings.Contains(menu, "Administration") || !strings.Contains(menu, `<p class="menu-heading">Administrateur</p>
+                    <ul>
+                        <li><a href="/dashboard/profile">Mon profil</a></li>
+                        <li><a href="/dashboard/settings">Mes réglages</a></li>`) || !strings.Contains(menu, `<button type="submit">Se déconnecter</button>`) {
+            t.Errorf("%s: the user menu must hold only the profile, « Mon profil », « Mes réglages » and the logout", path)
+        }
     }
     if status, _, body := user.post("/logout", url.Values{"csrf": {user.token(page)}}); (status != http.StatusOK) || !strings.Contains(body, "Vous êtes déconnecté") || strings.Contains(body[strings.Index(body, "<main>"):strings.Index(body, "</main>")], "<a ") || strings.Contains(body[strings.Index(body, "<main>"):strings.Index(body, "</main>")], "<button") {
         t.Fatalf("logout from the menu: %d", status)
@@ -69,6 +80,11 @@ func TestNarrowHeadersOfferABurgerMenu(t *testing.T) {
     }
     if _, _, page := admin.get("/admin/settings"); !strings.Contains(page, `<details class="nav-menu">`) || (strings.Count(page, `<a href="/admin/settings" aria-current="page">Configuration</a>`) != 2) {
         t.Error("the administration must repeat its navigation in the burger menu")
+    }
+    if _, _, page := admin.get("/admin/accounts"); strings.Count(page, `<ul>
+                    <li><a href="/dashboard/">Tableau de bord</a></li>
+                    <li><a href="/admin/">Serveur</a></li>`) != 2 {
+        t.Error("the administration must start its navigation with the dashboard, in the header and in the burger menu")
     }
     if _, _, page := site.client().get("/"); strings.Contains(page, `class="nav-menu"`) {
         t.Error("the public pages need no burger menu")
@@ -110,8 +126,8 @@ func TestMenuShowsTheNameAndTheProfile(t *testing.T) {
     if status, location, _ := user.post("/dashboard/profile", form); (status != http.StatusSeeOther) || (location != "/dashboard/profile?notice=name") {
         t.Fatalf("name: %d %s", status, location)
     }
-    if page := user.page("/dashboard/"); !strings.Contains(page, `<strong>Marie Curie</strong>`) {
-        t.Fatal("the menu must show the name")
+    if page := user.page("/dashboard/"); !strings.Contains(page, `<strong>Marie Curie</strong>`) || !strings.Contains(page, `<span class="avatar" aria-hidden="true">MC</span>`) {
+        t.Fatal("the menu must show the name and its initials")
     }
     if found, _, _ := site.database.Account("demo"); found.Name != "Marie Curie" {
         t.Fatalf("stored name: %q", found.Name)
@@ -120,6 +136,15 @@ func TestMenuShowsTheNameAndTheProfile(t *testing.T) {
         form.Set("name", name)
         if status, _, _ := user.post("/dashboard/profile", form); status != http.StatusUnprocessableEntity {
             t.Errorf("%q: %d", name, status)
+        }
+    }
+}
+
+func TestInitialsComeFromTheFirstAndLastWords(t *testing.T) {
+    renderer := &Renderer{}
+    for label, expected := range map[string]string{"Olivier PONCET": "OP", "Jean Pierre de la Fontaine": "JF", "olivier.poncet": "OL", "demo": "DE", "Élise": "ÉL", "x": "X", "Marie - Curie": "MC", "": ""} {
+        if initials := renderer.initials(label); initials != expected {
+            t.Errorf("%q: %q, want %q", label, initials, expected)
         }
     }
 }

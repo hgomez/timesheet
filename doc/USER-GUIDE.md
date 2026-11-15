@@ -60,7 +60,8 @@ The legal holidays are built in. They name the rows of the grid, refuse leave (a
 | « Réglages » | Tracking start, counters enabled, own accrual amounts, initial balances, colours of the codes. Its menu entry is « Mes réglages ». |
 | « Administration » | For administrators: the software version and the server settings, read-only (« Serveur »), the accounts (« Comptes ») and the configuration of the activity codes and counters (« Configuration »). |
 
-- The menu under the user's name leads to « Mon profil », « Mes réglages » and, for an administrator, « Administration ». It also logs out (« Se déconnecter »).
+- The menu under the user's name shows the profile and leads to « Mon profil » and « Mes réglages ». It also logs out (« Se déconnecter »).
+- For an administrator, the header shows « Administration » left of « Tableau de bord ».
 - On the public pages, the arrow entering a door at the right of the header (« Se connecter » on hover) opens the login page « Connexion ».
 - The button of the header switches between the light and the dark theme. The choice is kept in the browser only.
 
@@ -146,7 +147,7 @@ An adjustment can be deleted while its month is open.
 
 ## FOR THE ADMINISTRATOR
 
-The entry « Administration » of the menu adds three pages: « Serveur », « Comptes » and « Configuration ». It opens on « Serveur ».
+The entry « Administration » of the header adds three pages: « Serveur », « Comptes » and « Configuration ». It opens on « Serveur ». The first entry of its header, « Tableau de bord », leads back to the dashboard.
 
 ### Read the server settings
 

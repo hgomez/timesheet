@@ -913,9 +913,9 @@ When the tracking started before the month, the number of tracked days is the nu
 
 | Family | Pages | Entries | `aria-label` of the `<nav>` |
 | --- | --- | --- | --- |
-| public | home, login, logout, error pages for a guest | for a guest, a link to `/login` shown as an icon only, an arrow entering a door drawn in the text colour, with `title` and `aria-label` « Se connecter »; for a connected browser, a « Tableau de bord » button; nothing on the login page | « Navigation principale » |
-| dashboard | dashboard, activity, month, year, profile and settings pages | « Tableau de bord », « Activité », « Mois », « Année » | « Navigation principale » |
-| admin | server, accounts, account, configuration pages and read-only views | « Serveur », « Comptes », « Configuration » | « Navigation de l'administration » |
+| public | home, login, logout, error pages for a guest | for a guest, a link to `/login` shown as an icon only, an arrow entering a door drawn in the text colour, with `title` and `aria-label` « Se connecter »; for a connected browser, a « Tableau de bord » button, preceded for an `ADMIN` by an « Administration » button; nothing on the login page | « Navigation principale » |
+| dashboard | dashboard, activity, month, year, profile and settings pages | for an `ADMIN`, « Administration », a link to `/admin/`; then « Tableau de bord », « Activité », « Mois », « Année » | « Navigation principale » |
+| admin | server, accounts, account, configuration pages and read-only views | « Tableau de bord », a link to `/dashboard/`; then « Serveur », « Comptes », « Configuration » | « Navigation de l'administration » |
 
 - The current entry carries `aria-current="page"` and is highlighted.
 - Every entry of a menu is shown on every page of its family.
@@ -954,23 +954,25 @@ The burger menu:
 #### Summary
 
 - The user menu is a `<details class="user-menu">`.
-- Its `<summary>` shows a decorative badge with the first two letters or digits of the login in capitals (`<span class="avatar" aria-hidden="true">`).
-- It also shows the name of the user, or the login when no name is set.
+- Its `<summary>` shows the name of the user, or the login when no name is set.
+- Before it, a decorative badge (`<span class="avatar" aria-hidden="true">`) shows two initials of that label, in capitals:
+  - with several words, the first letter of the first word, then the first letter of the last word: « OP » for « Olivier PONCET »;
+  - with a single word, its first two letters: « DE » for the login `demo`.
+- Words are separated by spaces; only letters and digits count, so a word without any is ignored.
 - It opens without JavaScript, by click or keyboard.
 - `chrome_page.js` closes it on a click outside or on `Échap`.
 
 #### Entries
 
-The panel is a `<nav aria-label="Compte">`, the same on every page of the dashboard and admin families:
+The panel is a `<nav aria-label="Compte">`, the same on every page of the dashboard and admin families, for every profile. It holds only what concerns the user:
 
 1. the profile as its heading (`<p class="menu-heading">`): « Administrateur » or « Utilisateur »;
-2. for an `ADMIN`, « Administration », set apart by a separator line;
-3. « Mon profil »;
-4. « Mes réglages », which opens the settings page « Réglages »;
-5. the form « Se déconnecter ».
+2. « Mon profil »;
+3. « Mes réglages », which opens the settings page « Réglages »;
+4. the form « Se déconnecter ».
 
 - The entry of the current page carries `aria-current="page"`.
-- « Administration » is the current entry on every page of the admin family.
+- « Administration » is not in the user menu: it is an entry of the header ([Navigation of each family](#navigation-of-each-family)).
 
 #### Logout form
 
@@ -1419,7 +1421,7 @@ The problems listed under « Réglages non enregistrés. » are:
 
 ### Server page
 
-Route `/admin/`, first entry « Serveur » of the administration navigation, and target of the entry « Administration » of the user menu; `h1` « Serveur ».
+Route `/admin/`, entry « Serveur » of the administration navigation, right after « Tableau de bord », and target of the entry « Administration » of the header; `h1` « Serveur ».
 
 #### Software
 

@@ -255,12 +255,6 @@ body > header :focus-visible {
     font-weight: 600;
 }
 
-.user-menu li:has(> a[href="/admin/"]) {
-    margin-bottom: var(--space-2);
-    padding-bottom: var(--space-2);
-    border-bottom: 1px solid var(--border);
-}
-
 .user-menu li:has(> form) {
     margin-top: var(--space-2);
     padding: var(--space-2) 0 0;

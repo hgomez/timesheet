@@ -106,7 +106,7 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, status int, 
         if viewer.Name == "" {
             model.Chrome.Name = string(viewer.Login)
         }
-        model.Chrome.Initials = r.initials(string(viewer.Login))
+        model.Chrome.Initials = r.initials(model.Chrome.Name)
         model.Chrome.ProfileLabel = viewer.Profile.Label()
         model.Chrome.CSRF = viewer.CSRF
         if model.CSRF == "" {
@@ -140,17 +140,30 @@ func (r *Renderer) family(req *http.Request, viewer *Viewer, view string) string
     return families[0]
 }
 
-func (r *Renderer) initials(login string) string {
+func (r *Renderer) initials(label string) string {
+    words := [][]rune{}
+    for _, word := range strings.Fields(label) {
+        if letters := r.alphanumerics(word); len(letters) > 0 {
+            words = append(words, letters)
+        }
+    }
+    switch {
+        case len(words) == 0:
+            return ""
+        case len(words) == 1:
+            return string(words[0][:min(2, len(words[0]))])
+    }
+    return string([]rune{words[0][0], words[len(words) - 1][0]})
+}
+
+func (r *Renderer) alphanumerics(word string) []rune {
     letters := []rune{}
-    for _, letter := range login {
+    for _, letter := range word {
         if unicode.IsLetter(letter) || unicode.IsDigit(letter) {
             letters = append(letters, unicode.ToUpper(letter))
         }
-        if len(letters) == 2 {
-            break
-        }
     }
-    return string(letters)
+    return letters
 }
 
 func (r *Renderer) fail(w http.ResponseWriter, err error) {
