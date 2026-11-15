@@ -356,7 +356,7 @@ main > .alert-details, main > .warning-details, main > .notice-details {
     color: var(--ink-soft);
 }
 
-button, .actions a, .period-navigation a {
+button, .actions a, .period-navigation a, input[type="file"]::file-selector-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -375,7 +375,7 @@ button, .actions a, .period-navigation a {
     transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 
-button:hover, .actions a:hover, .period-navigation a:hover {
+button:hover, .actions a:hover, .period-navigation a:hover, input[type="file"]::file-selector-button:hover {
     background: var(--accent-hover);
     border-color: var(--accent-hover);
     color: var(--on-accent);
@@ -471,6 +471,10 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="date"]:focus
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-soft);
     outline: none;
+}
+
+input[type="file"]::file-selector-button {
+    margin-right: var(--space-3);
 }
 
 input[type="checkbox"] {

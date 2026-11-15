@@ -1438,6 +1438,7 @@ The problems listed under « Réglages non enregistrés. » are:
 - Route `/dashboard/data`, entry « Mes données » of the user menu, after « Mes réglages »; `h1` « Données ».
 - The page imports a file, exports the data of the account, both in the [import format](#file-format), and erases them; each in a section, in this order.
 
+- The button that chooses the file has the look of the other buttons.
 - The section « Importer des données » posts `multipart/form-data` to `POST /dashboard/data/import`: the file « Fichier d'import », the checkboxes « Remplacer les jours déjà saisis » (`replace`) and « Valider les mois importés » (`validate`), and two buttons, « Vérifier » (`action=check`) and « Importer » (`action=import`).
 - The import follows the rules of the command `import` ([Import](#import)): the checkboxes stand for `--replace` and `--validate`, « Vérifier » for `--dry-run`. There is no `--from` nor `--to`: the whole file is read.
 - It works while the server runs, on the account of the viewer only, with the account revision of the page.

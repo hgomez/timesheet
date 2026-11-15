@@ -467,6 +467,7 @@ The rules of a same subject follow each other, without any title comment: the se
 | Elements, structure and states | Target them first | `nav a`, `table caption`, `fieldset legend`, `th[scope="row"]`, `[aria-current="page"]`, `[role="alert"]`, `:disabled`, `:invalid`, `:focus-visible` |
 | Classes | Only where the element is not enough, named after what the content is, never after the look or the layout | `month-grid`, `summary-table`, `legend`, `day-missing`, `code-ABS`, `page-header`, `user-menu`, `access`, `positions`, `status` |
 | Links that act as buttons | Styled by their place | `.actions a`, `.period-navigation a` |
+| Button of a file field | Styled like the buttons, through its pseudo-element | `input[type="file"]::file-selector-button` |
 | Derived states | Class prefixed with `is-` | `is-weekend`, `is-holiday`, `is-today`, `is-missing`, `is-provisional`, `is-negative` |
 
 - No `!important`.
