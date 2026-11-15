@@ -32,7 +32,10 @@ type Month struct {
     month time.Month
 }
 
-const monthLayout = "2006-01"
+const (
+    monthLayout     = "2006-01"
+    monthPathLayout = "2006/01"
+)
 
 var ErrInvalidMonth = errors.New("activity: invalid month")
 
@@ -110,6 +113,10 @@ func (m Month) Contains(d Date) bool {
 
 func (m Month) String() string {
     return m.First().Time().Format(monthLayout)
+}
+
+func (m Month) Path() string {
+    return m.First().Time().Format(monthPathLayout)
 }
 
 func (m Month) Name() string {

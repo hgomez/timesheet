@@ -133,7 +133,7 @@ The column Kind says what the entity is:
 | `Quantity` | value | Exact rational number of days (details below) |
 | `TextPolicy` | service | Accepted free text: valid UTF-8, bounded length, no control, format, bidirectional, line or paragraph separator character, the zero-width joiners excepted |
 | `Date` | value | Civil date, comparable, text-marshalled, with French labels |
-| `Month` | value | Month of a year, comparable, text-marshalled, with French labels |
+| `Month` | value | Month of a year, comparable, text-marshalled, with French labels and its URL segment `2026/09` (`Path`) |
 | `PeriodStart` | value | Yearly period start written `MM-DD`, comparable, text-marshalled |
 | `NullableText` | value | Text written `null` when empty |
 | `NullableTime` | value | Time written `null` when zero |

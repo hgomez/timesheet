@@ -407,7 +407,7 @@ The tracking start is a date, « Date de début » in the [settings page](#setti
 
 - Years 2000 to 2099 only.
 - Any other year, or an invalid month, in a URL gives 404.
-- `{month}` is written 1 to 12, without a leading zero (`01` gives 404).
+- In a URL, `{year}` is written on four digits and `{month}` on two digits, with a leading zero: `/dashboard/month/2026/09`. Any other form (`9`, `009`) gives 404.
 - Forecasts and the planning horizon stop at December 2099.
 - A month can be entered up to 24 months after the current one: this is the planning horizon.
 - Beyond it, the grid is read-only with the status « au-delà de l'horizon de planification », and saving is refused (409).
@@ -1720,7 +1720,7 @@ The label of the code (grid) or its identifier (year calendar) is always written
 - Connected: `USER` and `ADMIN`.
 - ADMIN: `ADMIN` only.
 - `HEAD` is served like `GET`.
-- `{year}` is 2000 to 2099 and `{month}` 1 to 12 without a leading zero; another value gives 404.
+- `{year}` is 2000 to 2099 on four digits and `{month}` `01` to `12` on two digits; another value or form gives 404.
 
 ### Refusals
 

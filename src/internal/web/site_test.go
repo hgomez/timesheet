@@ -133,7 +133,7 @@ func TestTrackingMayStartWithinAMonth(t *testing.T) {
     if status, _, _ := user.post("/dashboard/settings", form); status != http.StatusSeeOther {
         t.Fatalf("settings: %d", status)
     }
-    _, _, body := user.get("/dashboard/activity/2026/9")
+    _, _, body := user.get("/dashboard/activity/2026/09")
     if strings.Contains(body, `name="am:2026-09-14"`) || strings.Contains(body, `name="comment:2026-09-14"`) || !strings.Contains(body, `name="am:2026-09-15"`) {
         t.Fatal("only the days from the tracking start must be editable")
     }
@@ -148,15 +148,15 @@ func TestTrackingMayStartWithinAMonth(t *testing.T) {
             overrides["day:" + d.String()] = "WE"
         }
     }
-    if status, _, _ := user.post("/dashboard/activity/2026/9", user.monthForm(body, overrides)); status != http.StatusSeeOther {
+    if status, _, _ := user.post("/dashboard/activity/2026/09", user.monthForm(body, overrides)); status != http.StatusSeeOther {
         t.Fatalf("save: %d", status)
     }
-    _, _, body = user.get("/dashboard/activity/2026/9")
+    _, _, body = user.get("/dashboard/activity/2026/09")
     validate := url.Values{"csrf": {user.token(body)}, "revision": {user.field(body, "revision")}}
-    if status, location, _ := user.post("/dashboard/activity/2026/9/validate", validate); (status != http.StatusSeeOther) || !strings.Contains(location, "validated") {
+    if status, location, _ := user.post("/dashboard/activity/2026/09/validate", validate); (status != http.StatusSeeOther) || !strings.Contains(location, "validated") {
         t.Fatalf("validate: %d %s", status, location)
     }
-    if _, _, statements := user.get("/dashboard/month/2026/9"); strings.Contains(statements, "Acquisition septembre 2026") {
+    if _, _, statements := user.get("/dashboard/month/2026/09"); strings.Contains(statements, "Acquisition septembre 2026") {
         t.Fatal("a partial start month must not accrue")
     }
 }
@@ -164,7 +164,7 @@ func TestTrackingMayStartWithinAMonth(t *testing.T) {
 func TestToolbarsStopAtTheBoundsOfTheCalendar(t *testing.T) {
     site := newTestSite(t)
     user := site.client().login("demo")
-    for path, rel := range map[string]string{"/dashboard/month/2099/12": `rel="next"`, "/dashboard/month/2000/1": `rel="prev"`, "/dashboard/year/2099": `rel="next"`, "/dashboard/year/2000": `rel="prev"`} {
+    for path, rel := range map[string]string{"/dashboard/month/2099/12": `rel="next"`, "/dashboard/month/2000/01": `rel="prev"`, "/dashboard/year/2099": `rel="next"`, "/dashboard/year/2000": `rel="prev"`} {
         if status, _, body := user.get(path); (status != http.StatusOK) || strings.Contains(body, rel) {
             t.Errorf("%s: %d, link %s", path, status, rel)
         }
@@ -174,7 +174,7 @@ func TestToolbarsStopAtTheBoundsOfTheCalendar(t *testing.T) {
 func TestMonthLifecycle(t *testing.T) {
     site := newTestSite(t)
     user := site.client().login("demo")
-    _, _, body := user.get("/dashboard/activity/2026/9")
+    _, _, body := user.get("/dashboard/activity/2026/09")
     overrides := map[string]string{}
     holidays := activity.NewHolidayCalendar()
     for d := activity.NewDate(2026, time.September, 1); d.Month().Number() == 9; d = d.AddDays(1) {
@@ -186,13 +186,13 @@ func TestMonthLifecycle(t *testing.T) {
     overrides["day:2026-09-15"] = "CP"
     overrides["comment:2026-09-15"] = "<script>alert(1)</script> & co"
     form := user.monthForm(body, overrides)
-    if status, location, _ := user.post("/dashboard/activity/2026/9", form); (status != http.StatusSeeOther) || (location != "/dashboard/activity/2026/9?notice=saved") {
+    if status, location, _ := user.post("/dashboard/activity/2026/09", form); (status != http.StatusSeeOther) || (location != "/dashboard/activity/2026/09?notice=saved") {
         t.Fatalf("save: %d %s", status, location)
     }
-    if status, _, _ := user.post("/dashboard/activity/2026/9", form); status != http.StatusConflict {
+    if status, _, _ := user.post("/dashboard/activity/2026/09", form); status != http.StatusConflict {
         t.Fatalf("stale revision: %d", status)
     }
-    _, _, body = user.get("/dashboard/activity/2026/9")
+    _, _, body = user.get("/dashboard/activity/2026/09")
     if strings.Contains(body, "<script>alert") || !strings.Contains(body, "&lt;script&gt;alert(1)&lt;/script&gt; &amp; co") {
         t.Fatal("the comment is not escaped")
     }
@@ -204,23 +204,23 @@ func TestMonthLifecycle(t *testing.T) {
         t.Fatal("a holiday must stay to be entered and keep its name")
     }
     weekend := user.monthForm(body, map[string]string{"am:2026-09-12": "CP"})
-    if status, _, page := user.post("/dashboard/activity/2026/9", weekend); (status != http.StatusUnprocessableEntity) || !strings.Contains(page, "ne peut pas être posé") {
+    if status, _, page := user.post("/dashboard/activity/2026/09", weekend); (status != http.StatusUnprocessableEntity) || !strings.Contains(page, "ne peut pas être posé") {
         t.Fatalf("leave on a Saturday: %d", status)
     }
     validate := url.Values{"csrf": {user.token(body)}, "revision": {user.field(body, "revision")}}
-    if status, location, _ := user.post("/dashboard/activity/2026/9/validate", validate); (status != http.StatusSeeOther) || !strings.Contains(location, "validated") {
+    if status, location, _ := user.post("/dashboard/activity/2026/09/validate", validate); (status != http.StatusSeeOther) || !strings.Contains(location, "validated") {
         t.Fatalf("validate: %d %s", status, location)
     }
-    _, _, body = user.get("/dashboard/activity/2026/9")
+    _, _, body = user.get("/dashboard/activity/2026/09")
     if strings.Contains(body, `<select name="am:`) || !strings.Contains(body, "Rouvrir le mois") {
         t.Fatal("a validated month must be read-only and reopenable")
     }
     reopen := url.Values{"csrf": {user.token(body)}, "revision": {user.field(body, "revision")}, "reason": {"oubli"}}
-    if status, location, _ := user.post("/dashboard/activity/2026/9/reopen", reopen); (status != http.StatusSeeOther) || !strings.Contains(location, "reopened") {
+    if status, location, _ := user.post("/dashboard/activity/2026/09/reopen", reopen); (status != http.StatusSeeOther) || !strings.Contains(location, "reopened") {
         t.Fatalf("reopen: %d %s", status, location)
     }
-    _, _, body = user.get("/dashboard/activity/2026/9")
-    if _, _, statements := user.get("/dashboard/month/2026/9"); !strings.Contains(statements, "Écritures annulées par contre-passation") || !strings.Contains(body, `<select name="am:`) {
+    _, _, body = user.get("/dashboard/activity/2026/09")
+    if _, _, statements := user.get("/dashboard/month/2026/09"); !strings.Contains(statements, "Écritures annulées par contre-passation") || !strings.Contains(body, `<select name="am:`) {
         t.Fatal("the reopened month must show its reversals and be editable")
     }
     if status, _, _ := user.post("/dashboard/activity/2026/11/validate", url.Values{"csrf": {user.token(body)}, "revision": {user.field(body, "revision")}}); status != http.StatusConflict {
@@ -420,7 +420,7 @@ func TestHostileInputsAreRefused(t *testing.T) {
             t.Fatalf("amount %s: %d", amount, status)
         }
     }
-    if status, _, _ := user.post("/dashboard/activity/2029/1", user.monthForm(body, nil)); status != http.StatusConflict {
+    if status, _, _ := user.post("/dashboard/activity/2029/01", user.monthForm(body, nil)); status != http.StatusConflict {
         t.Fatalf("month beyond the planning horizon: %d", status)
     }
 }
@@ -512,6 +512,20 @@ func TestNegativeBalancesAreMarkedInTheStatements(t *testing.T) {
     }
     if _, _, page := user.get("/dashboard/year/2026"); strings.Count(page, `<td class="is-negative">-3,00</td>`) < 3 {
         t.Fatal("the recap and the ledger of the year do not mark their negative balances")
+    }
+}
+
+func TestMonthPathsHaveFourDigitYearsAndTwoDigitMonths(t *testing.T) {
+    site := newTestSite(t)
+    user := site.client().login("demo")
+    for path, want := range map[string]int{"/dashboard/month/2026/09": http.StatusOK, "/dashboard/activity/2026/01": http.StatusOK, "/dashboard/month/2026/9": http.StatusNotFound, "/dashboard/activity/2026/1": http.StatusNotFound, "/dashboard/month/2026/009": http.StatusNotFound, "/dashboard/month/2026/+9": http.StatusNotFound, "/dashboard/month/2026/00": http.StatusNotFound, "/dashboard/month/2026/13": http.StatusNotFound} {
+        if status, _, _ := user.get(path); status != want {
+            t.Errorf("%s: %d, want %d", path, status, want)
+        }
+    }
+    _, _, page := user.get("/dashboard/year/2026")
+    if !strings.Contains(page, `href="/dashboard/month/2026/01"`) || !strings.Contains(page, `href="/dashboard/month/2026/09"`) || strings.Contains(page, `href="/dashboard/month/2026/9"`) {
+        t.Error("the links of the year page must write the month on two digits")
     }
 }
 

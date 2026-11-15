@@ -59,7 +59,7 @@ func (w *Workspace) Horizon() activity.Month {
 }
 
 func (w *Workspace) PagePath(page string, m activity.Month) string {
-    return w.Base + "/" + page + "/" + strconv.Itoa(m.Year()) + "/" + strconv.Itoa(m.Number())
+    return w.Base + "/" + page + "/" + m.Path()
 }
 
 func (w *Workspace) MonthPath(m activity.Month) string {
@@ -67,7 +67,7 @@ func (w *Workspace) MonthPath(m activity.Month) string {
 }
 
 func (w *Workspace) FormPath(m activity.Month) string {
-    return "/dashboard/" + PageActivity + "/" + strconv.Itoa(m.Year()) + "/" + strconv.Itoa(m.Number())
+    return "/dashboard/" + PageActivity + "/" + m.Path()
 }
 
 func (w *Workspace) YearPath(year int) string {

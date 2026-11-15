@@ -73,10 +73,14 @@ func (l *WorkspaceLoader) load(viewer *Viewer, login account.Login, base string,
 func (l *WorkspaceLoader) Month(r *http.Request) (activity.Month, bool) {
     year, ok := l.Year(r)
     number, err := strconv.Atoi(r.PathValue("month"))
-    if !ok || (err != nil) || (number < 1) || (number > 12) || (r.PathValue("month") != strconv.Itoa(number)) {
+    if !ok || (err != nil) || (number < 1) || (number > 12) {
         return activity.Month{}, false
     }
-    return activity.NewMonth(year, time.Month(number)), true
+    m := activity.NewMonth(year, time.Month(number))
+    if (r.PathValue("year") + "/" + r.PathValue("month")) != m.Path() {
+        return activity.Month{}, false
+    }
+    return m, true
 }
 
 func (l *WorkspaceLoader) Year(r *http.Request) (int, bool) {

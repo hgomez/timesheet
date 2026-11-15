@@ -86,7 +86,7 @@ func (c *AdminController) record(viewer *Viewer, item account.Account) accountRe
     year := strconv.Itoa(today.Year())
     location := c.today.Location()
     created := activity.NewDateOf(item.Created.In(location))
-    record := accountRecord{Login: string(item.Login), Name: item.Name, Disabled: !item.State.Enabled(), State: item.State.Label(), Profile: item.Profile.Label(), Admin: item.Profile == account.ProfileAdmin, Created: created.Numeric(), CreatedDate: created.String(), LastLogin: "jamais", Path: base, Balances: base + "/dashboard", Dashboard: base + "/month/" + year + "/" + strconv.Itoa(today.Month().Number()), Year: base + "/year/" + year, Self: item.Login == viewer.Login, Sessions: c.sessions.Count(item.Login)}
+    record := accountRecord{Login: string(item.Login), Name: item.Name, Disabled: !item.State.Enabled(), State: item.State.Label(), Profile: item.Profile.Label(), Admin: item.Profile == account.ProfileAdmin, Created: created.Numeric(), CreatedDate: created.String(), LastLogin: "jamais", Path: base, Balances: base + "/dashboard", Dashboard: base + "/month/" + today.Month().Path(), Year: base + "/year/" + year, Self: item.Login == viewer.Login, Sessions: c.sessions.Count(item.Login)}
     if !item.LastLogin.IsZero() {
         last := activity.NewDateOf(item.LastLogin.In(location))
         record.LastLogin, record.LastLoginDate = last.Numeric(), last.String()
