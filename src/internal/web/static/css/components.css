@@ -285,7 +285,7 @@ body > header :focus-visible {
 }
 
 .page-header h1 {
-    margin-bottom: var(--space-1);
+    margin-bottom: var(--space-3);
 }
 
 .page-header p {
