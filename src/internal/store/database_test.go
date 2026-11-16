@@ -96,6 +96,48 @@ func TestDatabaseRoundTrip(t *testing.T) {
     }
 }
 
+func TestDatabaseRefusesToRewriteAValidatedMonth(t *testing.T) {
+    database, _ := newTestDatabase(t)
+    start, _ := activity.NewDateFromText("2026-09-01")
+    if err := database.CreateAccount(newTestAccount(t, "olivier", account.ProfileUser), activity.NewCalendar(start)); err != nil {
+        t.Fatal(err)
+    }
+    _, calendar, _ := database.Account("olivier")
+    september := start.Month()
+    for d := september.First(); !d.After(september.Last()); d = d.AddDays(1) {
+        code := "TT"
+        if d.IsWeekend() {
+            code = "WE"
+        }
+        calendar.Days[d] = activity.DayEntry{AM: code, PM: code}
+    }
+    today, _ := activity.NewDateFromText("2026-11-08")
+    closing := activity.NewMonthClosing(activity.NewBookkeeper(database.Configuration(), calendar), activity.NewIdentifierGenerator(rand.Reader))
+    validated, err := closing.Validate(september, time.Date(2026, time.November, 8, 10, 0, 0, 0, time.UTC), today)
+    if err != nil {
+        t.Fatal(err)
+    }
+    if err := database.SaveCalendar("olivier", calendar.Revision, validated); err != nil {
+        t.Fatal(err)
+    }
+    _, stored, _ := database.Account("olivier")
+    rewritten := stored.Clone()
+    rewritten.Days[september.First().AddDays(14)] = activity.DayEntry{AM: "CP", PM: "CP"}
+    if err := database.SaveCalendar("olivier", stored.Revision, rewritten); !errors.Is(err, activity.ErrHistoryRewritten) {
+        t.Fatalf("rewrite of a validated month: %v", err)
+    }
+    if err := database.CheckCalendar("olivier", stored.Revision, rewritten); !errors.Is(err, activity.ErrHistoryRewritten) {
+        t.Fatalf("check of a rewrite of a validated month: %v", err)
+    }
+    november := today.Month().First()
+    if err := database.EraseCalendar("olivier", stored.Revision, november); err != nil {
+        t.Fatal(err)
+    }
+    if _, erased, _ := database.Account("olivier"); erased.HasHistory() || (len(erased.Days) != 0) || (len(erased.Ledger) != 0) || (erased.Settings.Start != november) || (erased.Revision != (stored.Revision + 1)) {
+        t.Fatalf("erased: %+v", erased)
+    }
+}
+
 func TestDatabaseWritesUnsetFieldsAsNull(t *testing.T) {
     database, path := newTestDatabase(t)
     start, _ := activity.NewDateFromText("2026-01-01")
@@ -145,6 +187,37 @@ func TestDatabaseKeepsColoursOfKnownCodesOnly(t *testing.T) {
     }
     if _, after, _ := database.Account("olivier"); len(after.Settings.Colors) != 0 {
         t.Fatalf("colour of a deleted code kept: %v", after.Settings.Colors)
+    }
+}
+
+func TestDatabaseKeepsTheEffectOfAUsedCode(t *testing.T) {
+    database, _ := newTestDatabase(t)
+    start, _ := activity.NewDateFromText("2026-01-01")
+    if err := database.CreateAccount(newTestAccount(t, "olivier", account.ProfileUser), activity.NewCalendar(start)); err != nil {
+        t.Fatal(err)
+    }
+    _, calendar, _ := database.Account("olivier")
+    d, _ := activity.NewDateFromText("2026-11-03")
+    calendar.Days[d] = activity.DayEntry{AM: "CP"}
+    if err := database.SaveCalendar("olivier", calendar.Revision, calendar); err != nil {
+        t.Fatal(err)
+    }
+    config := database.Configuration().Clone()
+    for i, code := range config.Activities {
+        if code.ID == "CP" {
+            config.Activities[i].Consumes = "RTT"
+        }
+    }
+    if err := database.SaveConfiguration(config.Revision, config); !errors.Is(err, activity.ErrConfigurationInUse) {
+        t.Fatalf("effect of a used code changed: %v", err)
+    }
+    _, calendar, _ = database.Account("olivier")
+    delete(calendar.Days, d)
+    if err := database.SaveCalendar("olivier", calendar.Revision, calendar); err != nil {
+        t.Fatal(err)
+    }
+    if err := database.SaveConfiguration(config.Revision, config); err != nil {
+        t.Fatalf("effect of an unused code changed: %v", err)
     }
 }
 

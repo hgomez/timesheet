@@ -188,7 +188,7 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | `MonthEvent` | record | Event of the history of a month |
 | `MonthRecord` | record | Status and history of a month |
 | `MonthlyIndicators` | record | Snapshot of the indicators of a month |
-| `Calendar` | record | All the data of a user: revision, settings, days, adjustments, months, ledger. Lookups: `IsValidated`, `LastValidated`, `FirstOpen`, `UsesActivity`, `UsesCounter`. Its file holds `ErrStaleRevision` |
+| `Calendar` | record | All the data of a user: revision, settings, days, adjustments, months, ledger. Lookups: `IsValidated`, `LastValidated`, `FirstOpen`, `UsesActivity`, `UsesCounter`; `KeepsHistoryOf` tells whether a new version keeps the validated months and the tracking start of the previous one. Its file holds `ErrStaleRevision` and `ErrHistoryRewritten` |
 
 #### Bookkeeping
 
@@ -333,7 +333,7 @@ A write runs these steps under one `sync.RWMutex`:
 | `OriginGuard` | service | Guard that checks the origin of an unsafe request |
 | `Origins` | value | Accepted origins and hosts |
 | `ClientAddress` | service | Address of the client behind the trusted proxies |
-| `LoginThrottle` | service | Login throttling per address |
+| `LoginThrottle` | service | Login throttling per address and per login |
 
 #### Routing
 
@@ -538,7 +538,7 @@ The reasons are given in [SECURITY.md, Threat model](SECURITY.md#threat-model).
 
 1. GET `/login` sets a short-lived `ts_login` cookie that holds the token of the form.
 2. POST `/login` checks that token against the form.
-3. It throttles the attempts per client address (`LoginThrottle`).
+3. It throttles the attempts per client address and per login of valid form (`LoginThrottle`).
 4. It verifies the PBKDF2 hash of the password.
 5. When the login is unknown, it verifies a decoy hash instead, so that the timing does not reveal whether the login exists.
 6. It opens a session, which replaces the previous session of the browser.
@@ -558,6 +558,7 @@ The validation, the reopening and the adjustments compare the revision the same 
 
 1. `MonthClosing` produces a new `Calendar`: with frozen entries for a validation, with reversals for a reopening.
 2. The controller saves it like a month save, with the same revision check.
+3. Under its lock, `store.Database` refuses every `SaveCalendar` and `CheckCalendar` whose calendar does not keep the history of the stored one (`Calendar.KeepsHistoryOf`); the deletion of the data goes through `EraseCalendar`, which starts the account again from an empty calendar.
 
 ### Page display
 

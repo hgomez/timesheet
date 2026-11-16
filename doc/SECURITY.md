@@ -64,7 +64,7 @@ Each defence is one line here; the linked section gives the detail.
 | Asset | Threat | Defence | Section |
 | --- | --- | --- | --- |
 | Activity of a user | Read or changed by another user | Every route that writes activity acts on the account of the session; the administration routes of an `ADMIN` change accounts, never their activity; an `ADMIN` reads other accounts through read-only routes. | [Authorization](#authorization) |
-| Accounts | Password guessing | PBKDF2-SHA256 hashes, a password policy, a delay per client address after each failure. | [Passwords](#passwords), [Login throttling](#login-throttling) |
+| Accounts | Password guessing | PBKDF2-SHA256 hashes, a password policy, a delay per client address and per login after each failure. | [Passwords](#passwords), [Login throttling](#login-throttling) |
 | Accounts | Enumeration | Same answer and similar timing whether the login exists or not. | [Enumeration](#enumeration) |
 | Sessions | Theft, fixation | Random identifiers stored hashed, new identifier at each login, strict cookie attributes, expiry. | [Sessions](#sessions) |
 | Forms | Cross-site request forgery (CSRF) | A token on every form and an origin check on every unsafe request. | [Forms and origins](#forms-and-origins) |
@@ -93,10 +93,12 @@ Each row is a known limit that the application does not remove. The column "Boun
 | Risk | Condition | Bound or reason | Mitigation |
 | --- | --- | --- | --- |
 | An administrator can take over an account. | An `ADMIN` resets the password of another account, then logs in with it. | Administrators are trusted. The reset is logged with its author, and the user can no longer log in with the old password. | Give `ADMIN` to as few people as possible; read the `password reset` events. |
-| No account is ever locked. | An attacker guesses the password of one login from many addresses. | The delay is per client address, not per account; only the [global budget](#global-budget) limits a spread guess. | Strong passwords (the policy); throttling. |
+| No account is ever locked. | An attacker guesses the password of one login from many addresses. | Each login also waits after its failures, whatever the address: one guess every `login.max_delay` per login at most once the delay is at its ceiling, about 288 a day by default ([Per login](#per-login)). Guesses spread over many logins are bounded by the delays per address and the [global budget](#global-budget). | Strong passwords (the policy); throttling. |
+| A user cannot log in while an attacker fails on the login. | An attacker who knows a login fails on it on purpose, once per `login.max_delay`, even from a single address. | The login waits up to `login.max_delay` (5 min by default) from every address, its owner's included, and the attacker can renew the wait as long as it goes on. The account is never locked: the wait ends `login.max_delay` after the attacker stops, and an open session stays open. | The `login failed` events show the address: block it before the server, or close its access. |
 | No second factor. | A password is known to an attacker. | Login takes a login and a password only. | Strong passwords; close the sessions of an exposed account. |
 | A legitimate user waits up to `login.max_delay` (5 min by default). | During an attack that exhausts the global budget, the user mistypes once. | The budget alone never refuses a login. | None in the application. |
 | New addresses are refused. | The throttle table holds `login.tracked_addresses` blocked addresses at once (4096 by default). | The attacker needs more addresses than that. | None in the application. |
+| Processor load from the check of an import. | A signed-in user posts the same import file again and again with « Vérifier » and « Valider les mois importés ». | Each check recomputes the counters month by month, a cost that grows with the square of the number of months: about half a second for eleven years, within the default `server.max_body_bytes`. Nothing is written. Accepted for this deployment. | Keep `server.max_body_bytes` at its default; a reverse proxy that limits the request rate. |
 | Processor load from parallel password checks. | An attacker holds many addresses. | One check at a time per address, no global limit; about half a second per check. Accepted for this deployment. | A reverse proxy that limits the request rate. |
 | Unbounded write load by a connected user. | A user saves again and again. | Writes are not rate-limited, and each one rewrites the whole database file, so the disk load grows with the database size. Accepted for a handful of accounts. | None in the application. |
 | Derived origins can be answered by another host. | `run --listen` without `--origin`. | `<host name>.local` is resolved by mDNS, and the bare host name may be resolved by LLMNR or a DNS search domain. | Give `--origin`. See [Host check](#host-check). |
@@ -113,7 +115,7 @@ Each row is a known limit that the application does not remove. The column "Boun
 | The database and the backups are not encrypted. | root, the service account or a holder of a backup reads the file. | Every comment and absence reason is readable in clear. | File modes, protected backups. See [Data protection](#data-protection). |
 | Login timing differs for some accounts. | A stored hash has a number of iterations other than `passwords.iterations`. | The decoy hash uses the configured number. | Change `passwords.iterations` rarely; a password change rewrites the hash with the configured number. |
 | The operator weakens a setting. | Whoever can write the server configuration lowers a duration, a delay or a limit. | Every setting is bounded by the program: at least 600 000 iterations, an initial login delay of at least 100 ms, sessions of at most 30 days, at most 16 384 sessions in all, HSTS of at least 24 h. The file is owned by root on a package; in the container image, it belongs to the service account, so that `config set` works through `docker exec`. | Protect the file like the binary; read `config show --config=<file>` after a change. |
-| A security fix of Go needs a rebuild. | A vulnerability is fixed in the Go standard library. | The binary is statically linked. | Rebuild and reinstall the binary or the package. |
+| A security fix of Go needs a rebuild. | A vulnerability is fixed in the Go standard library. | The binary is statically linked; the container image is built with the Go version named in its `Dockerfile`. | Rebuild and reinstall the binary or the package; raise the Go version of the `Dockerfile` when it leaves support, then rebuild the image. |
 
 Glossary of the terms of this table:
 
@@ -226,6 +228,7 @@ The values are set in the [section login](SPECIFICATIONS.md#section-login) of th
 | Size of the table | 4096 addresses | `login.tracked_addresses`, 16 to 1 000 000 |
 | Failures forgotten after | 1 h without failure | `login.forget_after`, from the longest delay to 7 days |
 | Password checks at once per address | 1 | fixed; a second attempt during a check waits 1 s |
+| Delay per login | the same delays, counted per login whatever the address | the same settings; one password check at a time per login ([Per login](#per-login)) |
 
 ### Key
 
@@ -239,6 +242,17 @@ The delay applies to a key derived from the [client address](#client-address-and
 | None (a trusted proxy without a readable `X-Forwarded-For`) | One shared key, `::/128` |
 
 The events `login failed` and `login throttled` log this key in their `address` field, not the full client address.
+
+### Per login
+
+- Besides its address, an attempt is delayed by the login it names, whatever the address it comes from.
+- Only a login of valid form counts, whether the account exists or not, so that the delay reveals nothing about the accounts.
+- The delay of a login follows the rules of [Delay](#delay): the first delay, doubled at each further failure up to the longest delay, the failures forgotten after `login.forget_after`; one password check at a time per login.
+- The global budget does not apply to logins.
+- A success does not erase the earlier failures of the login, as for an address: an account that exists, whose owner logs in, keeps the same delay as an unknown login.
+- The logins are followed in a table of the same size as the addresses, `login.tracked_addresses`. When it is full of blocked logins, a new login is not followed, and only its address is delayed.
+- The password form of the profile page counts the login of the viewer.
+- A refusal gives the same status 429, `Retry-After` and `login throttled` event as for an address; the event gives the key of the address, never the login.
 
 ### Delay
 
@@ -298,6 +312,7 @@ The client address is the address that the throttling, the access log and the ev
 
 - The default server configuration trusts the private ranges of RFC 1918: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`.
 - This has no effect while the server listens on the loopback only.
+- The container image listens on every interface of the container and empties the list, since Docker forwards the connections to a published port from a private address ([Container](OPERATIONS.md#container)).
 
 ### Advice
 
@@ -502,6 +517,7 @@ Writes are not rate-limited, and each rewrites the whole file (see [Accepted ris
 - Every write is checked by a round trip: the encoded data is decoded back strictly before it is written, and a failure refuses the write.
 - One exclusive lock is shared by the server and the commands that write.
 - Concurrent edits from several browsers are detected by optimistic revisions: a save made on a stale revision is refused.
+- The database refuses any write that rewrites a validated month, even when a controller or a command forgets to check it; only the deletion of the data erases the history ([Invariants](SPECIFICATIONS.md#invariants)).
 
 ## FILES
 

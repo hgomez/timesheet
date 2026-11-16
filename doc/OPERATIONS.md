@@ -282,7 +282,7 @@ It installs:
 - `/usr/bin/timesheet`;
 - the configuration template, the example database and the import template in `/usr/share/timesheet/`;
 - the server configuration `/etc/timesheet/timesheet.json`, the file of the repository installed as is, whose `database.path` is `/var/lib/timesheet/timesheet-database.json`; it is a configuration file of the package: an upgrade keeps your changes;
-- the unit `timesheet.service`, which runs `timesheet run --config=/etc/timesheet/timesheet.json` as the account `timesheet`; the database comes from that file.
+- the unit `timesheet.service`, which runs `timesheet run --config=/etc/timesheet/timesheet.json` as the account `timesheet`; the database comes from that file. It restarts 2 s after a failure.
 
 Its installation script creates, each when missing:
 
@@ -359,7 +359,7 @@ Removing or purging the package keeps `/var/lib/timesheet` and the account `time
 The image is built as described in [BUILD.md](BUILD.md#build-the-container-image). It holds:
 
 - `/usr/bin/timesheet`, and the configuration template, the example database and the import template in `/usr/share/timesheet/`;
-- the server configuration `/etc/timesheet/timesheet.json`, the file of the repository with `server.listen` set to `0.0.0.0:8080`: its origins stay `http://127.0.0.1:8080` and `http://localhost:8080`, its database `/var/lib/timesheet/timesheet-database.json`;
+- the server configuration `/etc/timesheet/timesheet.json`, the file of the repository with `server.listen` set to `0.0.0.0:8080` and `server.trusted_proxies` empty: its origins stay `http://127.0.0.1:8080` and `http://localhost:8080`, its database `/var/lib/timesheet/timesheet-database.json`;
 - the entry point `/usr/bin/timesheet-entrypoint.sh`, which adds `--config=/etc/timesheet/timesheet.json` to the command given to the container, `run` by default.
 
 | Item | Container |
@@ -447,7 +447,7 @@ docker restart timesheet
 ```
 
 - `server.listen` stays `0.0.0.0:8080`, the port inside the container. `server.origins` are the addresses typed in the browser, with the port published on the host: `-p 9000:8080` opened as `http://localhost:9000` needs the origin `http://localhost:9000`. Any other host name gets « Hôte inconnu » (421).
-- The default `server.trusted_proxies` trust the private ranges, which hold the Docker networks and the address through which Docker forwards a connection to a published port. Set the address of your reverse proxy, or `config set server.trusted_proxies ''` without proxy ([Client address and trusted proxies](SECURITY.md#client-address-and-trusted-proxies)).
+- The image trusts no proxy: `server.trusted_proxies` is empty, and the client address is the source of the connection. A connection to a port published on the loopback of the host comes from the Docker gateway, so all the browsers of the host share one throttle key. Behind a reverse proxy, set its address alone, never a whole private range: the Docker networks and the address through which Docker forwards a connection to a published port are private, and every client of a trusted range can choose the client address it claims ([Client address and trusted proxies](SECURITY.md#client-address-and-trusted-proxies)).
 - The options of `run` can also follow the name of the image: `docker run … timesheet run --origin=https://timesheet.example.org`.
 - « Today » follows `server.timezone`, not the time zone of the container.
 - The configuration lives in the volume `timesheet-config`: a new image keeps it.
@@ -618,7 +618,7 @@ The errors of the commands are prefixed with `timesheet:`. Those of `run` are lo
 | `cannot listen on 127.0.0.1:8080` with `address already in use` | Another program, or an instance serving another database, uses the port. | Stop it, or start with `--listen=127.0.0.1:8081`: the accepted origins then follow that address. |
 | `the file is used by another process … (stop the server or use /admin/accounts)`, or `(stop the server first)` | A command that needs the server stopped is run while the server holds the database. | Stop the server first, or act from « Administration ». |
 | « Hôte inconnu » (421) | The page is opened under a host name that is not an accepted origin. | Use `127.0.0.1` or `localhost`, or declare the name in `server.origins` (`config set server.origins`) or with `--origin`. |
-| « Identifiant ou mot de passe incorrect. » | Wrong login or password, or disabled account. | Try again. Each failure makes the address wait, from `login.initial_delay` up to `login.max_delay`, 1 s and 5 min by default (« Trop de tentatives », 429). |
+| « Identifiant ou mot de passe incorrect. » | Wrong login or password, or disabled account. | Try again. Each failure makes the address and the login wait, from `login.initial_delay` up to `login.max_delay`, 1 s and 5 min by default (« Trop de tentatives », 429). |
 | « Le formulaire a expiré ou n'est pas valide. Rechargez la page et recommencez. » (403) | The page was open too long (the login form lives `login.form_lifetime`, 1 h by default), or the session was replaced. | Reload the page and submit again. |
 | « Les données ont changé entre-temps… » (409) | The same account was changed in another tab. | Reload the page and enter the change again. |
 

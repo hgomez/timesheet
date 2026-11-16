@@ -96,17 +96,17 @@ func (c *LoginController) Submit(w http.ResponseWriter, r *http.Request) {
         c.errors.Forbidden(w, r, ForbiddenToken)
         return
     }
+    text := r.PostFormValue("login")
+    password := r.PostFormValue("password")
+    login, valid := account.NewLogin(text)
     key := c.address.Key(r)
-    allowed, wait := c.throttle.Begin(key)
+    allowed, wait := c.throttle.Begin(key, string(login))
     if !allowed {
         c.logger.Warn("login throttled", "address", key.String())
         w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds()) + 1))
         c.errors.Status(w, r, http.StatusTooManyRequests)
         return
     }
-    text := r.PostFormValue("login")
-    password := r.PostFormValue("password")
-    login, valid := account.NewLogin(text)
     found, _, known := account.Account{}, activity.Calendar{}, false
     if valid == nil {
         found, _, known = c.repository.Account(login)
@@ -116,12 +116,12 @@ func (c *LoginController) Submit(w http.ResponseWriter, r *http.Request) {
         hash = found.Password
     }
     if !hash.Verify(password) || !known || !found.State.Enabled() {
-        c.throttle.End(key, false)
+        c.throttle.End(key, string(login), false)
         c.logger.Warn("login failed", "address", key.String())
         c.form(w, r, http.StatusUnauthorized, "", "Identifiant ou mot de passe incorrect.")
         return
     }
-    c.throttle.End(key, true)
+    c.throttle.End(key, string(login), true)
     previous := ""
     if old, err := r.Cookie(SessionCookie); err == nil {
         previous = old.Value

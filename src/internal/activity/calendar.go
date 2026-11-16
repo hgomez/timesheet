@@ -40,6 +40,7 @@ var (
     ErrStaleRevision      = errors.New("activity: the data changed in the meantime, reload the page")
     ErrCalendarTooLarge   = errors.New("activity: the data of this account exceed the allowed size")
     ErrConfigurationInUse = errors.New("activity: the configuration would invalidate existing data")
+    ErrHistoryRewritten   = errors.New("activity: a validated month cannot be rewritten")
 )
 
 // ---------------------------------------------------------------------------
@@ -118,6 +119,67 @@ func (c Calendar) AdjustedBefore(d Date) bool {
 func (c Calendar) HasHistory() bool {
     _, found := c.LastValidated()
     return found
+}
+
+func (c Calendar) KeepsHistoryOf(previous Calendar) bool {
+    if len(c.Ledger) < len(previous.Ledger) {
+        return false
+    }
+    for i, entry := range previous.Ledger {
+        if !entry.Same(c.Ledger[i]) {
+            return false
+        }
+    }
+    last, history := previous.LastValidated()
+    if history && (c.Settings.Start != previous.Settings.Start) {
+        return false
+    }
+    for m, record := range previous.Months {
+        if !previous.IsValidated(m) {
+            continue
+        }
+        if (!c.IsValidated(m) && (m != last)) || !c.sameDays(previous, m) || !c.sameAdjustments(previous, m) {
+            return false
+        }
+        if c.IsValidated(m) && (!c.Months[m].ValidatedAt.Equal(record.ValidatedAt) || !maps.Equal(c.Months[m].Rules, record.Rules)) {
+            return false
+        }
+    }
+    return true
+}
+
+func (c Calendar) sameDays(previous Calendar, m Month) bool {
+    for d, entry := range previous.Days {
+        if (d.Month() == m) && (c.Days[d] != entry) {
+            return false
+        }
+    }
+    for d, entry := range c.Days {
+        if (d.Month() == m) && (previous.Days[d] != entry) {
+            return false
+        }
+    }
+    return true
+}
+
+func (c Calendar) sameAdjustments(previous Calendar, m Month) bool {
+    kept := map[Adjustment]int{}
+    for _, adjustment := range previous.Adjustments {
+        if adjustment.Date.Month() == m {
+            kept[adjustment]++
+        }
+    }
+    for _, adjustment := range c.Adjustments {
+        if adjustment.Date.Month() == m {
+            kept[adjustment]--
+        }
+    }
+    for _, count := range kept {
+        if count != 0 {
+            return false
+        }
+    }
+    return true
 }
 
 func (c Calendar) UsesActivity(id string) bool {
