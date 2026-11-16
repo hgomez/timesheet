@@ -391,6 +391,52 @@ Before `run`, when the database of the server configuration does not exist, the 
 - A host directory instead of the volume `timesheet-data` must belong to the uid 10001, without any right for the group or others: `install -d -o 10001 -g 10001 -m 0700 /srv/timesheet`, as root, then `-v /srv/timesheet:/var/lib/timesheet`.
 - When `TIMESHEET_USERNAME` is not a valid login, or `TIMESHEET_PASSWORD` is too weak, `user add` refuses it and the container stops with exit 1, leaving a database without account. The next start runs the server, which logs `no administrator account`: create the administrator as in [Commands in the container](#commands-in-the-container), or remove the volume (`docker rm timesheet`, `docker volume rm timesheet-data`) and start again.
 
+### Start the container
+
+```sh
+docker run -d --name timesheet -p 127.0.0.1:8080:8080 -v timesheet-data:/var/lib/timesheet -v timesheet-config:/etc/timesheet timesheet
+```
+
+- `docker run` creates the container and starts it. On new volumes, the entry point creates the database and its administrator ([First start](#first-start)); on existing volumes, the server runs on their database and configuration.
+- The name `timesheet` stays taken while the container exists, even stopped: to run it again with other options or a new image, remove it first ([Remove the container](#remove-the-container)).
+- A stopped container starts again with `docker start timesheet`, with the options and volumes it was created with; `docker restart timesheet` stops it and starts it again, to apply a change of the server configuration.
+- `docker ps` shows the running container, `docker logs timesheet` its log.
+
+### Stop the container
+
+```sh
+docker stop timesheet
+```
+
+- The entry point runs the server with `exec`, so the server receives the SIGTERM of `docker stop` and lets the requests in progress end for up to `server.shutdown_timeout`, 10 seconds by default.
+- Docker kills the container after 10 seconds: when `server.shutdown_timeout` is raised, give Docker more time, `docker stop -t 65 timesheet` for the bound of 60 seconds.
+- The stopped container keeps its volumes and its options; `docker start timesheet` starts it again.
+
+### Remove the container
+
+```sh
+docker stop timesheet
+docker rm timesheet
+```
+
+- `docker rm` refuses a running container; `docker rm -f timesheet` stops and removes it at once, without waiting for the requests in progress.
+- The volumes `timesheet-data` and `timesheet-config` remain: a new `docker run` on them finds the database and the configuration again ([Start the container](#start-the-container)).
+- `docker rm -v` removes the anonymous volumes of the container too, never the named volumes.
+
+### Remove the volumes of the container
+
+Removing the volumes erases the database, the sessions and the server configuration for good: back up the database first ([Back up and upgrade the container](#back-up-and-upgrade-the-container)).
+
+```sh
+docker rm -f timesheet
+docker volume rm timesheet-data timesheet-config
+```
+
+- Docker refuses to remove a volume that a container uses, even stopped: remove the container first ([Remove the container](#remove-the-container)).
+- Removing `timesheet-data` alone keeps the server configuration: the next start creates a new database and its administrator ([First start](#first-start)).
+- `docker volume ls` lists the volumes left.
+- A host directory mounted instead of a volume is not removed by Docker: delete it on the host, as root.
+
 ### Configuration of the container
 
 Change the settings with `config set` in the running container, then restart it:
