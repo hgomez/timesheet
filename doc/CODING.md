@@ -720,9 +720,10 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 `.ci/ci-build-package.sh` builds the binary packages in the working tree, uncommitted changes included:
 
 1. In CI only (variable `CI` set), it first adds a changelog entry versioned `<version of debian/changelog>+<YYYYMMDDhhmmss>`.
-2. It runs `dpkg-buildpackage --build=any,all --no-sign`, which runs `make clean`, `make`, the tests (`make check`, hence gcc), then `make install`, and stops if a test fails.
-3. `dpkg-buildpackage` writes the packages next to the repository, in its parent directory.
-4. The script moves them into `_dist/`: `.deb`, `.buildinfo`, `.changes`, and the `timesheet-dbgsym_*` files; it fails when no `timesheet-dbgsym_*` file exists.
+2. It prints the version of the Go toolchain with `go version`, and stops when `go` is missing.
+3. It runs `dpkg-buildpackage --build=any,all --no-sign`, which runs `make clean`, `make`, the tests (`make check`, hence gcc), then `make install`, and stops if a test fails.
+4. `dpkg-buildpackage` writes the packages next to the repository, in its parent directory.
+5. The script moves them into `_dist/`: `.deb`, `.buildinfo`, `.changes`, and the `timesheet-dbgsym_*` files; it fails when no `timesheet-dbgsym_*` file exists.
 
 ### Scripts
 
