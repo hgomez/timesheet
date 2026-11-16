@@ -213,7 +213,7 @@ The usage text (`timesheet help`) lists these sources in another order; the orde
 
 ## LOGIN THROTTLING
 
-Throttling delays the next login attempt of a client address after a failure.
+Throttling delays the next login attempt of a client address, and of a login, after a failure.
 
 ### Parameters
 
@@ -250,9 +250,9 @@ The events `login failed` and `login throttled` log this key in their `address` 
 - The delay of a login follows the rules of [Delay](#delay): the first delay, doubled at each further failure up to the longest delay, the failures forgotten after `login.forget_after`; one password check at a time per login.
 - The global budget does not apply to logins.
 - A success does not erase the earlier failures of the login, as for an address: an account that exists, whose owner logs in, keeps the same delay as an unknown login.
-- The logins are followed in a table of the same size as the addresses, `login.tracked_addresses`. When it is full of blocked logins, a new login is not followed, and only its address is delayed.
+- The logins are followed in a table of the same size as the addresses, `login.tracked_addresses`. When every entry of it is blocked or being checked, a new login is not followed, and only its address is delayed.
 - The password form of the profile page counts the login of the viewer.
-- A refusal gives the same status 429, `Retry-After` and `login throttled` event as for an address; the event gives the key of the address, never the login.
+- A refusal gives the same status 429 and `Retry-After` as for an address; at the login form, the same `login throttled` event, which gives the key of the address, never the login.
 
 ### Delay
 

@@ -875,7 +875,7 @@ The validation form is not shown for a month before the tracking start, and the 
 
 ### Invariants
 
-These invariants are checked by the tests. The database also enforces invariant 2 at every write of an account's data, whatever the page or the command: the entries of the ledger are kept, in their order, and only appended to; the days and the adjustments of a validated month stay the same, and so do its validation date and its frozen rules while it stays validated; a validated month stays validated, except the last one, which a reopening opens again; the tracking start does not move while a month is validated. A write that breaks it is refused as an internal error (500, or exit 1 on the command line), and nothing is written. The deletion of the data is the only exception.
+These invariants are checked by the tests. The database also enforces invariant 2 at every write of an account's data, whatever the page or the command: the entries of the ledger are kept, in their order, and only appended to, with the entries of a month validated by that write or the reversals of the last validated month that it reopens; the days and the adjustments of a validated month stay the same, and so do its validation date, its frozen rules, its indicators and its history while it stays validated; a validated month stays validated, except the last one, which a reopening opens again; the tracking start does not move while a month is validated. A write that breaks it is refused as an internal error (500, or exit 1 on the command line), and nothing is written. The deletion of the data is the only exception.
 
 1. The balance equals the sum of the entries.
 2. A validated month is never rewritten; only the [deletion of the data](#deletion-of-the-data) erases the whole tracking of an account at once.
@@ -1863,11 +1863,12 @@ The refusals below come in the order in which the server checks them: a request 
 | 12 | 429 | login, or check of the current password in the profile page, while the address or the login is blocked by the throttle; with `Retry-After` | page « Trop de tentatives », « Patientez quelques instants avant de réessayer. » |
 | 13 | 401 | wrong login or password, disabled account | the login form with « Identifiant ou mot de passe incorrect. » |
 | 14 | 404 | invalid year or month, unknown login under `/admin/accounts/` | page « Page introuvable » |
-| 15 | 400 | unknown `action`, unreadable revision | page « Requête invalide » |
-| 16 | 409, 413, 422 | refusals of a page | the page again, with an alert: [activity page](#refusals-of-the-activity-page), [settings page](#refusals-of-the-settings-page), [profile page](#refusals-of-the-profile-page), [data page](#refusals-of-the-data-page), [accounts page](#refusals-of-the-accounts-page), [account page](#refusals-of-the-account-page), [configuration page](#refusals-of-the-configuration-page) |
-| 17 | 500 | write error, the database file beyond `database.max_bytes` (64 MiB by default) included | page « Erreur interne » |
+| 15 | 409 | form of an account whose field `created` is missing or differs from the account | the account page or the accounts page again, with « Ce compte a été supprimé puis recréé entre-temps. Rechargez la page avant de recommencer. » |
+| 16 | 400 | unknown `action`, unreadable revision | page « Requête invalide » |
+| 17 | 409, 413, 422 | refusals of a page | the page again, with an alert: [activity page](#refusals-of-the-activity-page), [settings page](#refusals-of-the-settings-page), [profile page](#refusals-of-the-profile-page), [data page](#refusals-of-the-data-page), [accounts page](#refusals-of-the-accounts-page), [account page](#refusals-of-the-account-page), [configuration page](#refusals-of-the-configuration-page) |
+| 18 | 500 | write error, the database file beyond `database.max_bytes` (64 MiB by default) included | page « Erreur interne » |
 
-Every error page offers « Revenir à l'accueil ». The answers of rows 2 to 17 carry the security headers ([SECURITY.md](SECURITY.md#pages)) and a line in the access log ([Logs](#logs)).
+Every error page offers « Revenir à l'accueil ». The answers of rows 2 to 18 carry the security headers ([SECURITY.md](SECURITY.md#pages)) and a line in the access log ([Logs](#logs)).
 
 ### After a successful POST
 
@@ -2098,7 +2099,7 @@ The container image does steps 1 and 2 at its first start, before `run`, when th
 
 1. the environment variable `TIMESHEET_PASSWORD`, refused when it is set but empty;
 2. otherwise, on Linux, twice on the terminal without echo, after the prompts `Password: ` and `Confirmation: `; the two must match, and an interruption restores the echo;
-3. otherwise one line of the standard input (4096 bytes at most); when that input is a terminal, on another system than Linux, the command first prints `warning: the password is read with echo on this system; prefer TIMESHEET_PASSWORD or a pipe`.
+3. otherwise one line of the standard input (4096 bytes at most); when that input is a terminal or another character device, such as `/dev/null`, on another system than Linux, the command first prints `warning: the password is read with echo on this system; prefer TIMESHEET_PASSWORD or a pipe`.
 
 The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The help text lists these sources in another order; the order of this list is the one applied.
 
@@ -2179,7 +2180,7 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 
 - `config show` prints the server configuration read from the file, as JSON, in the [layout](#layout) of the file, every key included. A missing file is an error. It never shows the options of a running server.
 - `config show KEY` prints only the value of one key, raw, on one line: a string without quotes, a duration in its shortest form, a number, a list as values separated by commas, `null` for no value. A script reads a setting this way, for instance `config show database.path`.
-- `config set KEY VALUE [KEY VALUE...]` reads each value according to the type of its key, applies all of them, validates the whole configuration, then rewrites the file atomically in its layout, creating its directory (mode 0755) when missing. A file that exists keeps its mode, and a symbolic link is followed: the file it names is rewritten, the link stays; a new file gets mode 0644. Nothing is written when one value is refused. A missing file starts from the defaults, without database.
+- `config set KEY VALUE [KEY VALUE...]` reads each value according to the type of its key, applies all of them, validates the whole configuration, then rewrites the file atomically in its layout, creating its directory (mode 0755) when missing. A file that exists keeps its mode, its owner and its group: a user who cannot give them back to the new file gets an error, and nothing is written. A symbolic link is followed: the file it names is rewritten, the link stays; a link to a missing file is refused with `<file> is a link to a missing file`. A new file gets mode 0644. Nothing is written when one value is refused. A missing file starts from the defaults, without database.
 - Linked keys are set in the same command: `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` and `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. Set one after the other, the first may be refused.
 - `config set` prints `<keys> updated in <file>; restart the server to apply it.`, the keys separated by commas.
 - Neither reads the database nor needs the server stopped.
@@ -2743,7 +2744,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 ### Editing
 
 - The file holds no secret and is never written by the server.
-- It is created readable by anyone (mode 0644), keeps the mode its owner gives it, and can be edited by hand.
+- It is created readable by anyone (mode 0644), keeps the mode, the owner and the group given to it, and can be edited by hand.
 - `config set` rewrites it after validating the new values ([`timesheet config show` and `timesheet config set`](#timesheet-config-show-and-timesheet-config-set)).
 - The server page shows the settings read at the start of the server, read-only ([Server settings shown](#server-settings-shown)).
 
@@ -2866,9 +2867,10 @@ The paths lost their defaults, and the files written next to the database lost t
 
 ### Login throttle and cookies
 
-The table of the login throttle got a lower bound, and the cookies a prefix under https, without raising the schema `version`, which is still 1.
+The table of the login throttle got a lower maximum, the cookies a prefix under https, and the container image a server configuration that trusts no proxy, without raising the schema `version`, which is still 1.
 
-- A server configuration with `login.tracked_addresses` above 65 536 is refused with `login.tracked_addresses: an integer from 16 to 65536 is expected` (exit 1): lower it with `config set login.tracked_addresses 65536`.
+- A server configuration with `login.tracked_addresses` above 65 536 is refused with `login.tracked_addresses: an integer from 16 to 65536 is expected` (exit 1): edit the key in the file by hand, 65536 at most; `config show` and `config set` refuse the file until then.
+- The volume of the server configuration of a container created by an earlier image keeps that configuration, which trusts the RFC 1918 ranges: run `config set server.trusted_proxies ''` in the container, then restart it ([OPERATIONS.md, Container](OPERATIONS.md#back-up-and-upgrade-the-container)).
 - With https origins, the cookies are named `__Host-ts_session` and `__Host-ts_login`: the sessions opened before the upgrade are no longer recognised, and their users log in again. The former cookies expire with the browser session.
 
 ### Rule for future changes

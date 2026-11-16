@@ -60,7 +60,7 @@ func (p *TLSProvider) Config() (*tls.Config, error) {
 
 func (p *TLSProvider) KeyExposed() bool {
     info, err := os.Stat(p.keyPath)
-    return (err == nil) && ((info.Mode().Perm() & 0o077) != 0)
+    return (err == nil) && ((info.Mode().Perm() & 0o037) != 0)
 }
 
 func (p *TLSProvider) cipherSuites() []uint16 {

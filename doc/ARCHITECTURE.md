@@ -187,7 +187,7 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | `MonthStatus` | value | Status of a month |
 | `MonthEvent` | record | Event of the history of a month |
 | `MonthRecord` | record | Status and history of a month |
-| `MonthlyIndicators` | record | Snapshot of the indicators of a month |
+| `MonthlyIndicators` | record | Snapshot of the indicators of a month, with `Same` to compare two snapshots |
 | `Calendar` | record | All the data of a user: revision, settings, days, adjustments, months, ledger. Lookups: `IsValidated`, `LastValidated`, `FirstOpen`, `UsesActivity`, `UsesCounter`; `KeepsHistoryOf` tells whether a new version keeps the validated months and the tracking start of the previous one. Its file holds `ErrStaleRevision` and `ErrHistoryRewritten` |
 
 #### Bookkeeping
@@ -409,7 +409,7 @@ A write runs these steps under one `sync.RWMutex`:
 | `Usage` | service | Text of `timesheet help` |
 | `UsageError` | value | Error of usage of the command line |
 | `Application` | service | Dispatch of the commands and lifecycle of `run` (see [Lifecycle](#lifecycle)) |
-| `ServerFile` | service | Server configuration file: strict bounded reading, an error when it is missing (`ErrMissingServerFile`, which `config set` turns into the defaults), validation, atomic rewriting by `config set` |
+| `ServerFile` | service | Server configuration file: strict bounded reading, an error when it is missing (`ErrMissingServerFile`, which `config set` turns into the defaults), validation, atomic rewriting by `config set`, which follows a symbolic link and keeps the mode, the owner and the group of the file (`server_file_unix.go`) |
 | `InitCommand` | service | `init` |
 | `ConfigCommand` | service | `config show`, `config set` |
 | `UserCommand` | service | `user add`, `user profile`, `user passwd`, `user del`, `user list` |

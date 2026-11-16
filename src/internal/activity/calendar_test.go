@@ -58,6 +58,11 @@ func TestCalendarKeepsTheHistoryOfValidatedMonths(t *testing.T) {
     altered.Ledger[0].Amount = q(t, "99")
     adjusted := validated.Clone()
     adjusted.Adjustments = append(adjusted.Adjustments, Adjustment{ID: "a1", Date: day(t, "2026-09-30"), Counter: "CP", Amount: q(t, "1"), Reason: "ajout"})
+    credited := validated.Clone()
+    credited.Ledger = append(credited.Ledger, LedgerEntry{ID: "forged", Month: month(t, "2026-09"), Date: day(t, "2026-09-30"), Counter: "CP", Kind: KindCredit, Amount: q(t, "10"), Created: fixedNow()})
+    first := validated.Ledger[0]
+    cancelled := validated.Clone()
+    cancelled.Ledger = append(cancelled.Ledger, LedgerEntry{ID: "undo", Month: first.Month, Date: first.Date, Counter: first.Counter, Kind: KindReversal, Amount: first.Amount.Neg(), Ref: first.ID, Created: fixedNow()})
     older := validated.Clone()
     record := older.Months[month(t, "2026-09")]
     record.Status = MonthOpen
@@ -72,7 +77,17 @@ func TestCalendarKeepsTheHistoryOfValidatedMonths(t *testing.T) {
     record = redated.Months[month(t, "2026-10")]
     record.ValidatedAt = fixedNow().Add(time.Hour)
     redated.Months[month(t, "2026-10")] = record
-    for name, candidate := range map[string]Calendar{"moved start": moved, "frozen rules changed": refrozen, "validation date changed": redated, "rewritten day": rewritten, "removed day": removed, "truncated ledger": truncated, "altered ledger": altered, "adjustment in a validated month": adjusted, "older month reopened": older} {
+    recounted := validated.Clone()
+    record = recounted.Months[month(t, "2026-09")]
+    indicators := *record.Indicators
+    indicators.ByCode = map[string]Quantity{"TT": q(t, "99")}
+    record.Indicators = &indicators
+    recounted.Months[month(t, "2026-09")] = record
+    forgotten := validated.Clone()
+    record = forgotten.Months[month(t, "2026-09")]
+    record.History = nil
+    forgotten.Months[month(t, "2026-09")] = record
+    for name, candidate := range map[string]Calendar{"frozen indicators changed": recounted, "history of a validated month erased": forgotten, "entry added to a validated month": credited, "reversal in a month that stays validated": cancelled, "moved start": moved, "frozen rules changed": refrozen, "validation date changed": redated, "rewritten day": rewritten, "removed day": removed, "truncated ledger": truncated, "altered ledger": altered, "adjustment in a validated month": adjusted, "older month reopened": older} {
         if candidate.KeepsHistoryOf(validated) {
             t.Errorf("%s: accepted", name)
         }

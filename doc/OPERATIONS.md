@@ -116,7 +116,7 @@ To change settings:
 
 2. Change linked settings in the same command: `server.listen` with `server.origins`, `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` or `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. One after the other, the first may be refused.
 
-3. Restart the server: a change applies at the next start. On a package: `systemctl restart timesheet`. The page « Serveur » of the administration shows the values read from the file at the start, not the options of `run`.
+3. Restart the server: a change applies at the next start. On a package: `systemctl restart timesheet`. The page « Serveur » of the administration shows the values read from the file at the start, not the options of `run`, except « Fichier », the database opened.
 
 Common changes:
 
@@ -482,6 +482,7 @@ To import, mount the file, readable by the uid 10001: add `-v "$PWD/<file>.json:
   ```
 
 - Upgrade: back up, rebuild the image ([BUILD.md](BUILD.md#build-the-container-image)), remove the container (`docker rm -f timesheet`), then start it again as in step 1 of [First start](#first-start), with the same volumes. The [migration notes](SPECIFICATIONS.md#migration-notes) apply as to any installation.
+- The volume `timesheet-config` keeps the server configuration of the image that created it. One created by an image that still trusted the private ranges keeps trusting them: run `docker exec timesheet timesheet config set server.trusted_proxies '' --config=/etc/timesheet/timesheet.json`, then `docker restart timesheet`.
 
 ## BACKUP AND RESTORE
 

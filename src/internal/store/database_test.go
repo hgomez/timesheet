@@ -129,6 +129,11 @@ func TestDatabaseRefusesToRewriteAValidatedMonth(t *testing.T) {
     if err := database.CheckCalendar("olivier", stored.Revision, rewritten); !errors.Is(err, activity.ErrHistoryRewritten) {
         t.Fatalf("check of a rewrite of a validated month: %v", err)
     }
+    credited := stored.Clone()
+    credited.Ledger = append(credited.Ledger, activity.LedgerEntry{ID: "forged", Month: september, Date: september.Last(), Counter: "CP", Kind: activity.KindCredit, Amount: activity.NewQuantity(10, 1), Label: "test"})
+    if err := database.SaveCalendar("olivier", stored.Revision, credited); !errors.Is(err, activity.ErrHistoryRewritten) {
+        t.Fatalf("entry added to a validated month: %v", err)
+    }
     november := today.Month().First()
     if err := database.EraseCalendar("olivier", stored.Revision, november); err != nil {
         t.Fatal(err)
@@ -389,8 +394,12 @@ func TestDatabaseRefusesInconsistentMonthsAndLedgers(t *testing.T) {
         calendar.Ledger = ledger
         return calendar
     }
+    closed := build(map[activity.Month]activity.MonthRecord{january: validated, february: validated}, entry("a", january, activity.KindCredit, 2, ""), entry("b", february, activity.KindCredit, 3, ""))
+    if err := database.SaveCalendar("bob", 1, closed); err != nil {
+        t.Fatalf("validated months refused: %v", err)
+    }
     sound := build(map[activity.Month]activity.MonthRecord{january: validated}, entry("a", january, activity.KindCredit, 2, ""), entry("b", february, activity.KindCredit, 3, ""), entry("c", february, activity.KindReversal, -3, "b"))
-    if err := database.CheckCalendar("bob", 1, sound); err != nil {
+    if err := database.CheckCalendar("bob", 2, sound); err != nil {
         t.Fatalf("sound calendar refused: %v", err)
     }
     cases := map[string]activity.Calendar{
@@ -406,7 +415,7 @@ func TestDatabaseRefusesInconsistentMonthsAndLedgers(t *testing.T) {
     unknownZone.Settings.PublicHolidays = &corse
     cases["unknown zone of public holidays"] = unknownZone
     for name, calendar := range cases {
-        if err := database.CheckCalendar("bob", 1, calendar); !errors.Is(err, ErrMalformedDatabase) {
+        if err := database.CheckCalendar("bob", 2, calendar); !errors.Is(err, ErrMalformedDatabase) {
             t.Errorf("%s: %v", name, err)
         }
     }

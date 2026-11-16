@@ -104,6 +104,20 @@ func TestServerFileKeepsItsLinkAndItsMode(t *testing.T) {
     }
 }
 
+func TestServerFileRefusesALinkToAMissingFile(t *testing.T) {
+    directory := t.TempDir()
+    link := filepath.Join(directory, "link.json")
+    if err := os.Symlink("missing/target.json", link); err != nil {
+        t.Fatal(err)
+    }
+    if err := NewServerFile(link).Save(activity.NewDefaultServerConfiguration()); (err == nil) || !strings.Contains(err.Error(), "is a link to a missing file") {
+        t.Fatalf("a dangling link: %v", err)
+    }
+    if info, _ := os.Lstat(link); (info.Mode() & os.ModeSymlink) == 0 {
+        t.Fatal("the link must stay a link")
+    }
+}
+
 func TestPasswordIterationsStayWithinTheVerifiedRange(t *testing.T) {
     if (activity.MaxPasswordIterations != account.MaxIterations) || (activity.DefaultPasswordIterations < account.MinIterations) {
         t.Fatal("the iterations of the configuration must stay within the range that the verification accepts")

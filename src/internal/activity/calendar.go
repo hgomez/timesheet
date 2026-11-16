@@ -134,6 +134,13 @@ func (c Calendar) KeepsHistoryOf(previous Calendar) bool {
     if history && (c.Settings.Start != previous.Settings.Start) {
         return false
     }
+    for _, entry := range c.Ledger[len(previous.Ledger):] {
+        reopening := (entry.Kind == KindReversal) && history && (entry.Month == last) && !c.IsValidated(last)
+        validation := (entry.Kind != KindReversal) && !previous.IsValidated(entry.Month) && c.IsValidated(entry.Month)
+        if !reopening && !validation {
+            return false
+        }
+    }
     for m, record := range previous.Months {
         if !previous.IsValidated(m) {
             continue
@@ -141,11 +148,27 @@ func (c Calendar) KeepsHistoryOf(previous Calendar) bool {
         if (!c.IsValidated(m) && (m != last)) || !c.sameDays(previous, m) || !c.sameAdjustments(previous, m) {
             return false
         }
-        if c.IsValidated(m) && (!c.Months[m].ValidatedAt.Equal(record.ValidatedAt) || !maps.Equal(c.Months[m].Rules, record.Rules)) {
+        if c.IsValidated(m) && !c.sameRecord(record, m) {
             return false
         }
     }
     return true
+}
+
+func (c Calendar) sameRecord(previous MonthRecord, m Month) bool {
+    record := c.Months[m]
+    if !record.ValidatedAt.Equal(previous.ValidatedAt) || !maps.Equal(record.Rules, previous.Rules) || (len(record.History) != len(previous.History)) {
+        return false
+    }
+    for i, event := range previous.History {
+        if !event.At.Equal(record.History[i].At) || (event.Action != record.History[i].Action) || (event.Reason != record.History[i].Reason) {
+            return false
+        }
+    }
+    if (record.Indicators == nil) || (previous.Indicators == nil) {
+        return record.Indicators == previous.Indicators
+    }
+    return record.Indicators.Same(*previous.Indicators)
 }
 
 func (c Calendar) sameDays(previous Calendar, m Month) bool {

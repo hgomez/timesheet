@@ -108,9 +108,13 @@ func (f *ServerFile) Save(configuration activity.ServerConfiguration) error {
     if err != nil {
         return err
     }
-    target, mode, err := f.target()
+    target, existing, err := f.target()
     if err != nil {
         return err
+    }
+    mode := fs.FileMode(serverFileMode)
+    if existing != nil {
+        mode = existing.Mode().Perm()
     }
     directory := filepath.Dir(target)
     if err := os.MkdirAll(directory, serverDirectoryMode); err != nil {
@@ -124,6 +128,11 @@ func (f *ServerFile) Save(configuration activity.ServerConfiguration) error {
     _, err = temp.Write(data)
     if err == nil {
         err = temp.Chmod(mode)
+    }
+    if (err == nil) && (existing != nil) {
+        if err = f.keepOwner(temp, existing); err != nil {
+            err = fmt.Errorf("cannot keep the owner and the group of %s: %w", target, err)
+        }
     }
     if err == nil {
         err = temp.Sync()
@@ -142,22 +151,27 @@ func (f *ServerFile) Save(configuration activity.ServerConfiguration) error {
     return nil
 }
 
-func (f *ServerFile) target() (string, fs.FileMode, error) {
+func (f *ServerFile) target() (string, fs.FileInfo, error) {
+    if _, err := os.Lstat(f.path); errors.Is(err, fs.ErrNotExist) {
+        return f.path, nil, nil
+    } else if err != nil {
+        return "", nil, err
+    }
     target, err := filepath.EvalSymlinks(f.path)
     if errors.Is(err, fs.ErrNotExist) {
-        return f.path, serverFileMode, nil
+        return "", nil, fmt.Errorf("%s is a link to a missing file", f.path)
     }
     if err != nil {
-        return "", 0, err
+        return "", nil, err
     }
     info, err := os.Stat(target)
     if err != nil {
-        return "", 0, err
+        return "", nil, err
     }
     if !info.Mode().IsRegular() {
-        return "", 0, fmt.Errorf("%s is not a regular file", target)
+        return "", nil, fmt.Errorf("%s is not a regular file", target)
     }
-    return target, info.Mode().Perm(), nil
+    return target, info, nil
 }
 
 func (f *ServerFile) syncDirectory(directory string) {
