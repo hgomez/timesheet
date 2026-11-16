@@ -76,7 +76,7 @@ func (c *LoginController) Show(w http.ResponseWriter, r *http.Request) {
 
 func (c *LoginController) form(w http.ResponseWriter, r *http.Request, status int, login string, alert string) {
     token := ""
-    if cookie, err := r.Cookie(LoginCookie); (err == nil) && regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`).MatchString(cookie.Value) {
+    if cookie, err := r.Cookie(c.sessions.CookieName(LoginCookie)); (err == nil) && regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`).MatchString(cookie.Value) {
         token = cookie.Value
     } else if token, err = c.sessions.Token(); err != nil {
         c.errors.Status(w, r, http.StatusInternalServerError)
@@ -91,7 +91,7 @@ func (c *LoginController) Submit(w http.ResponseWriter, r *http.Request) {
         c.errors.BadRequest(w, r)
         return
     }
-    cookie, err := r.Cookie(LoginCookie)
+    cookie, err := r.Cookie(c.sessions.CookieName(LoginCookie))
     if (err != nil) || (cookie.Value == "") || (subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(r.PostFormValue("csrf"))) != 1) {
         c.errors.Forbidden(w, r, ForbiddenToken)
         return
@@ -123,7 +123,7 @@ func (c *LoginController) Submit(w http.ResponseWriter, r *http.Request) {
     }
     c.throttle.End(key, string(login), true)
     previous := ""
-    if old, err := r.Cookie(SessionCookie); err == nil {
+    if old, err := r.Cookie(c.sessions.CookieName(SessionCookie)); err == nil {
         previous = old.Value
     }
     id, err := c.sessions.Open(login, previous)

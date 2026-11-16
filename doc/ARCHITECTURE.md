@@ -27,7 +27,7 @@ Purpose and French specifics:
 - Timesheet tracks the activity and the leave counters of employees working in France.
 - The domain package `internal/activity` carries the French specifics:
   - the public holidays of the thirteen French zones, metropolitan France, Alsace-Moselle and the overseas territories;
-  - the rules of paid leave, RTT (récupération temps de travail) and part-time counters;
+  - the rules of paid leave, RTT (label « Récupération temps de travail »; the legal term is réduction du temps de travail) and part-time counters;
   - the French labels.
 
 Delivery:
@@ -573,7 +573,8 @@ The validation, the reopening and the adjustments compare the revision the same 
 | --- | --- | --- |
 | `sync.RWMutex` of `Database` | The record in memory | A read copy, or a whole write including the file |
 | file lock `<name>.lock` | The database file against a second process | The life of `run`, or of a writing command |
-| leaf lock of `Sessions` | The sessions in memory | One operation on the sessions |
+| leaf lock of `Sessions` | The sessions in memory | One operation on the sessions, without the write of the session file |
+| write lock of `Sessions` | The session file and the number of the last state written | One write of the session file, which skips a state older than the last written |
 | leaf lock of `LoginThrottle` | The counters of failed logins | One operation on the throttle |
 | leaf lock of `ManualClock` | The time of the test clock | One read or change |
 | leaf lock of `Application` | The listening address read by `Listen` | One read or change |
@@ -638,7 +639,7 @@ Its settings are specified in [SPECIFICATIONS.md, Server configuration](SPECIFIC
 10. Build the site with `web.NewSite`, which restores the saved sessions.
 11. Build the `http.Server` with the timeouts and the header size of the section `server`.
 12. Serve until the signal context ends.
-13. Shut down gracefully, within `server.shutdown_timeout`.
+13. Shut down gracefully, within `server.shutdown_timeout`, then save the sessions (`Site.Flush`).
 
 ### Other commands
 

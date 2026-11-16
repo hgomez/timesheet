@@ -2073,7 +2073,7 @@ timesheet help | version
 | 2 | usage error | an unknown command, option or key of `config show` or `config set`; `config`, `user` or `session` without subcommand; a wrong number of arguments, `config set` without a value for each key included; an option that does not apply to the command; a malformed value of `--from`, `--to`, `--log-level` or `--trusted-proxy`; an empty `--origin=` or `--trusted-proxy=`; `--from` after `--to`; `--tls-cert` without `--tls-key`, or the reverse; an invalid `--database` or `--config`; a command that opens the database while neither `--database` nor `database.path` gives it; `config show` or `config set` without `--config`; `init` without `--template` |
 | 128 + signal | password prompt interrupted | 129 for SIGHUP, 130 for SIGINT, 131 for SIGQUIT, 143 for SIGTERM; the terminal echo is restored |
 
-An error is printed on the standard error as `timesheet: <message>`. An error found while reading the options and the arguments is followed by `Try 'timesheet help' for more information.`, except the checks of the months of `import`, which print only their line: `timesheet: invalid --from`, `timesheet: invalid --to` or `timesheet: --from after --to`.
+An error is printed on the standard error as `timesheet: <message>`. An error found while reading the options and the arguments is followed by `Try 'timesheet help' for more information.`, except the checks of the months of `import`, which print only their line: `timesheet: invalid --from`, `timesheet: invalid --to` or `timesheet: --from after --to`, and a command that opens the database while neither `--database` nor `database.path` gives it, which prints only `timesheet: <command>: no database: give --database or set database.path in --config`.
 
 ### Help and version
 
@@ -2090,7 +2090,7 @@ The server also starts before step 2, without any account: it then warns, and st
 
 The procedure, with the paths of an installed package, is in [OPERATIONS.md, Install](OPERATIONS.md#install) and [README.md, First start](../README.md#first-start).
 
-The container image does steps 1 and 2 at its first start, before `run`, when the database named by its server configuration does not exist yet: `init`, then `user add <login> --profile=ADMIN --provisional`, with the login of `TIMESHEET_USERNAME`, or else `admin`, and the password of `TIMESHEET_PASSWORD`, or else the default password `Tms@Admin%26`. The account must change its password at its first login ([Provisional password](#provisional-password)). When the database exists, nothing is created; when `init` or `user add` fails, the container stops with exit 1. The procedure is in [OPERATIONS.md, Container](OPERATIONS.md#container).
+The container image does steps 1 and 2 at its first start, before `run`, when the database named by its server configuration does not exist yet: `init`, then `user add <login> --profile=ADMIN --provisional`, with the login of `TIMESHEET_USERNAME`, or else `admin`, and the password of `TIMESHEET_PASSWORD`, or else, when the variable is missing or empty, the default password `Tms@Admin%26`. The account must change its password at its first login ([Provisional password](#provisional-password)). When the database exists, nothing is created; when `init` or `user add` fails, the container stops with exit 1. The procedure is in [OPERATIONS.md, Container](OPERATIONS.md#container).
 
 ### Passwords
 
@@ -2098,7 +2098,7 @@ The container image does steps 1 and 2 at its first start, before `run`, when th
 
 1. the environment variable `TIMESHEET_PASSWORD`, refused when it is set but empty;
 2. otherwise, on Linux, twice on the terminal without echo, after the prompts `Password: ` and `Confirmation: `; the two must match, and an interruption restores the echo;
-3. otherwise one line of the standard input (4096 bytes at most).
+3. otherwise one line of the standard input (4096 bytes at most); when that input is a terminal, on another system than Linux, the command first prints `warning: the password is read with echo on this system; prefer TIMESHEET_PASSWORD or a pipe`.
 
 The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The help text lists these sources in another order; the order of this list is the one applied.
 
@@ -2134,7 +2134,7 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 - Reads the server configuration first, then takes the lock and loads the database.
 - Starts even while no enabled `ADMIN` exists, and then logs the warning `no administrator account` with the hint `stop the server, run 'timesheet user add <login> --profile=ADMIN --database=<file>', then start it again`, followed by `--config=<file>` when it was given; these arguments are absolute and quoted for the shell as in the hint of `init` ([Start condition of the server](#start-condition-of-the-server)).
 - Restores the sessions of the [session file](#session-file).
-- Stops on SIGINT or SIGTERM, letting the requests in progress end for up to `server.shutdown_timeout` (10 seconds by default).
+- Stops on SIGINT or SIGTERM, letting the requests in progress end for up to `server.shutdown_timeout` (10 seconds by default), then saves the sessions.
 - Takes its timeouts and request sizes from the [section server](#section-server) of the server configuration, and the durations of its sessions and of its login throttle from the sections [sessions](#section-sessions) and [login](#section-login).
 
 #### Address and origins
@@ -2179,7 +2179,7 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 
 - `config show` prints the server configuration read from the file, as JSON, in the [layout](#layout) of the file, every key included. A missing file is an error. It never shows the options of a running server.
 - `config show KEY` prints only the value of one key, raw, on one line: a string without quotes, a duration in its shortest form, a number, a list as values separated by commas, `null` for no value. A script reads a setting this way, for instance `config show database.path`.
-- `config set KEY VALUE [KEY VALUE...]` reads each value according to the type of its key, applies all of them, validates the whole configuration, then rewrites the file atomically in its layout, mode 0644, creating its directory (mode 0755) when missing. Nothing is written when one value is refused. A missing file starts from the defaults, without database.
+- `config set KEY VALUE [KEY VALUE...]` reads each value according to the type of its key, applies all of them, validates the whole configuration, then rewrites the file atomically in its layout, creating its directory (mode 0755) when missing. A file that exists keeps its mode, and a symbolic link is followed: the file it names is rewritten, the link stays; a new file gets mode 0644. Nothing is written when one value is refused. A missing file starts from the defaults, without database.
 - Linked keys are set in the same command: `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` and `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. Set one after the other, the first may be refused.
 - `config set` prints `<keys> updated in <file>; restart the server to apply it.`, the keys separated by commas.
 - Neither reads the database nor needs the server stopped.
@@ -2375,7 +2375,7 @@ The command prints, in this order:
 1. the warnings, prefixed with `warning: ` (`tracking start moved from <date> to <date>`, `adjustment of <date> already present, ignored`);
 2. `Settings read: tracking start <date>, <n> counter(s).` when the file has `settings`;
 3. `<n> day(s) read, from <month> to <month>.` when the file has days;
-4. month by month, `missing entries in <month>: <dates>`: the days before today with a half-day or both left without entry, weekends and holidays included;
+4. month by month, within the imported months, `missing entries in <month>: <dates>`: the days before today with a half-day or both left without entry, weekends and holidays included;
 5. `<n> adjustment(s) read.` when the file has adjustments;
 6. with `--validate`, `<month> validated.` per month, or `validation stopped at <month>: <reason>`;
 7. `Dry run: nothing was written.` with `--dry-run`, otherwise `Import saved.`.
@@ -2696,7 +2696,7 @@ A file edited by hand may use any layout: the next `config set` rewrites it in t
 | `max_delay` | a duration from 1 s to 1 h | the longest wait of an address or a login, and the wait of an address beyond the budget | `5m` |
 | `budget_window` | a duration from 10 s to 1 h | the window of the global budget | `1m` |
 | `new_addresses_per_window` | 1 to 10 000 | the new addresses that may fail in a window before the next ones wait `max_delay` | `100` |
-| `tracked_addresses` | 16 to 1 000 000 | the addresses followed at once, and the logins followed at once | `4096` |
+| `tracked_addresses` | 16 to 65 536 | the addresses followed at once, and the logins followed at once | `4096` |
 | `forget_after` | a duration from `max_delay` to 7 days | an address or a login without failure for this long starts again from `initial_delay` | `1h` |
 
 The throttle itself is described in [SECURITY.md](SECURITY.md#login-throttling).
@@ -2743,7 +2743,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 ### Editing
 
 - The file holds no secret and is never written by the server.
-- It can be read by anyone (mode 0644) and edited by hand.
+- It is created readable by anyone (mode 0644), keeps the mode its owner gives it, and can be edited by hand.
 - `config set` rewrites it after validating the new values ([`timesheet config show` and `timesheet config set`](#timesheet-config-show-and-timesheet-config-set)).
 - The server page shows the settings read at the start of the server, read-only ([Server settings shown](#server-settings-shown)).
 
@@ -2864,6 +2864,13 @@ The paths lost their defaults, and the files written next to the database lost t
 - The former session file `.<name>.sessions` is no longer read: its users log in again. Stop the server, then delete it, with the former lock `.<name>.lock`; the session file holds the CSRF tokens of its sessions.
 - The former lock `.<name>.lock` and the new `<name>.lock` do not exclude each other: a former server still running does not stop a command of the new version, and its next write would erase what that command wrote. Stop the server before upgrading or rebuilding, and start it again only with the new version.
 
+### Login throttle and cookies
+
+The table of the login throttle got a lower bound, and the cookies a prefix under https, without raising the schema `version`, which is still 1.
+
+- A server configuration with `login.tracked_addresses` above 65 536 is refused with `login.tracked_addresses: an integer from 16 to 65536 is expected` (exit 1): lower it with `config set login.tracked_addresses 65536`.
+- With https origins, the cookies are named `__Host-ts_session` and `__Host-ts_login`: the sessions opened before the upgrade are no longer recognised, and their users log in again. The former cookies expire with the browser session.
+
 ### Rule for future changes
 
 A change of the layout of the database raises its `version` and makes the program read or convert the former version, or adds a note to this section with its symptom and its procedure. The same applies to the server configuration and to the import format.
@@ -2908,6 +2915,7 @@ time=2026-11-13T16:40:12.345+01:00 level=INFO msg=request client=203.0.113.9 pee
 | `listening` | INFO | `address`, `origins`, `database` | the server is ready; `database` is the absolute path of the database file |
 | `no administrator account` | WARN | `hint` | the database has no enabled `ADMIN` at start |
 | `serving plain HTTP: …` | WARN | | the origins are `http` |
+| `the TLS key is readable by other users: give it mode 0600 or 0640` | WARN | `path` | the key of the TLS pair gives a right to others, or a right to its group beyond reading |
 | `stopped` | INFO | | the server stopped |
 | `server stopped` | ERROR | `error` | the server failed while serving |
 | `cannot load <path>`, `cannot lock <path>`, `cannot listen on <address>`, `invalid origins`, `invalid trusted proxies`, `TLS needs https origins`, `TLS setup failed`, `cannot prepare <path>`, `cannot build the site` | ERROR | `error` | `run` cannot start; it exits with 1 |
@@ -2970,7 +2978,7 @@ The security model, its reasons and its accepted risks are owned by [SECURITY.md
 | Topic | Requirement | Details |
 | --- | --- | --- |
 | Sessions | kept in memory and saved hashed in the [session file](#session-file), so that they survive a restart; sliding expiry, absolute expiry and number per account set in the [section sessions](#section-sessions), 8 h, 24 h and 64 by default | [Sessions](SECURITY.md#sessions) |
-| Cookies | the session cookie `ts_session` and the login form cookie `ts_login`, both `HttpOnly` and `SameSite=Strict`; `Secure`, and HSTS of `server.hsts_max_age`, with https origins | [Sessions](SECURITY.md#sessions) |
+| Cookies | the session cookie `ts_session` and the login form cookie `ts_login`, both `HttpOnly` and `SameSite=Strict`; with https origins, `Secure`, the prefix `__Host-` (`__Host-ts_session`, `__Host-ts_login`) and HSTS of `server.hsts_max_age` | [Sessions](SECURITY.md#sessions) |
 | Forms | a CSRF token on every form, and an origin check on every unsafe request | [Forms and origins](SECURITY.md#forms-and-origins) |
 | Passwords | PBKDF2-SHA256 with `passwords.iterations` iterations, 600 000 at least and by default; at least 12 characters, 6 distinct, no surrounding space, no control, format or line separator character, 256 bytes at most, different from the login whatever the case and, from the profile page, from the current password | [Passwords](SECURITY.md#passwords) |
 | Login | throttled per address and per login, with the delays of the [section login](#section-login) | [Login throttling](SECURITY.md#login-throttling) |

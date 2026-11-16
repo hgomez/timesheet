@@ -108,18 +108,22 @@ func (f *ServerFile) Save(configuration activity.ServerConfiguration) error {
     if err != nil {
         return err
     }
-    directory := filepath.Dir(f.path)
+    target, mode, err := f.target()
+    if err != nil {
+        return err
+    }
+    directory := filepath.Dir(target)
     if err := os.MkdirAll(directory, serverDirectoryMode); err != nil {
         return err
     }
-    temp, err := os.CreateTemp(directory, filepath.Base(f.path) + ".*" + activity.TemporarySuffix)
+    temp, err := os.CreateTemp(directory, filepath.Base(target) + ".*" + activity.TemporarySuffix)
     if err != nil {
         return err
     }
     name := temp.Name()
     _, err = temp.Write(data)
     if err == nil {
-        err = temp.Chmod(serverFileMode)
+        err = temp.Chmod(mode)
     }
     if err == nil {
         err = temp.Sync()
@@ -128,7 +132,7 @@ func (f *ServerFile) Save(configuration activity.ServerConfiguration) error {
         err = closing
     }
     if err == nil {
-        err = os.Rename(name, f.path)
+        err = os.Rename(name, target)
     }
     if err != nil {
         os.Remove(name)
@@ -136,6 +140,24 @@ func (f *ServerFile) Save(configuration activity.ServerConfiguration) error {
     }
     f.syncDirectory(directory)
     return nil
+}
+
+func (f *ServerFile) target() (string, fs.FileMode, error) {
+    target, err := filepath.EvalSymlinks(f.path)
+    if errors.Is(err, fs.ErrNotExist) {
+        return f.path, serverFileMode, nil
+    }
+    if err != nil {
+        return "", 0, err
+    }
+    info, err := os.Stat(target)
+    if err != nil {
+        return "", 0, err
+    }
+    if !info.Mode().IsRegular() {
+        return "", 0, fmt.Errorf("%s is not a regular file", target)
+    }
+    return target, info.Mode().Perm(), nil
 }
 
 func (f *ServerFile) syncDirectory(directory string) {

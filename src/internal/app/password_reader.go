@@ -74,6 +74,9 @@ func (p *PasswordReader) Read() (string, error) {
             }
             return first, nil
         }
+        if info, err := file.Stat(); (err == nil) && ((info.Mode() & os.ModeCharDevice) != 0) {
+            fmt.Fprintln(p.stderr, "warning: the password is read with echo on this system; prefer " + PasswordVariable + " or a pipe")
+        }
     }
     return p.line(p.stdin)
 }

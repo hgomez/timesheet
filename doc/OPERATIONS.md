@@ -116,7 +116,7 @@ To change settings:
 
 2. Change linked settings in the same command: `server.listen` with `server.origins`, `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` or `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. One after the other, the first may be refused.
 
-3. Restart the server: a change applies at the next start. On a package: `systemctl restart timesheet`. The page « Serveur » of the administration shows the values read at the start.
+3. Restart the server: a change applies at the next start. On a package: `systemctl restart timesheet`. The page « Serveur » of the administration shows the values read from the file at the start, not the options of `run`.
 
 Common changes:
 
@@ -237,7 +237,7 @@ To import:
    ```
 
    - Every day is checked like an entry of the grid, every adjustment like one of « Activité ». Any problem is listed with its date and nothing is written.
-   - It lists, month by month, the days before today left without entry, weekends and holidays included.
+   - It lists, month by month, within the imported months, the days before today left without entry, weekends and holidays included.
    - With `--validate`, it also lists the months that would be validated.
 
 4. Import for real, without `--dry-run`. Use `--validate` only if no missing day is listed: each month is then recorded as validated on its last day. Otherwise complete the listed days in the grid and validate month by month.
@@ -372,7 +372,7 @@ The image is built as described in [BUILD.md](BUILD.md#build-the-container-image
 
 ### First start
 
-Before `run`, when the database of the server configuration does not exist, the entry point creates it with `init`, then an administrator with `user add <login> --profile=ADMIN --provisional` ([Bootstrap](SPECIFICATIONS.md#bootstrap)). Its login is the variable `TIMESHEET_USERNAME` when given, otherwise `admin`; its password is the variable `TIMESHEET_PASSWORD` when given, otherwise the default password `Tms@Admin%26`, which must be changed at the first login. When the database exists, the entry point creates nothing.
+Before `run`, when the database of the server configuration does not exist, the entry point creates it with `init`, then an administrator with `user add <login> --profile=ADMIN --provisional` ([Bootstrap](SPECIFICATIONS.md#bootstrap)). Its login is the variable `TIMESHEET_USERNAME` when given, otherwise `admin`; its password is the variable `TIMESHEET_PASSWORD` when given, otherwise the default password `Tms@Admin%26`, which must be changed at the first login. An empty `TIMESHEET_PASSWORD` counts as missing: it gives the default password too. When the database exists, the entry point creates nothing.
 
 1. Start the container, published on the loopback only:
 

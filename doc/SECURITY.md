@@ -109,7 +109,7 @@ Each row is a known limit that the application does not remove. The column "Boun
 | Group members can delete or replace the files. | The database directory is writable by its group. | A warning is logged. | Remove the group write right. See [Files](#files). |
 | Another user can block the program. | The database is in a sticky directory shared with other users. | That user creates the lock or session file first. | Use a directory of the service account. |
 | An administrator with a public password. | The example database is served on a network or used as a real database. | Its account `demo`, profile `ADMIN`, has the documented password `demonstration`. | Use it only on the loopback, in a copy; never as a real database. See [Example database](OPERATIONS.md#example-database). |
-| An administrator with a default password. | A container starts on a new database without `TIMESHEET_PASSWORD`. | Its administrator, `admin` unless `TIMESHEET_USERNAME` names another login, has the documented password `Tms@Admin%26`, provisional: the first login must change it, but whoever logs in first takes the account. | Give `TIMESHEET_PASSWORD` at the first start, or log in and change the password before the port is reachable from the network. See [Container](OPERATIONS.md#container). |
+| An administrator with a default password. | A container starts on a new database without `TIMESHEET_PASSWORD`, or with an empty one. | Its administrator, `admin` unless `TIMESHEET_USERNAME` names another login, has the documented password `Tms@Admin%26`, provisional: the first login must change it, but whoever logs in first takes the account. | Give `TIMESHEET_PASSWORD` at the first start, or log in and change the password before the port is reachable from the network. See [Container](OPERATIONS.md#container). |
 | A permanent password known to the operator. | `user add` or `user passwd` set the password. | The operator typed it. | Ask the user to change it from the profile page (« Mon profil »). |
 | The session file gives the CSRF tokens. | Someone reads the session file. | It does not give the means to use a session. | Protect it like the database. |
 | The database and the backups are not encrypted. | root, the service account or a holder of a backup reads the file. | Every comment and absence reason is readable in clear. | File modes, protected backups. See [Data protection](#data-protection). |
@@ -225,9 +225,9 @@ The values are set in the [section login](SPECIFICATIONS.md#section-login) of th
 | Growth | Doubled at each further failure | fixed |
 | Longest delay | 5 min | `login.max_delay`, 1 s to 1 h |
 | Global budget | 100 new addresses a minute | `login.new_addresses_per_window`, 1 to 10 000, in a window of `login.budget_window`, 10 s to 1 h |
-| Size of the table | 4096 addresses | `login.tracked_addresses`, 16 to 1 000 000 |
+| Size of the table | 4096 addresses | `login.tracked_addresses`, 16 to 65 536 |
 | Failures forgotten after | 1 h without failure | `login.forget_after`, from the longest delay to 7 days |
-| Password checks at once per address | 1 | fixed; a second attempt during a check waits 1 s |
+| Password checks at once per address | 1 | fixed; a second attempt during a check is refused with status 429 and `Retry-After: 2` |
 | Delay per login | the same delays, counted per login whatever the address | the same settings; one password check at a time per login ([Per login](#per-login)) |
 
 ### Key
@@ -332,13 +332,13 @@ The client address is the address that the throttling, the access log and the ev
 | Identifier | 32 random bytes (256 bits) |
 | Storage | Only the SHA-256 of the identifier is kept |
 | Renewal | A new identifier at each login; the previous session of the browser is closed |
-| Cookie name | `ts_session` |
+| Cookie name | `ts_session`; `__Host-ts_session` when the origins are https |
 | Cookie attributes | `Path=/`, `HttpOnly`, `SameSite=Strict` |
 | `Secure` attribute | Set when the origins are https |
 | Cookie lifetime | No `Max-Age`: the cookie ends with the browser session |
 | CSRF token | One per session |
 
-`HttpOnly` hides the cookie from scripts. `SameSite=Strict` keeps the browser from sending it with a request started by another site. `Secure` keeps it off plain HTTP.
+The prefix `__Host-` makes the browser refuse the cookie unless it is `Secure`, has `Path=/` and no `Domain`: another site of the same domain, or a plain HTTP page of the same host, cannot set or shadow it. The login cookie `ts_login` takes the same prefix. `HttpOnly` hides the cookie from scripts. `SameSite=Strict` keeps the browser from sending it with a request started by another site. `Secure` keeps it off plain HTTP.
 
 ### Expiry
 
@@ -347,7 +347,7 @@ The client address is the address that the throttling, the access log and the ev
 | Sliding | 8 h | `sessions.idle_timeout`, 5 min to 7 days | A session unused for this long ends. |
 | Absolute | 24 h | `sessions.max_lifetime`, from the sliding expiry to 30 days | A session ends this long after the login, used or not. |
 
-Both expiries hold across restarts, and the configured values apply to the restored sessions too ([Section sessions](SPECIFICATIONS.md#section-sessions)).
+Both expiries hold across restarts: the server saves the sessions when it stops, so that only a crash loses up to `sessions.save_interval` of last activity, which can end a session that much earlier. The configured values apply to the restored sessions too ([Section sessions](SPECIFICATIONS.md#section-sessions)).
 
 ### Session file
 
@@ -374,6 +374,8 @@ The commands that act on the file are in [Command line](SPECIFICATIONS.md#comman
 - When an expired session is presented and dropped.
 - By `user profile`, `user passwd` and `user del`, which remove the sessions of their account before changing it. A change refused afterwards (for example the last administrator) has already closed them.
 - For the sliding expiry, at most once per `sessions.save_interval`, one minute by default.
+- When the server stops.
+- The file is written outside the lock of the sessions, so that a write does not hold up the other requests; a write never replaces the file with an older state of the sessions.
 
 ### At start
 
