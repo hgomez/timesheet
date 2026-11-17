@@ -717,25 +717,26 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 
 ### Building the package
 
-`.ci/ci-build-package.sh` builds the binary packages in the working tree, uncommitted changes included:
+`.ci/ci-build-debian.sh` builds the binary packages in the working tree, uncommitted changes included:
 
 1. In CI only (variable `CI` set), it first adds a changelog entry versioned `<version of debian/changelog>+<YYYYMMDDhhmmss>`.
 2. It prints the version of the Go toolchain with `go version`, and stops when `go` is missing.
 3. It runs `dpkg-buildpackage --build=any,all --no-sign`, which runs `make clean`, `make`, the tests (`make check`, hence gcc), then `make install`, and stops if a test fails.
 4. `dpkg-buildpackage` writes the packages next to the repository, in its parent directory.
-5. The script moves them into `_dist/`: `.deb`, `.buildinfo`, `.changes`, and the `timesheet-dbgsym_*` files; it fails when no `timesheet-dbgsym_*` file exists.
+5. The script creates `_dist/` and moves into it the files `timesheet_*.buildinfo`, `timesheet_*.changes` and `timesheet_*.deb`; it fails when one of them is missing. The package of debug symbols, `timesheet-dbgsym_*.deb`, stays in the parent directory, although the `.changes` file lists it.
 
 ### Scripts
 
 | Script | What it does |
 | --- | --- |
-| `.ci/ci-setup-debian.sh` | Meant for a disposable CI container, run as root: `apt-get update`, `apt-get dist-upgrade -y`, installs `build-essential`, `golang`, `git`, `devscripts`, `debhelper`, `fakeroot`, `dh-make`, `dh-exec`, `equivs` and `wget`, then `apt-get autoremove --purge -y` and `apt-get clean`. Do not run it on a workstation |
-| `.ci/ci-build-package.sh` | Builds the packages (above) |
+| `.ci/ci-setup-debian.sh` | Meant for a disposable CI container, run as root: `apt-get update`, `apt-get dist-upgrade -y`, installs `build-essential`, `git`, `devscripts`, `debhelper`, `fakeroot`, `dh-make`, `dh-exec`, `equivs` and `wget`, then `golang` and its dependencies from `trixie-backports`, with `apt-get install -t trixie-backports`, then runs `apt-get autoremove --purge -y` and `apt-get clean`. Do not run it on a workstation |
+| `.ci/ci-build-debian.sh` | Builds the packages (above) |
 | `.ci/ci-cleanup.sh` | Runs `make clean` and `debian/rules clean` |
 
 ### Continuous integration
 
-- The GitLab job of `.ci/gitlab-ci.yml` runs `ci-setup-debian.sh`, `ci-build-package.sh`, then `ci-cleanup.sh`.
+- The GitLab job of `.ci/gitlab-ci.yml` runs `ci-setup-debian.sh`, `ci-build-debian.sh`, then `ci-cleanup.sh`.
+- It runs in the image `debian:trixie-backports`, so that the package is built with the Go of the backports, a supported release of Go, while trixie itself ships Go 1.24.
 - It runs on the branches `master` and `release`.
 - It keeps the files of `_dist/` as artifacts.
 - GitLab reads that file only once the CI configuration path of the project is set to `.ci/gitlab-ci.yml`.

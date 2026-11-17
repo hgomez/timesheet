@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# ci-build-package.sh - Copyright (c) 2023-2026 - Olivier Poncet
+# ci-build-debian.sh - Copyright (c) 2023-2026 - Olivier Poncet
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,12 +65,18 @@ go version                                                           || exit 1
 dpkg-buildpackage --build=any,all --no-sign                          || exit 1
 
 # ----------------------------------------------------------------------------
-# move the packages to the dist directory
+# create the dist directory
 # ----------------------------------------------------------------------------
 
 mkdir -p "${arg_dist_dir}"                                           || exit 1
-mv "${arg_parent}/${arg_basename}"_* "${arg_dist_dir}"               || exit 1
-mv "${arg_parent}/${arg_basename}"-dbgsym_* "${arg_dist_dir}"        || exit 1
+
+# ----------------------------------------------------------------------------
+# move the packages to the dist directory
+# ----------------------------------------------------------------------------
+
+mv "${arg_parent}/${arg_basename}"_*.buildinfo "${arg_dist_dir}"     || exit 1
+mv "${arg_parent}/${arg_basename}"_*.changes   "${arg_dist_dir}"     || exit 1
+mv "${arg_parent}/${arg_basename}"_*.deb       "${arg_dist_dir}"     || exit 1
 
 # ----------------------------------------------------------------------------
 # End-Of-File

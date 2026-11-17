@@ -29,12 +29,12 @@ set +x
 apt_update='yes'
 apt_dist_upgrade='yes'
 apt_install_packages='yes'
+apt_install_backports='yes'
 apt_autoremove='yes'
 apt_clean='yes'
 
 apt_packages="
 build-essential
-golang
 git
 devscripts
 debhelper
@@ -43,6 +43,12 @@ dh-make
 dh-exec
 equivs
 wget
+"
+
+apt_target_release='trixie-backports'
+
+apt_backports="
+golang
 "
 
 # ----------------------------------------------------------------------------
@@ -83,6 +89,15 @@ fi
 if [ "${apt_install_packages:-no}" = 'yes' ]
 then
     apt-get install -y ${apt_packages}                               || exit 1
+fi
+
+# ----------------------------------------------------------------------------
+# install the backports dependencies
+# ----------------------------------------------------------------------------
+
+if [ "${apt_install_backports:-no}" = 'yes' ]
+then
+    apt-get install -y -t "${apt_target_release}" ${apt_backports}   || exit 1
 fi
 
 # ----------------------------------------------------------------------------

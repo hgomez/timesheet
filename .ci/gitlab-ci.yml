@@ -34,7 +34,7 @@ stages:
 # ----------------------------------------------------------------------------
 
 build-debian-amd64:
-  image: debian:trixie
+  image: debian:trixie-backports
   stage: build
   tags:
     - docker
@@ -45,7 +45,7 @@ build-debian-amd64:
   before_script:
     - ./.ci/ci-setup-debian.sh
   script:
-    - ./.ci/ci-build-package.sh
+    - ./.ci/ci-build-debian.sh
   after_script:
     - ./.ci/ci-cleanup.sh
   artifacts:
