@@ -32,10 +32,10 @@ arg_dist_dir="${arg_prefix}/_dist"
 arg_basename='timesheet'
 
 # ----------------------------------------------------------------------------
-# bump package version (ci only)
+# bump package version (ci only, except on the release branch)
 # ----------------------------------------------------------------------------
 
-if [ "${CI:-not-set}" != 'not-set' ]
+if [ "${CI:-not-set}" != 'not-set' ] && [ "${CI_COMMIT_BRANCH:-not-set}" != 'release' ]
 then
     pkg_version="$(dpkg-parsechangelog --show-field Version)+$(date '+%Y%m%d%H%M%S')"
     pkg_changelog='debian/changelog'

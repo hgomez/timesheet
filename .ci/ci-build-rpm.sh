@@ -51,10 +51,10 @@ then
 fi
 
 # ----------------------------------------------------------------------------
-# bump package version (ci only)
+# bump package version (ci only, except on the release branch)
 # ----------------------------------------------------------------------------
 
-if [ "${CI:-not-set}" != 'not-set' ]
+if [ "${CI:-not-set}" != 'not-set' ] && [ "${CI_COMMIT_BRANCH:-not-set}" != 'release' ]
 then
     pkg_version="${pkg_version}+$(date '+%Y%m%d%H%M%S')"
 fi

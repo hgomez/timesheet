@@ -102,7 +102,7 @@ Never run `make mrproper` without a backup of the database and a commit of your 
 
 - The package is built from the working tree, uncommitted changes included.
 - The package installs the server configuration of the repository as is: its `database.path` is the database of the package.
-- `<version>` is the first entry of `debian/changelog`.
+- `<version>` is the first entry of `debian/changelog`; in the CI, except on the branch `release`, it is followed by `+` and the date and time of the build.
 - Installing and running the package is described in [OPERATIONS.md](OPERATIONS.md#debian-package).
 
 ## BUILD THE RPM PACKAGE
@@ -122,7 +122,7 @@ Never run `make mrproper` without a backup of the database and a commit of your 
    ```
 
 - The package is built from the working tree, uncommitted changes included, without `.git/`, `.cache/`, `_dist/`, `_rpm/`, `bin/` and `var/`: the database of the repository never enters it.
-- `<version>` is the first entry of `debian/changelog`; in the CI, it is followed by `+` and the date and time of the build.
+- `<version>` is the first entry of `debian/changelog`; in the CI, except on the branch `release`, it is followed by `+` and the date and time of the build.
 - Installing and running the package is described in [OPERATIONS.md](OPERATIONS.md#rpm-package).
 
 ## BUILD THE CONTAINER IMAGE

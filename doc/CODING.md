@@ -723,7 +723,7 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 
 `.ci/ci-build-deb.sh` builds the binary packages in the working tree, uncommitted changes included:
 
-1. In CI only (variable `CI` set), it first adds a changelog entry versioned `<version of debian/changelog>+<YYYYMMDDhhmmss>`.
+1. In CI only (variable `CI` set), except on the branch `release` (variable `CI_COMMIT_BRANCH`), it first adds a changelog entry versioned `<version of debian/changelog>+<YYYYMMDDhhmmss>`.
 2. It prints the version of the Go toolchain with `go version`, and stops when `go` is missing.
 3. It runs `dpkg-buildpackage --build=any,all --no-sign`, which runs `make clean`, `make`, the tests (`make check`, hence gcc), then `make install`, and stops if a test fails.
 4. `dpkg-buildpackage` writes the packages next to the repository, in its parent directory.
@@ -732,7 +732,7 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 `.ci/ci-build-rpm.sh` builds the RPM package in the working tree, uncommitted changes included:
 
 1. It stops when `rpmbuild` or `go` is missing, and prints the version of the Go toolchain with `go version`.
-2. It reads the version from the first entry of `debian/changelog`, and stops when it cannot; in CI only (variable `CI` set), it appends `+<YYYYMMDDhhmmss>`.
+2. It reads the version from the first entry of `debian/changelog`, and stops when it cannot; in CI only (variable `CI` set), except on the branch `release` (variable `CI_COMMIT_BRANCH`), it appends `+<YYYYMMDDhhmmss>`; on `release`, the package takes the version of the changelog as is.
 3. It packs the working tree, without `.git/`, `.cache/`, `_dist/`, `_rpm/`, `bin/` and `var/`, into `_rpm/SOURCES/timesheet-<version>.tar.gz`: `var/`, which holds a real database, never leaves the tree.
 4. It runs `rpmbuild -bb` with `_topdir` set to `_rpm/` and `ts_version` to the version, which unpacks the archive, runs `make`, the tests (`make check`, hence gcc) and `make install`, and stops if a test fails.
 5. It creates `_dist/` and moves into it the packages of `_rpm/RPMS/`; it fails when there is none.
