@@ -759,6 +759,7 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 1. Set `ReleaseVersion` in `src/internal/app/build_info.go`.
 2. Add the entry of the same version to `debian/changelog`.
 3. `TestVersionIsTheReleaseOfTheChangelog` checks that the first entry of the changelog is that version, or that version followed by `+`.
+4. Push to the branch `release`: the CI builds the Debian and RPM packages at that version, without the suffix of the other branches.
 
 ## DOCUMENTATION
 

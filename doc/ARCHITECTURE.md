@@ -85,6 +85,7 @@ Dockerfile                        container image, with .dockerignore
 | Directory | Content | Detailed in |
 | --- | --- | --- |
 | `debian/` | Native Debian package: `rules`, `control`, `changelog`, `copyright`, `source/format`, the systemd unit `timesheet.service`, and `postinst`, which creates the service account and the database | [CODING.md, Packaging](CODING.md#packaging) |
+| `rpm/` | The RPM package: `timesheet.spec`, built on Fedora by `.ci/ci-build-rpm.sh`; its `%post` creates the service account and the database as `debian/postinst` does | [CODING.md, Packaging](CODING.md#packaging) |
 | `Dockerfile`, `.dockerignore` | The container image: a build stage that runs `make-build.sh` and `make-install.sh`, an Alpine stage that runs the entry point `.ci/timesheet-entrypoint.sh`, which creates the database and its administrator at the first start | [CODING.md, Container image](CODING.md#container-image) |
 | `.ci/` | `gitlab-ci.yml`; the scripts run by the Makefile targets (`make-build.sh`, `make-check.sh`, `make-install.sh`, `make-clean.sh`, `make-docker.sh`); the CI scripts (`ci-setup-debian.sh`, `ci-build-deb.sh`, `ci-setup-fedora.sh`, `ci-build-rpm.sh`, `ci-cleanup.sh`); the entry point of the container image (`timesheet-entrypoint.sh`) | [CODING.md, Makefile](CODING.md#makefile), [CODING.md, Packaging](CODING.md#packaging) |
 | `_dist/` | At the repository root, not under `.ci/`: the packages built by `ci-build-deb.sh` and `ci-build-rpm.sh` (ignored by git) |
