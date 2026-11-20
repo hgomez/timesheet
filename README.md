@@ -41,7 +41,7 @@ An existing history, kept in a spreadsheet for instance, can be converted to a J
   - paid leave (congés payés), accrued at 2.08 days a month over a June-to-May period and rounded up at its end;
   - RTT days, the weekly day off and the complementary days of a part-time contract;
   - a web interface in French.
-- The activity codes and the counters are configurable. The holiday calendar and the rules are French: the application is not meant, as it stands, for another country.
+- The activity codes and the counters are configurable. The calendar of public holidays and the rules are French: the application is not meant, as it stands, for another country.
 - The rules are choices of the application, simpler than common French practice: see [Simplifications](doc/SPECIFICATIONS.md#simplifications).
 - One static binary, no external service: it runs on a workstation or a small server.
 - Each user imports a file, exports their data in the same JSON format and erases them, from « Mes données ».

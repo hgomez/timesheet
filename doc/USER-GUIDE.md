@@ -21,7 +21,7 @@ It is written for the people who use the application. Installing and running the
 
 | Concept | Meaning |
 | --- | --- |
-| Half-day | Each day has a morning and an afternoon. Each holds one activity code. A day also has a free comment. Every day of the year is entered, weekends and holidays included. |
+| Half-day | Each day has a morning and an afternoon. Each holds one activity code. A day also has a free comment. Every day of the year is entered, weekends and public holidays included. |
 | Activity code | What a half-day was, such as `TT` (working time) or `CP` (paid leave). The codes are listed in [Activity codes](#activity-codes). The list is configurable. |
 | Counter | A balance in days, kept like a bank account: a journal of dated entries, a statement per month, a balance equal to the sum of the entries. |
 | Feeding code | A code that credits its counter by half a day per half-day, on any day. Its counter simply counts days. |
@@ -41,7 +41,7 @@ The database starts with these codes and counters (from the configuration templa
 | --- | --- | --- | --- |
 | `TT` | « Temps de travail » | Feeds | Worked days. |
 | `WE` | « Week-end » | Feeds | Weekend days. |
-| `JF` | « Jour férié » | Feeds | Holidays. |
+| `JF` | « Jour férié » | Feeds | Public holidays, and the days off entered like them, such as a bridge day. |
 | `TP` | « Temps partiel » | Feeds | The weekly day off of a part-time contract (TP, temps partiel). |
 | `CSS` | « Congé sans solde » | Feeds | Unpaid leave. |
 | `ABS` | « Absence » | Feeds | Absences; the reason goes into the comment. |
@@ -49,7 +49,7 @@ The database starts with these codes and counters (from the configuration templa
 | `RTT` | « Récupération temps de travail » | Consumes | RTT days. RTT stands for réduction du temps de travail: days off granted for working beyond 35 hours a week. |
 | `TPC` | « Temps partiel complémentaire » | Consumes | Complementary part-time days, managed like RTT. |
 
-The public holidays are built in, for thirteen zones: « Métropole », « Alsace-Moselle » (Good Friday and 26 December in addition) and the overseas territories (the abolition of slavery in addition, at its local date, where it is a holiday). The administrator chooses the default zone; each user may choose their own in « Réglages ». The public holidays name the rows of the grid, refuse leave (a consuming code) and are counted in « Jours fériés ».
+The public holidays are built in, for thirteen zones: « Métropole », « Alsace-Moselle » (Good Friday and 26 December in addition) and the overseas territories (the abolition of slavery in addition, at its local date, where it is a public holiday). The administrator chooses the default zone; each user may choose their own in « Réglages ». The public holidays name the rows of the grid, refuse leave (a consuming code) and are counted in « Jours fériés ».
 
 ## PAGES
 
@@ -133,7 +133,7 @@ For administrators: the software version and the settings of the server, read-on
 
 ![Serveur](timesheet-10-admin-server.png)
 
-### Accounts
+### Accounts page
 
 For administrators: the accounts, their state and sessions, and the creation of an account with a provisional password.
 
@@ -184,8 +184,8 @@ Once a month is validated, the start date and the initial balances are locked: c
 3. Add a « Commentaire » if needed, such as the reason of an absence.
 4. Choose « Enregistrer le mois »: it saves the whole month. « Aucun » empties a half-day.
 
-- Every day is entered, weekends (`WE`) and holidays (`JF`) included.
-- A consuming code (`CP`, `RTT`, `TPC`) is refused on a weekend or a holiday.
+- Every day is entered, weekends (`WE`) and public holidays (`JF`) included.
+- A consuming code (`CP`, `RTT`, `TPC`) is refused on a weekend or a public holiday.
 - A past half-day left empty is shown « Non renseigné ».
 - Days can be entered up to 24 months ahead, to plan leave.
 
@@ -201,7 +201,7 @@ On a month that can be reached for validation, the button is disabled, with its 
 | « Le mois n'est pas terminé. » | Wait for the first day of the next month. |
 | « Le mois précédent doit être validé d'abord. » | Validate the months in order. |
 | « Des demi-journées ne sont pas renseignées. » | Enter every half-day shown « Non renseigné ». |
-| « Des saisies sont invalides. » | Correct the half-days listed above the grid, such as a consuming code on a weekend or a holiday. |
+| « Des saisies sont invalides. » | Correct the half-days listed above the grid, such as a consuming code on a weekend or a public holiday. |
 
 A validated month is read-only: grid, comments and adjustments.
 

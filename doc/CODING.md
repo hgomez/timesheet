@@ -765,7 +765,7 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 - No em dash, and no en dash used as a dash, in any document or interface text.
 - Never name another project: state every rule as the project's own.
 - No personal data: examples are fictitious, and the spreadsheet the summary is modelled on is never copied.
-- Level-1 and level-2 headings are written in upper case; the tests of the documentation look for `## ROUTES` and `## COMMAND LINE` in the specifications.
+- Level-1 and level-2 headings are written in upper case; the tests of the documentation look for `## ROUTES`, `## COMMAND LINE` and `## SERVER CONFIGURATION`, with its `### Section <name>` headings, in the specifications.
 - Code, commands, paths, identifiers and values are written in backticks.
 - A placeholder in angle brackets outside backticks is escaped, `\<login>`: otherwise Markdown reads it as an HTML tag, hides it, and a placeholder such as `<code>` breaks the rest of the page.
 - Cross-references are relative Markdown links with an anchor, such as `[Limits](SPECIFICATIONS.md#limits)`, never a bare document name or "see above".

@@ -75,13 +75,15 @@ share/timesheet/
   import-template.json            fictitious example of an import file
 var/lib/timesheet/                database of the repository, given with --database, its lock and the session file
 debian/                           Debian packaging
+bin/                              timesheet (built), timesheet.sh (runs the server on the files of the repository)
+doc/                              the documents and the screenshots
 Dockerfile                        container image, with .dockerignore
 .ci/                              GitLab CI configuration, the build scripts and the entry point of the container image
 ```
 
 | Directory | Content | Detailed in |
 | --- | --- | --- |
-| `debian/` | Native Debian package: `rules`, `control`, `changelog`, the systemd unit `timesheet.service`, and `postinst`, which creates the service account and the database | [CODING.md, Packaging](CODING.md#packaging) |
+| `debian/` | Native Debian package: `rules`, `control`, `changelog`, `copyright`, `source/format`, the systemd unit `timesheet.service`, and `postinst`, which creates the service account and the database | [CODING.md, Packaging](CODING.md#packaging) |
 | `Dockerfile`, `.dockerignore` | The container image: a build stage that runs `make-build.sh` and `make-install.sh`, an Alpine stage that runs the entry point `.ci/timesheet-entrypoint.sh`, which creates the database and its administrator at the first start | [CODING.md, Container image](CODING.md#container-image) |
 | `.ci/` | `gitlab-ci.yml`; the scripts run by the Makefile targets (`make-build.sh`, `make-check.sh`, `make-install.sh`, `make-clean.sh`, `make-docker.sh`); the CI scripts (`ci-setup-debian.sh`, `ci-build-debian.sh`, `ci-cleanup.sh`); the entry point of the container image (`timesheet-entrypoint.sh`) | [CODING.md, Makefile](CODING.md#makefile), [CODING.md, Packaging](CODING.md#packaging) |
 | `_dist/` | At the repository root, not under `.ci/`: the packages built by `ci-build-debian.sh` (ignored by git) | [CODING.md, Packaging](CODING.md#packaging) |
@@ -106,7 +108,7 @@ web → {activity, account}
 
 | Package | Role | May import (project packages) |
 | --- | --- | --- |
-| `internal/activity` | Domain: quantities, dates, configuration, calendar, holidays, counter bookkeeping, month closing, indicators, summary, colours, clocks, import and export files | nothing |
+| `internal/activity` | Domain: quantities, dates, configuration, calendar, public holidays, counter bookkeeping, month closing, indicators, summary, colours, clocks, import and export files | nothing |
 | `internal/account` | Logins, profiles, states, password policy and hashes, account record, session record, account errors | nothing |
 | `internal/store` | `SecureFile` (hardened private file, lock), `Database` (the single JSON database) and `SessionFile` (the saved sessions) | `activity`, `account` |
 | `internal/web` | HTTP adaptation: HTTP chain of guards, sessions, controllers, view builders, HTML templates, assets | `activity`, `account` (`store` in tests) |
@@ -172,7 +174,7 @@ The records of the database marshal through them: `DayEntry`, `ActivityCode`, `L
 | `SettingCheck` | service | Bound checks of the server configuration, with the path `section.key` in the error |
 | `TrustedProxies` | value | Addresses and prefixes of the proxies whose `X-Forwarded-For` header is believed, built from the list `server.trusted_proxies` |
 | `PublicHolidayZone` | value | Zone of public holidays (`fr-metropole`, `fr-alsace-moselle`…), with its French label; `PublicHolidayZones` lists the thirteen zones in display order |
-| `PublicHolidayCalendar` | service | Public holidays of one zone: Easter (Meeus/Butcher algorithm), the eleven national holidays and those of the zone, and the kind of a day |
+| `PublicHolidayCalendar` | service | Public holidays of one zone: Easter (Meeus/Butcher algorithm), the eleven national public holidays and those of the zone, and the kind of a day |
 
 #### Records of a user
 
@@ -319,7 +321,7 @@ A write runs these steps under one `sync.RWMutex`:
 | `SiteDependencies` | record | Dependencies given to the site: repository, session archive, clock, random source, logger, origins, server configuration, trusted proxies, local prefixes, hash iterations, version (shown by the server page only) |
 | `Site` | service | Assembly of the routes and of the HTTP chain |
 
-#### HTTP chain
+#### Entities of the HTTP chain
 
 | Entity | Kind | Role |
 | --- | --- | --- |

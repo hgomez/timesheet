@@ -90,7 +90,7 @@ Every change of behaviour, screen, label, route, form field, computation rule, d
 - It keeps RTT days, part-time days and the extra days some employers grant to part-time employees.
 - The web interface is in French; the command line is in English.
 - Activity codes and counters are configurable ([Activity codes](#activity-codes), [Counters](#counters)).
-- The holiday calendar and the rules are French: another country is out of scope ([Out of scope](#out-of-scope)).
+- The calendar of public holidays and the rules are French: another country is out of scope ([Out of scope](#out-of-scope)).
 - The rules are the choices of the application; their differences with common French practice are listed in [Simplifications](#simplifications).
 
 ### What the application does
@@ -129,7 +129,7 @@ The number of extra days comes from the employment contract: the application doe
 | --- | --- |
 | `TT` | Code and counter « Temps de travail »: a worked half-day. |
 | `WE` | Code « Week-end » and counter « Week-ends »: a weekend half-day. |
-| `JF` | Code « Jour férié » and counter « Jours fériés »: a half-day entered as a holiday. A "day entered `JF`" is not always a [public holiday](#public-holidays). |
+| `JF` | Code « Jour férié » and counter « Jours fériés »: a half-day off entered like a public holiday, such as a public holiday or a bridge day. A "day entered `JF`" is not always a [public holiday](#public-holidays). |
 | `CP` | Code « Congé payé » and counter « Congés payés »: paid leave. |
 | `CSS` | Code « Congé sans solde » and counter « Congés sans solde »: unpaid leave. |
 | `RTT` | Code « Récupération temps de travail » and counter « Récupérations temps de travail »: days off granted for working beyond 35 hours a week. |
@@ -179,7 +179,7 @@ The number of extra days comes from the employment contract: the application doe
 | planning horizon | The last month that can be entered: 24 months after the current one. |
 | position | The three balances of a counter on the dashboard: today, validated, forecast. |
 | problem | A reason why a submitted value is refused. |
-| public holiday | A holiday of the zone of public holidays of an account ([Public holidays](#public-holidays)). |
+| public holiday | A day of the calendar of the zone of public holidays of an account, such as « Noël » ([Public holidays](#public-holidays)). |
 | provisional entry | An entry computed for an open month on each display, never stored. |
 | recap | The monthly table of one counter on the year page. |
 | reversal | An entry of opposite amount that cancels an earlier entry, labelled « Contre-passation : \<motif> ». |
@@ -321,9 +321,9 @@ Accounts created on the command line have the flag only with `--provisional` ([`
 
 - Each day has a morning (`am`) and an afternoon (`pm`).
 - Each half-day holds an activity code or nothing.
-- Every day is entered, weekends and holidays included: the template has the codes `WE` « Week-end » and `JF` « Jour férié » for them.
+- Every day is entered, weekends and public holidays included: the template has the codes `WE` « Week-end » and `JF` « Jour férié » for them.
 - Nothing is prefilled.
-- The calendar only names the rows: the name of the holiday for a public holiday (« Noël »), « Week-end » for a Saturday or a Sunday, « Semaine » for a working day.
+- The calendar only names the rows: the name of the public holiday for a public holiday (« Noël »), « Week-end » for a Saturday or a Sunday, « Semaine » for a working day.
 - The calendar refuses a consuming code on a weekend or a public holiday ([Day kinds](#day-kinds)).
 
 ### Comments
@@ -331,7 +331,7 @@ Accounts created on the command line have the flag only with `--provisional` ([`
 - A day has an optional free comment, for instance a conference, the reason of an absence or « Vacances ».
 - A comment is plain text on one line, 500 characters at most, and follows the [free-text rule](#free-text-rule).
 - Surrounding spaces are removed.
-- A comment can exist alone, without any code, on any tracked day, weekends and holidays included.
+- A comment can exist alone, without any code, on any tracked day, weekends and public holidays included.
 - A comment never changes an indicator or an amount.
 - A comment is copied into the label of the debits and credits of its day ([Ledger entries](#ledger-entries)), where it stays once the month is validated.
 
@@ -361,19 +361,19 @@ Lengths count characters (Unicode code points), not bytes.
 | Kind | Definition | Row label | Consuming code |
 | --- | --- | --- | --- |
 | Weekend day | Saturday or Sunday | « Week-end » | refused |
-| Public holiday | one of the [public holidays](#public-holidays), on any weekday | the name of the holiday, « \<nom> » | refused |
+| Public holiday | one of the [public holidays](#public-holidays), on any weekday | the name of the public holiday, « \<nom> » | refused |
 | Working day | Monday to Friday, not a public holiday | « Semaine » | allowed |
 
 - A code that is not consuming can be entered on any day, and credits its counter wherever it is entered.
 - The indicators Jours fériés and Ouvrés follow the calendar of public holidays of the account, whatever is entered.
-- A bridge day (a working day the employer gives off between a holiday and a weekend) entered `JF` stays a working day; it shows in the « Crédit » of `JF`.
-- A worked Whit Monday still counts as a holiday.
+- A bridge day (a working day the employer gives off between a public holiday and a weekend) entered `JF` stays a working day; it shows in the « Crédit » of `JF`.
+- A worked Whit Monday still counts as a public holiday.
 
 ### Public holidays
 
-The public holidays of an account are those of its zone of public holidays: the zone chosen in its [settings](#user-settings), otherwise the default zone of the [configuration](#configuration-page), « Métropole » in the template. Every zone has the eleven national holidays:
+The public holidays of an account are those of its zone of public holidays: the zone chosen in its [settings](#user-settings), otherwise the default zone of the [configuration](#configuration-page), « Métropole » in the template. Every zone has the eleven national public holidays:
 
-| Holiday | Date or rule |
+| Public holiday | Date or rule |
 | --- | --- |
 | « Jour de l'an » | 1 January |
 | « Lundi de Pâques » | Easter + 1 |
@@ -387,9 +387,9 @@ The public holidays of an account are those of its zone of public holidays: the 
 | « Armistice 1918 » | 11 November |
 | « Noël » | 25 December |
 
-Some zones add their own holidays:
+Some zones add their own public holidays:
 
-| Zone | Identifier | Extra holidays |
+| Zone | Identifier | Extra public holidays |
 | --- | --- | --- |
 | « Métropole » | `fr-metropole` | none |
 | « Alsace-Moselle » | `fr-alsace-moselle` | « Vendredi saint », Easter - 2; « Saint-Étienne », 26 December |
@@ -406,10 +406,10 @@ Some zones add their own holidays:
 | « Saint-Pierre-et-Miquelon » | `fr-saint-pierre-et-miquelon` | none |
 
 - The identifier of a zone starts with the code of its country, ISO 3166-1 alpha-2 in lower case, and a hyphen (`fr-`), so that zones of other countries can be added later; the rest is the name of the zone in the public dataset of the French administration (calendrier.api.gouv.fr).
-- The zones and their dates are those of that dataset; the local holidays of the territories of the Pacific are not part of it.
+- The zones and their dates are those of that dataset; the local public holidays of the territories of the Pacific are not part of it.
 - Changing the zone, in the settings of an account or the default zone of the configuration, applies from the first open month: validated months keep their entries and their indicators; their grid shows the current zone.
 - Easter Sunday follows the Meeus/Butcher algorithm.
-- A holiday falling on a weekend is labelled with its name on the row, not « Week-end ».
+- A public holiday falling on a weekend is labelled with its name on the row, not « Week-end ».
 
 ### Today and time zone
 
@@ -500,7 +500,7 @@ How long the limit lasts:
 | Effect | Amount | Days | Shown in |
 | --- | --- | --- | --- |
 | Consuming code | debits its counter by 0.5 day per half-day | working days only: refused on a weekend or a public holiday | the « Débit » of its counter |
-| Feeding code | credits its counter by 0.5 day per half-day | any day, weekends and holidays included | the « Crédit » of its counter |
+| Feeding code | credits its counter by 0.5 day per half-day | any day, weekends and public holidays included | the « Crédit » of its counter |
 
 ### Codes of the template
 
@@ -591,7 +591,7 @@ The labels of the counters are in the plural, those of the codes in the singular
 ### Feeding
 
 - Each half-day of a feeding code credits 0.5 day to its counter, on its date.
-- Weekends and holidays are included.
+- Weekends and public holidays are included.
 - The credit is labelled with the label of the code followed by the comment of the day ([Ledger entries](#ledger-entries)).
 - Nothing is credited before the tracking start.
 - Nothing is credited to a disabled or archived counter.
@@ -1170,7 +1170,7 @@ The section then holds a legend of the codes and of the state « Non renseigné 
 #### Grid
 
 - The grid is a `<table>` with one row per day, captioned « Saisie de \<Mois> \<année> : \<n> j non renseigné(s) ».
-- Each row starts with a `<th scope="row">` holding the `<time>` and the label of its day kind: the name of the holiday, « Week-end » or « Semaine » ([Day kinds](#day-kinds)).
+- Each row starts with a `<th scope="row">` holding the `<time>` and the label of its day kind: the name of the public holiday, « Week-end » or « Semaine » ([Day kinds](#day-kinds)).
 - The columns are « Jour », « Matin », « Après-midi », « Journée » (only when the month is editable) and « Commentaire ».
 - Each `<select>` and comment field is named by an `aria-label`: « Matin du 3 novembre », « Après-midi du 3 novembre », « Journée du 3 novembre », « Commentaire du 3 novembre ».
 - The lists offer the codes of [Codes offered in a grid](#codes-offered-in-a-grid).
@@ -1308,7 +1308,7 @@ The page holds, in this order:
 - One column per day of the month (1 to 31) and two rows per month: the morning above, the afternoon below.
 - One `<tbody>` per month, the month as `<th scope="rowgroup">`, the half-day as `<th scope="row">`.
 - Each cell is coloured like the grid and shows the identifier of the code entered (`TT`, `WE`, `CP`...), or « ? » for a missing half-day.
-- The full text (date, half-day, label of the code, holiday name, comment) is in an `<abbr title>`.
+- The full text (date, half-day, label of the code, public holiday name, comment) is in an `<abbr title>`.
 - A commented day is marked by a line at the bottom of its cell.
 - A legend of the codes comes with the table.
 - A day that does not exist (30 February, 31 April) is black ([Colours](#colours)).
@@ -1523,7 +1523,7 @@ The missing half-days and the validation are computed only when there is no prob
 | `action` other than `check` or `import`, or unreadable revision | 400 | page « Requête invalide » |
 | body beyond `server.max_body_bytes` | 400 | page « Requête invalide » |
 | no file | 422 | « Choisissez un fichier à importer. » |
-| file that cannot be decoded (not JSON, unknown field, wrong `format` or `version`, beyond 8 MiB) | 422 | « Le fichier n'est pas un import valide : un objet JSON au format timesheet-import, version 1, sans champ inconnu. » |
+| file that cannot be decoded (not JSON, unknown field, wrong `format` or `version`, a malformed value such as a quantity or a date, beyond 8 MiB) | 422 | « Le fichier n'est pas un import valide : un objet JSON au format timesheet-import, version 1, sans champ inconnu. » |
 | problems of the import | 422 | « L'import est refusé : rien n'a été enregistré. Corrigez le fichier puis recommencez. », with the report |
 | deletion: confirmation other than the login | 422 | « Retapez exactement votre identifiant pour confirmer la suppression de vos données. » |
 | the data changed since the page was shown, checked before the file and the confirmation | 409 | « Les données ont changé entre-temps (autre onglet ?). Rechargez la page avant de recommencer. » |
@@ -2284,7 +2284,7 @@ Imports days, adjustments and settings into an account ([Import](#import)).
 ### Import template
 
 - `share/timesheet/import-template.json` is a small fictitious file of this format, installed next to the configuration template.
-- It covers January 2026: every day entered, a holiday, paid leave, a half-day of `RTT`, an absence, comments, the settings of `CP`, `RTT` and `TPC`, and one adjustment.
+- It covers January 2026: every day entered, a public holiday, paid leave, a half-day of `RTT`, an absence, comments, the settings of `CP`, `RTT` and `TPC`, and one adjustment.
 - A test imports it, so that it stays valid.
 
 ### Options
@@ -2345,6 +2345,7 @@ Settings follow the rules of the [settings page](#settings-page):
 ### Errors
 
 - Every problem is listed, prefixed with `error: `, then the command exits with 1 and nothing is written.
+- A value that cannot be decoded, a quantity written with a comma or a date that does not exist (`2026-11-31`) for instance, stops the reading before any check: the command prints the single line `timesheet: activity: invalid import file: <decoding error>`, without date nor field, and exits with 1.
 - Problems of days and adjustments carry their date, except an adjustment without one; problems of settings do not.
 - A file with no day and no adjustment within `--from` and `--to`, and no `settings`, is refused (`no day to import`). A file holding only `"settings": {}` is accepted.
 - The command line writes the messages in English, except the refusals of the grid and the labels of counters, which are the French texts of the pages. The data page writes them in French, and adds « Le fichier ne contient aucun jour à importer » for `no day to import`.
@@ -2376,7 +2377,7 @@ The command prints, in this order:
 1. the warnings, prefixed with `warning: ` (`tracking start moved from <date> to <date>`, `adjustment of <date> already present, ignored`);
 2. `Settings read: tracking start <date>, <n> counter(s).` when the file has `settings`;
 3. `<n> day(s) read, from <month> to <month>.` when the file has days;
-4. month by month, within the imported months, `missing entries in <month>: <dates>`: the days before today with a half-day or both left without entry, weekends and holidays included;
+4. month by month, within the imported months, `missing entries in <month>: <dates>`: the days before today with a half-day or both left without entry, weekends and public holidays included;
 5. `<n> adjustment(s) read.` when the file has adjustments;
 6. with `--validate`, `<month> validated.` per month, or `validation stopped at <month>: <reason>`;
 7. `Dry run: nothing was written.` with `--dry-run`, otherwise `Import saved.`.
@@ -2771,7 +2772,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 - Its tracking start is 2023-11-27; every day is entered from that date to 2026-12-31.
 - The months from November 2023 to October 2026 are validated, each on its last day at 23:59:59 in `Europe/Paris`; the later months are open.
 - `CP` and `RTT` are enabled with their default amounts, `TPC` is disabled; the complementary part-time days of the history are entered as `RTT`; three adjustments complete the balances of `CP`.
-- It was made from a real history, anonymized: the identity is replaced, the comments are reduced to « Vacances », the names of the holidays and « Absence », and the reasons of the adjustments are neutral. The calendar is kept.
+- It was made from a real history, anonymized: the identity is replaced, the comments are reduced to « Vacances », the names of the public holidays and « Absence », and the reasons of the adjustments are neutral. The calendar is kept.
 - To use it, copy it with the mode 0600 into a directory of your own and give the copy with `--database` ([OPERATIONS.md](OPERATIONS.md#example-database)).
 - Its password is public: it is never served on a network nor used as a real database.
 - A test loads it: same configuration as the template, the account `demo` and its password, months validated from November 2023 to October 2026. A change of the [database](#database) schema updates it.
@@ -3040,9 +3041,9 @@ The column « Setting » names the key of the [server configuration](#server-con
 ## OUT OF SCOPE
 
 - CSV or PDF export.
-- The holidays and the leave rules of another country than France.
+- The public holidays and the leave rules of another country than France.
 - An interface in another language.
-- The local holidays of the territories of the Pacific, outside the public dataset ([Public holidays](#public-holidays)).
+- The local public holidays of the territories of the Pacific, outside the public dataset ([Public holidays](#public-holidays)).
 - A recurring part-time pattern, or any pre-filling: part-time days are entered by hand.
 - Contract modelling: full-time base, rate, days per year.
 - Tracking worked days against a contract.
@@ -3065,8 +3066,8 @@ These are choices of the application. Each one gives the way to reach the expect
 - There are no extra splitting days (jours de fractionnement).
 - The number of `RTT` days comes from a company agreement; the template's 8/12 a month (8 days a year) is an example, to adapt in the [configuration page](#configuration-page) or with an own amount.
 - `TPC` and the arrangement of the [worked example](#worked-example) are the arrangement of one employer, not a legal scheme.
-- Every public holiday is treated as not worked: leave cannot be entered on a holiday that the employer makes worked, such as Whit Monday as the solidarity day. Enter the day with a code that is not consuming, for instance `JF`, and the leave taken as a negative adjustment of its counter.
-- The holidays of the thirteen zones of the public dataset are built in; another calendar, such as the local holidays of a territory of the Pacific, is not: enter such a day with a code that is not consuming, for instance `JF`.
+- Every public holiday is treated as not worked: leave cannot be entered on a public holiday that the employer makes worked, such as Whit Monday as the solidarity day. Enter the day with a code that is not consuming, for instance `JF`, and the leave taken as a negative adjustment of its counter.
+- The public holidays of the thirteen zones of the public dataset are built in; another calendar, such as the local public holidays of a territory of the Pacific, is not: enter such a day with a code that is not consuming, for instance `JF`.
 - Leave is debited only on the half-days entered with a consuming code. When the employer counts the usual day off of a part-time employee within a week of leave, the employee enters the consuming code on that day too.
 - Gaps with the payslip are entered as adjustments.
 

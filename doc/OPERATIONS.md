@@ -114,7 +114,7 @@ To change settings:
 
    It answers `server.listen, server.origins updated in <file>; restart the server to apply it.`, and refuses an invalid or out-of-bounds value without writing anything. You can also edit the file by hand (as root on a package); the next `config set` rewrites it in its layout, one entry per line.
 
-2. Change linked settings in the same command: `server.listen` with `server.origins`, `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` or `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. One after the other, the first may be refused.
+2. Change linked settings in the same command: `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` or `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. One after the other, the first may be refused. Change `server.origins` with `server.listen` too: `config set` accepts either alone, but a host name that is not an accepted origin then gets « Hôte inconnu » (421).
 
 3. Restart the server: a change applies at the next start. On a package: `systemctl restart timesheet`. The page « Serveur » of the administration shows the values read from the file at the start, not the options of `run`, except « Fichier », the database opened.
 
@@ -215,7 +215,7 @@ Each user can also import such a file into their own account, while the server r
 
 - The file holds the tracking start, counter settings, days with morning, afternoon and comment, and adjustments.
 - The application reads no spreadsheet. A spreadsheet is first converted to this format outside the application, its categories becoming the activity codes.
-- `share/timesheet/import-template.json` is a small, fictitious file of this format: one month (January 2026) with a holiday, paid leave, a half-day of RTT, an absence, comments, the settings of three counters and one adjustment. Copy it as a starting point.
+- `share/timesheet/import-template.json` is a small, fictitious file of this format: one month (January 2026) with a public holiday, paid leave, a half-day of RTT, an absence, comments, the settings of three counters and one adjustment. Copy it as a starting point.
 
 To import:
 
@@ -236,8 +236,8 @@ To import:
    Dry run: nothing was written.
    ```
 
-   - Every day is checked like an entry of the grid, every adjustment like one of « Activité ». Any problem is listed with its date and nothing is written.
-   - It lists, month by month, within the imported months, the days before today left without entry, weekends and holidays included.
+   - Every day is checked like an entry of the grid, every adjustment like one of « Activité ». Any problem is listed with its date and nothing is written. A value that cannot be decoded, a quantity written with a comma for instance, stops the reading at once with a single line without date ([Errors](SPECIFICATIONS.md#errors)).
+   - It lists, month by month, within the imported months, the days before today left without entry, weekends and public holidays included.
    - With `--validate`, it also lists the months that would be validated.
 
 4. Import for real, without `--dry-run`. Use `--validate` only if no missing day is listed: each month is then recorded as validated on its last day. Otherwise complete the listed days in the grid and validate month by month.
@@ -591,23 +591,23 @@ Other points:
 
 ## TROUBLESHOOTING
 
-The errors of the commands are prefixed with `timesheet:`. Those of `run` are log lines `level=ERROR msg=…`; its warnings are log lines `level=WARN msg=…`.
+The errors of the commands are prefixed with `timesheet:`, and so are those of `run` in its options and `run: no database`. The other errors of `run`, a server configuration that cannot be loaded included (`msg="cannot load <file>"`), are log lines `level=ERROR msg=…`; its warnings are log lines `level=WARN msg=…`.
 
 | Message | Cause | What to do |
 | --- | --- | --- |
 | `<command>: no database: give --database or set database.path in --config` (exit 2) | A command that opens the database is run without `--database`, and without `--config` or with a configuration that names no database. | Give `--database`, or `--config` with a file that has `database.path` (`etc/timesheet/timesheet.json` from the sources names the database of the package, `/etc/timesheet/timesheet.json` on a package). |
-| `config show: --config is required` (exit 2) | `config show` or `config set` is run without `--config`. | Give the file to print or change. |
+| `config show: --config is required` or `config set: --config is required` (exit 2) | `config show` or `config set` is run without `--config`. | Give the file to print or change. |
 | `init: --template names the configuration template, a file` (exit 2) | `init` is run without `--template`. | Give `--template=share/timesheet/database-template.json` from the sources, `--template=/usr/share/timesheet/database-template.json` on a package. |
 | `the server configuration does not exist: <file>` | `--config` names a missing file. | Fix the path, or create the file with `config set database.path <file> --config=<file>`. |
 | `database.path: a file, not . or .., whose name does not end with .lock, .sessions or .tmp in any case is expected` | `database.path` names a file that ends like a lock, session or temporary file, or a directory. | Set another name with `config set database.path <file>`, or `null`. |
 | `open share/timesheet/database-template.json: no such file or directory` | `init` is run with a relative `--template` from another directory. | Go to the root, or give an absolute `--template`. |
 | `cannot lock …` with `the directory does not exist` | `run` is started with a wrong `--database` or `database.path`, or a relative path from another directory. | Run `bin/timesheet.sh`, or give `--database`. |
-| `the database does not exist, run init first`, or a permission error, naming `/var/lib/timesheet/timesheet-database.json` | A command of the sources is run without `--database`: the database of `etc/timesheet/timesheet.json` is the one of the package. | Give `--database=var/lib/timesheet/timesheet-database.json`. |
+| `the database does not exist, run init first`, `the directory does not exist: /var/lib/timesheet`, or a permission error, naming `/var/lib/timesheet` | A command of the sources is run without `--database`: the database of `etc/timesheet/timesheet.json` is the one of the package. | Give `--database=var/lib/timesheet/timesheet-database.json`. |
 | `the database does not exist, run init first` | The database file is missing, at `database.path` or at `--database` (for `user list`, also when its directory is missing). | Run `init`, or fix the path. |
 | `json: unknown field "addr"` | The server configuration was written before `addr` became `listen`. | Rename the key `listen` ([Upgrade](#upgrade)). |
 | `<section>.<key>: a duration from … to … is expected`, or `an integer from … to … is expected` | A value of the server configuration is out of its bounds. | Fix it with `config set`; the bounds are in [Server configuration](SPECIFICATIONS.md#server-configuration). |
 | `config set` refuses `sessions.idle_timeout`, `login.initial_delay` or `server.tls_cert` alone | A linked setting does not agree with the current value of the other. | Set both in the same command. |
-| The service is killed by systemd while stopping | `server.shutdown_timeout` was raised above what systemd waits. | Keep it at 60 s at most (the bound); systemd waits 90 s by default. |
+| The service is killed by systemd while stopping | systemd waits less than `server.shutdown_timeout`: a `TimeoutStopSec=` of a drop-in, or `DefaultTimeoutStopSec=` of `/etc/systemd/system.conf`, was lowered (90 s by default). | Keep the wait of systemd above `server.shutdown_timeout` (60 s at most, the bound), or lower `server.shutdown_timeout`. |
 | `the database already exists` | `init` is run a second time. | Nothing: the database is ready. For another one, give `--database`. |
 | `insecure directory: … is writable by other` | The directory of the database is open to other users. | `chmod 700` on that directory. |
 | `insecure file: … is accessible to group or other (expected 0600)` | The database was copied with a wrong mode, often by a restore. | `chmod 600` on the file. |
