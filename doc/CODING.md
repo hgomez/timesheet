@@ -35,7 +35,7 @@ The tests named below live in `src/internal/web/` unless another package is give
 | Rule | Checked by | Section |
 | --- | --- | --- |
 | No third-party Go module (`src/go.mod` has no `require`) | review | [Dependencies](#dependencies) |
-| Whole-line `//` comments in Go are only the allowed ones | `TestGoFilesHaveOnlyAllowedComments` (`source_policy_test.go`, files under `src/internal`) and the comment command | [Comments](#comments) |
+| Whole-line `//` comments in Go are only the allowed ones | `TestGoFilesHaveOnlyAllowedComments` (`source_policy_test.go`, every Go file under `src`, leading tabs included) and the comment command | [Comments](#comments) |
 | Trailing and block comments in Go | review | [Comments](#comments) |
 | No comment besides the licence header in style sheets, scripts and templates | `TestStylesheetsAvoidImportantAndLiteralSpacing`, `TestJavaScriptHasNoSink`, `TestTemplatesAreSemanticAndInert` (`source_policy_test.go`) | [Comments](#comments) |
 | No tab at the start of a line of a Go file | `TestGoFilesHaveOnlyAllowedComments` and the tab command | [Formatting](#formatting) |
@@ -185,7 +185,7 @@ In a file with a build constraint, `//go:build ...` is the very first line, foll
 ### Indentation
 
 - Indentation is 4 spaces, never a tab.
-- Only the `Makefile` keeps tabs, because make requires them.
+- Only the `Makefile` and `debian/rules` keep tabs, because make requires them.
 
 ## COMMENTS
 
@@ -212,7 +212,7 @@ This command must print nothing:
 grep -rnE '^\s*//' --include='*.go' src | grep -vE '//go:(build|embed)|// -{10,}$|// .+ (declaration|implementation|tests)( \(.+\))?$|// (End-Of-File|fixtures)$'
 ```
 
-It accepts five kinds of whole-line comment: the two directives, a banner line, a section title ending with `declaration`, `implementation` or `tests` (with an optional platform in parentheses), and the titles `End-Of-File` and `fixtures`.
+It accepts five kinds of whole-line comment: the two directives, a banner line, a section title ending with `declaration`, `implementation` or `tests` (with an optional platform in parentheses), and the titles `End-Of-File` and `fixtures`. It does not tell a section title from a comment that ends with the same word: check the titles by review.
 
 | Check | Covers | Left to review |
 | --- | --- | --- |
@@ -315,8 +315,9 @@ The reasons behind these rules are in [SECURITY.md](SECURITY.md).
 | Secrets are compared in constant time (`subtle.ConstantTimeCompare`); passwords are hashed with PBKDF2 (Password-Based Key Derivation Function 2, `account.PasswordHash`) | review |
 | No secret ever reaches the logs: no password, no login typed at a failed login, no session identifier, no CSRF (cross-site request forgery) token | `TestSecretsNeverReachTheJournal`, after a failed and a successful login |
 | Only `r.URL.Path` may be logged, never `r.URL` or `r.RequestURI` | review |
-| Redirections only target internal paths built by the code (from parsed numbers or validated logins), never a URL taken from the request; the only data appended is a `notice` code from a fixed table | review |
+| Redirections only target internal paths built by the code (from parsed numbers or validated logins), never a URL taken from the request, with no query string: the `notice` code of the action stays in the session (`Renderer.Redirect`) | review; `TestNoticesFollowTheActionOnceWithoutAnyParameter` for the notice |
 | Every state-changing form carries the CSRF token of the session (`csrf`), checked by `AuthGuard`; the login form uses a double-submitted token (the same token in a cookie and in the form) | review |
+| Every route of `/dashboard/` and `/admin/` is registered in `site.go` with `guard.Require(user, …)` or `guard.Require(root, …)`, which also checks the `csrf` field of every POST; there is no guard by path prefix, so a route registered without it is open to anyone | review |
 
 The full list of what is never logged is owned by [SPECIFICATIONS.md, Logs](SPECIFICATIONS.md#logs).
 
@@ -408,7 +409,7 @@ The only scripts allowed are:
 ### Language of the interface
 
 - Pages work without JavaScript; a script only enhances a page.
-- Texts of the web pages are in French and never use the em dash.
+- Texts of the web pages are in French and never use the em dash, nor an en dash used as a dash.
 - The command line (help, prompts, messages, import report) is in English, like the logs and the errors; it keeps in French only the texts it shares with the pages (labels of codes and counters, refusals of the grid).
 
 ## JAVASCRIPT

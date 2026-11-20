@@ -424,6 +424,8 @@ A write runs these steps under one `sync.RWMutex`:
 
 `PasswordReader` reads the terminal through termios and `syscall` in `password_reader_linux.go`; `password_reader_other.go` covers the other platforms.
 
+A new command is wired in four places: its number of arguments (`counts`) and its options (`allowed`) in `settings.go`, its branch in the `switch` of `Application` (`application.go`), whose default is `UserCommand`, and its line in `Usage` (`usage.go`); then the `known` list of the test of the commands ([Tests of the documentation](CODING.md#tests-of-the-documentation)).
+
 ## PAGES AND THE CODE THAT SERVES THEM
 
 Every view template is rendered inside `layout.html` and the header partial of its page family (`partials/public.html`, `dashboard.html` or `admin.html`).
