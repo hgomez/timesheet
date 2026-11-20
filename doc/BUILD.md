@@ -1,6 +1,6 @@
 # BUILD
 
-This document describes how to build Timesheet from its sources: the program, its tests, the installation of its files, the Debian package and the container image.
+This document describes how to build Timesheet from its sources: the program, its tests, the installation of its files, the Debian and RPM packages and the container image.
 
 It is written for whoever builds the software. How the build scripts are written is in [CODING.md](CODING.md#makefile); how to run the result is in [OPERATIONS.md](OPERATIONS.md).
 
@@ -12,6 +12,7 @@ It is written for whoever builds the software. How the build scripts are written
 - [INSTALL THE FILES](#install-the-files)
 - [CLEAN](#clean)
 - [BUILD THE DEBIAN PACKAGE](#build-the-debian-package)
+- [BUILD THE RPM PACKAGE](#build-the-rpm-package)
 - [BUILD THE CONTAINER IMAGE](#build-the-container-image)
 - [VERSION](#version)
 
@@ -22,6 +23,7 @@ It is written for whoever builds the software. How the build scripts are written
 | Build the program | Go 1.24 or later, and `make`. |
 | Run the tests | `gcc` as well: the race detector needs cgo. |
 | Build the Debian package | A Debian system with `build-essential`, `debhelper`, `devscripts`, `golang` and `git`. The CI takes `golang` from `trixie-backports`; trixie alone builds with Go 1.24 ([CODING.md, Continuous integration](CODING.md#continuous-integration)). |
+| Build the RPM package | A Fedora, RHEL/EPEL or openSUSE system with `rpmbuild`, `golang` (Go 1.24 or later), `gcc`, `make`, `git` and `systemd`. |
 | Build the container image | Docker, or another builder of `Dockerfile` images, and access to the registry of the images `golang:1.27-alpine3.23` and `alpine:3.22`. |
 
 The program has no dependency besides the Go standard library: nothing is downloaded during the build, except the base images of the container image.
@@ -69,7 +71,7 @@ make install DESTDIR=/tmp/stage
 - Without `DESTDIR`, the files go under `/usr` and `/etc`: run `sudo make install`.
 - It fails when `bin/timesheet` is missing.
 - It replaces an `/etc/timesheet/timesheet.json` already there: save your own first.
-- It creates neither the service account, nor the database directory, nor the service. The [Debian package](#build-the-debian-package) does.
+- It creates neither the service account, nor the database directory, nor the service. The [Debian package](#build-the-debian-package) and the [RPM package](#build-the-rpm-package) do.
 - The server configuration names the database `/var/lib/timesheet/timesheet-database.json` (`database.path`): the installed binary given `--config` finds it through the configuration, without `--database`.
 - Give the installed binary `--config=/etc/timesheet/timesheet.json` and, for `init`, `--template=/usr/share/timesheet/database-template.json`.
 
@@ -102,6 +104,27 @@ Never run `make mrproper` without a backup of the database and a commit of your 
 - The package installs the server configuration of the repository as is: its `database.path` is the database of the package.
 - `<version>` is the first entry of `debian/changelog`.
 - Installing and running the package is described in [OPERATIONS.md](OPERATIONS.md#debian-package).
+
+## BUILD THE RPM PACKAGE
+
+1. On a Fedora, RHEL/EPEL or openSUSE system with the [requirements](#requirements), from the root of the repository:
+
+   ```sh
+   .ci/ci-build-rpm.sh
+   ```
+
+2. The build runs `make check` and stops if a test fails.
+3. The package is written into `_dist/`, at the root of the repository: `timesheet-<version>-1.<distribution>.<arch>.rpm` (the distribution tag and the architecture are the ones of the build machine, for instance `fc45.x86_64`). The one spec of the package, `rpm/timesheet.spec`, serves the three families: it adapts to Fedora, RHEL, EPEL and openSUSE with `%if` conditions.
+4. To remove the build leftovers afterwards:
+
+   ```sh
+   .ci/ci-cleanup.sh
+   ```
+
+- The package is built from the working tree, uncommitted changes included.
+- The package installs the server configuration of the repository as is: its `database.path` is the database of the package. An upgrade keeps your changes: your file stays and the new one is written next to it as `timesheet.json.rpmnew`.
+- `<version>` is the first entry of `debian/changelog`.
+- Installing and running the package is described in [OPERATIONS.md](OPERATIONS.md#rpm-package).
 
 ## BUILD THE CONTAINER IMAGE
 

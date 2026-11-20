@@ -176,7 +176,7 @@ In a file with a build constraint, `//go:build ...` is the very first line, foll
 | Files | Syntax | Checked by |
 | --- | --- | --- |
 | `.go` files | `/* … */` block, as above | review |
-| `Makefile`, `bin/timesheet.sh`, `Dockerfile`, the scripts and the configuration of `.ci/`, `debian/timesheet.service` | the same text in `#` comments | review |
+| `Makefile`, `bin/timesheet.sh`, `Dockerfile`, the scripts and the configuration of `.ci/`, `debian/timesheet.service`, `rpm/timesheet.spec` | the same text in `#` comments | review |
 | Style sheets (`.css`) and scripts (`.js`) of `internal/web` | the same `/* … */` block at the very top, followed by a blank line | `TestWebSourcesStartWithTheLicenceHeader`, file name included |
 | Templates (`.html`) of `internal/web` | the same block inside a template comment, `{{- /* … */ -}}`, on the first lines, which keeps it out of the pages sent | `TestWebSourcesStartWithTheLicenceHeader`, file name included |
 
@@ -201,7 +201,7 @@ In a file with a build constraint, `//go:build ...` is the very first line, foll
 | Files | Allowed |
 | --- | --- |
 | Go | The licence header; the section banners (`// ---…`) and their titles; the directives `//go:build` and `//go:embed` |
-| `Makefile`, `bin/timesheet.sh`, `Dockerfile`, the files of `.ci/`, `debian/timesheet.service` | The licence header; the section banners with their titles |
+| `Makefile`, `bin/timesheet.sh`, `Dockerfile`, the files of `.ci/`, `debian/timesheet.service`, `rpm/timesheet.spec` | The licence header; the section banners with their titles |
 | CSS, JavaScript, templates | The licence header and nothing else: no `//`, no other `/* */`, no `<!-- -->`, no other `{{/* */}}`; a style sheet has no section title |
 
 ### Checks
@@ -700,12 +700,14 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 
 ### Package
 
-- The packaging lives in `debian/`.
+- The packaging lives in `debian/` for the Debian package and in `rpm/` for the RPM package.
 - `debian/rules` only calls `dh`, and skips `dh_dwz`, which fails on a Go binary.
-- The package takes its files from `make install`: the binary, the configuration template, the import template, the example database and the server configuration `/etc/timesheet/timesheet.json`, the file of the repository as is, which debhelper registers as a configuration file.
+- Both packages take their files from `make install`: the binary, the configuration template, the import template, the example database and the server configuration `/etc/timesheet/timesheet.json`, the file of the repository as is, which debhelper registers as a configuration file and the spec marks `%config(noreplace)`.
+- `rpm/timesheet.spec` is one spec for Fedora, RHEL, EPEL and openSUSE, with `%if` conditions on `%{?suse_version}` where the distributions differ: the time zone package (`timezone` on openSUSE, `tzdata` elsewhere) and the systemd scriptlets (`%service_add_post`, `%service_del_preun` and `%service_del_postun` on openSUSE, `%systemd_post`, `%systemd_preun` and `%systemd_postun_with_restart` elsewhere). Its version comes from the macro `ts_version`, given by the build script from the first entry of `debian/changelog`; it installs the unit of the Debian package, `debian/timesheet.service`; it builds no package of debug symbols, as `dh_dwz` is skipped.
 - `debian/postinst` reads the database path with `timesheet config show database.path --config=/etc/timesheet/timesheet.json`; it never fails on an unreadable configuration, a configuration without database or a failed `init`, and creates the database only at a plain absolute path inside `/var/lib/timesheet`.
+- The scriptlet `%post` of the spec is `debian/postinst` transposed: it creates the system account, the directory `/var/lib/timesheet` and the database in the same way, and never fails; the scriptlets `%preun` and `%postun` are the systemd snippets of debhelper transposed.
 - The unit runs `timesheet run --config=/etc/timesheet/timesheet.json`: the database comes from that file.
-- How to build the package is described in [BUILD.md](BUILD.md#build-the-debian-package), how to install and run it in [OPERATIONS.md](OPERATIONS.md#debian-package).
+- How to build the packages is described in [BUILD.md](BUILD.md#build-the-debian-package) and in [BUILD.md](BUILD.md#build-the-rpm-package), how to install and run them in [OPERATIONS.md](OPERATIONS.md#debian-package) and in [OPERATIONS.md](OPERATIONS.md#rpm-package).
 
 ### Container image
 
@@ -726,13 +728,22 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 4. `dpkg-buildpackage` writes the packages next to the repository, in its parent directory.
 5. The script creates `_dist/` and moves into it the files `timesheet_*.buildinfo`, `timesheet_*.changes` and `timesheet_*.deb`; it fails when one of them is missing. The package of debug symbols, `timesheet-dbgsym_*.deb`, stays in the parent directory, although the `.changes` file lists it.
 
+`.ci/ci-build-rpm.sh` builds the RPM package in the working tree, uncommitted changes included:
+
+1. It reads the version from the first entry of `debian/changelog`, prints it, and stops when it cannot read it.
+2. It checks `rpmbuild`, prints the version of the Go toolchain with `go version`, and stops when either is missing.
+3. It packs the working tree, except `.git/`, `.cache/`, `_dist/`, `_rpm/`, `bin/` and `var/`, into `_rpm/SOURCES/timesheet-<version>.tar.gz`: `var/`, which holds a real database, never leaves the tree.
+4. It runs `rpmbuild -bb --define _topdir=_rpm --define ts_version=<version> rpm/timesheet.spec`, which unpacks the tarball, runs `make`, the tests (`make check`, hence gcc) and `make install`, and stops if a test fails.
+5. The script creates `_dist/` and moves into it the RPMs of `_rpm/RPMS/`; it fails when one is missing.
+
 ### Scripts
 
 | Script | What it does |
 | --- | --- |
 | `.ci/ci-setup-debian.sh` | Meant for a disposable CI container, run as root: `apt-get update`, `apt-get dist-upgrade -y`, installs `build-essential`, `git`, `devscripts`, `debhelper`, `fakeroot`, `dh-make`, `dh-exec`, `equivs` and `wget`, then `golang` and its dependencies from `trixie-backports`, with `apt-get install -t trixie-backports`, then runs `apt-get autoremove --purge -y` and `apt-get clean`. Do not run it on a workstation |
-| `.ci/ci-build-debian.sh` | Builds the packages (above) |
-| `.ci/ci-cleanup.sh` | Runs `make clean` and `debian/rules clean` |
+| `.ci/ci-build-debian.sh` | Builds the Debian packages (above) |
+| `.ci/ci-build-rpm.sh` | Builds the RPM package (above) |
+| `.ci/ci-cleanup.sh` | Runs `make clean`, `debian/rules clean` and removes `_rpm/` |
 
 ### Continuous integration
 

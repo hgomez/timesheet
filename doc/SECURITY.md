@@ -45,7 +45,7 @@ Other documents hold the rest:
 ### Expected deployment
 
 - A handful of accounts.
-- Usually a single host, or a server behind a reverse proxy, installed from the Debian package or run in a container.
+- Usually a single host, or a server behind a reverse proxy, installed from a package or run in a container.
 
 ### Actors
 

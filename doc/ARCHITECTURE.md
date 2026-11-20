@@ -75,6 +75,7 @@ share/timesheet/
   import-template.json            fictitious example of an import file
 var/lib/timesheet/                database of the repository, given with --database, its lock and the session file
 debian/                           Debian packaging
+rpm/                              RPM packaging (one spec for Fedora, RHEL, EPEL and openSUSE)
 bin/                              timesheet (built), timesheet.sh (runs the server on the files of the repository)
 doc/                              the documents and the screenshots
 Dockerfile                        container image, with .dockerignore
@@ -84,9 +85,10 @@ Dockerfile                        container image, with .dockerignore
 | Directory | Content | Detailed in |
 | --- | --- | --- |
 | `debian/` | Native Debian package: `rules`, `control`, `changelog`, `copyright`, `source/format`, the systemd unit `timesheet.service`, and `postinst`, which creates the service account and the database | [CODING.md, Packaging](CODING.md#packaging) |
+| `rpm/` | One spec, `timesheet.spec`, for the RPM package of Fedora, RHEL, EPEL and openSUSE, with `%if` conditions where the distributions differ: it installs the same files as the Debian package, and its scriptlet `%post` creates the service account and the database as `postinst` does | [CODING.md, Packaging](CODING.md#packaging) |
 | `Dockerfile`, `.dockerignore` | The container image: a build stage that runs `make-build.sh` and `make-install.sh`, an Alpine stage that runs the entry point `.ci/timesheet-entrypoint.sh`, which creates the database and its administrator at the first start | [CODING.md, Container image](CODING.md#container-image) |
-| `.ci/` | `gitlab-ci.yml`; the scripts run by the Makefile targets (`make-build.sh`, `make-check.sh`, `make-install.sh`, `make-clean.sh`, `make-docker.sh`); the CI scripts (`ci-setup-debian.sh`, `ci-build-debian.sh`, `ci-cleanup.sh`); the entry point of the container image (`timesheet-entrypoint.sh`) | [CODING.md, Makefile](CODING.md#makefile), [CODING.md, Packaging](CODING.md#packaging) |
-| `_dist/` | At the repository root, not under `.ci/`: the packages built by `ci-build-debian.sh` (ignored by git) | [CODING.md, Packaging](CODING.md#packaging) |
+| `.ci/` | `gitlab-ci.yml`; the scripts run by the Makefile targets (`make-build.sh`, `make-check.sh`, `make-install.sh`, `make-clean.sh`, `make-docker.sh`); the CI scripts (`ci-setup-debian.sh`, `ci-build-debian.sh`, `ci-build-rpm.sh`, `ci-cleanup.sh`); the entry point of the container image (`timesheet-entrypoint.sh`) | [CODING.md, Makefile](CODING.md#makefile), [CODING.md, Packaging](CODING.md#packaging) |
+| `_dist/` | At the repository root, not under `.ci/`: the packages built by `ci-build-debian.sh` and `ci-build-rpm.sh` (ignored by git) | [CODING.md, Packaging](CODING.md#packaging) |
 | `.cache/` | The Go build cache of the scripts (ignored by git) | [CODING.md, Makefile](CODING.md#makefile) |
 | `var/lib/timesheet/` | The database of the repository, its lock file and its session file (ignored by git, except `.gitkeep`) | [SPECIFICATIONS.md, Database](SPECIFICATIONS.md#database) |
 

@@ -50,7 +50,7 @@ bin/timesheet run --listen=127.0.0.1:9000 --config=<tmp>/timesheet.json
 - `make check`, `go vet`, the tab grep and the comment grep must pass before every commit ([Checks before a commit](doc/CODING.md#checks-before-a-commit)).
 - Rebuild before a manual check: templates and assets are embedded.
 - Keep manual checks away from `var/lib/timesheet/timesheet-database.json`, which holds real data: `bin/timesheet.sh` and the `--database=var/lib/timesheet/…` examples of `README.md` and `doc/OPERATIONS.md` use it.
-- No path has a default: a command that opens the database needs `--database` or a `--config` naming one, and `etc/timesheet/timesheet.json` names the database of the Debian package, so give a scratch configuration as above, or `--database` alone ([Commands](doc/OPERATIONS.md#commands)).
+- No path has a default: a command that opens the database needs `--database` or a `--config` naming one, and `etc/timesheet/timesheet.json` names the database of the packages, so give a scratch configuration as above, or `--database` alone ([Commands](doc/OPERATIONS.md#commands)).
 - Create the directory of a scratch database first (`mkdir -m 700`), in the session scratchpad: it must exist, belong to you and not be writable by others unless sticky, so `/tmp` itself, owned by root, is refused.
 
 ## DOCUMENTATION

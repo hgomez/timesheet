@@ -32,7 +32,7 @@ Each month that is over is validated like a bank statement: its entries are froz
 
 The employee then compares their own records with what their employer reports and with each payslip. A gap is spotted early, while the facts are still easy to establish, and can be raised with the employer, dates and figures in hand. A correction the employee accepts, an adjustment of the payslip for instance, is entered with its reason, so that the two records agree again.
 
-An existing history, kept in a spreadsheet for instance, can be converted to a JSON file and imported, and the data of an account can be exported in the same format at any time. Timesheet does not replace the tool of the employer nor its payroll: it is the employee's own reference to check them against. Although it supports several accounts, it is meant above all for personal use, on a workstation or a small server, from the sources, as a Debian package or in a container. The reasons and the scope are detailed in [Purpose](doc/SPECIFICATIONS.md#purpose).
+An existing history, kept in a spreadsheet for instance, can be converted to a JSON file and imported, and the data of an account can be exported in the same format at any time. Timesheet does not replace the tool of the employer nor its payroll: it is the employee's own reference to check them against. Although it supports several accounts, it is meant above all for personal use, on a workstation or a small server, from the sources, as a Debian or RPM package or in a container. The reasons and the scope are detailed in [Purpose](doc/SPECIFICATIONS.md#purpose).
 
 ### Features
 
@@ -61,7 +61,7 @@ An existing history, kept in a spreadsheet for instance, can be converted to a J
 | See the pages | [Screenshots](doc/USER-GUIDE.md#screenshots) |
 | Bring an existing history in | [Importing](doc/OPERATIONS.md#importing) |
 | Build it, run the tests, build the package | [doc/BUILD.md](doc/BUILD.md) |
-| Install it as a service | [Debian package](doc/OPERATIONS.md#debian-package) |
+| Install it as a service | [Debian package](doc/OPERATIONS.md#debian-package), [RPM package](doc/OPERATIONS.md#rpm-package) |
 | Run it in a container | [Container](doc/OPERATIONS.md#container) |
 | Change the address, the host names, the time zone, the sessions or the limits | [Server configuration](doc/OPERATIONS.md#server-configuration) |
 | Put it behind a reverse proxy | [Network and security](doc/OPERATIONS.md#network-and-security) |
@@ -81,6 +81,7 @@ An existing history, kept in a spreadsheet for instance, can be converted to a J
 .ci/    scripts run by the Makefile targets and by the continuous integration
 bin/    timesheet (built), timesheet.sh (runs the server on the configuration and the database of the repository)
 debian/ Debian packaging (package, systemd unit, post-installation script)
+rpm/    RPM packaging (one spec for Fedora, RHEL, EPEL and openSUSE)
 doc/    ARCHITECTURE.md  BUILD.md  CODING.md  OPERATIONS.md  SECURITY.md  SPECIFICATIONS.md  USER-GUIDE.md  timesheet.png  timesheet-*.png (screenshots)
 etc/    timesheet/timesheet.json (the server configuration, installed as is by the package)
 share/  timesheet/ (configuration template read by init, example database, import template)
@@ -93,8 +94,8 @@ var/    lib/timesheet/ (database of the repository, given with --database, its l
 | Document | Content |
 | --- | --- |
 | [doc/USER-GUIDE.md](doc/USER-GUIDE.md) | Concepts, activity codes, pages and profiles; the tasks of the employee and of the administrator; the labels shown on screen. |
-| [doc/BUILD.md](doc/BUILD.md) | Requirements, `make` targets, installation of the files, Debian package, container image. |
-| [doc/OPERATIONS.md](doc/OPERATIONS.md) | Commands, server configuration, network, logs, import, example database, Debian package, container, backup, recovery, upgrade, troubleshooting. |
+| [doc/BUILD.md](doc/BUILD.md) | Requirements, `make` targets, installation of the files, Debian and RPM packages, container image. |
+| [doc/OPERATIONS.md](doc/OPERATIONS.md) | Commands, server configuration, network, logs, import, example database, Debian and RPM packages, container, backup, recovery, upgrade, troubleshooting. |
 | [doc/SPECIFICATIONS.md](doc/SPECIFICATIONS.md) | The functional reference: glossary, profiles, entries, counters and bookkeeping, pages, routes, database schema, server configuration, command line, import format, logs, limits, personal data, simplifications, migration notes. |
 | [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) | Packages, entities, HTTP chain, concurrency, persistence, lifecycle. Start with [Packages](doc/ARCHITECTURE.md#packages). |
 | [doc/SECURITY.md](doc/SECURITY.md) | Threat model, sessions, passwords, login throttling, transport, data protection, accepted risks. |
@@ -105,13 +106,13 @@ var/    lib/timesheet/ (database of the repository, given with --database, its l
 | To | You need |
 | --- | --- |
 | Run | A Unix system (Linux, BSD, macOS) for the database file lock, and its time zone database (`tzdata`). |
-| Build | Go 1.24 or later, and `make`; `gcc` to run the tests. The tools of the Debian package are listed in [doc/BUILD.md](doc/BUILD.md#requirements). |
+| Build | Go 1.24 or later, and `make`; `gcc` to run the tests. The tools of the packages are listed in [doc/BUILD.md](doc/BUILD.md#requirements). |
 
 The password prompt without echo needs Linux. Elsewhere, `user add` and `user passwd` read one visible line of the standard input, with a warning when it is a terminal or another character device: prefer the variable `TIMESHEET_PASSWORD` or a pipe.
 
 ## GETTING STARTED
 
-This section goes from the sources to a running server on your workstation. To install the Debian package instead, see [Debian package](doc/OPERATIONS.md#debian-package); to run a container, see [Container](doc/OPERATIONS.md#container).
+This section goes from the sources to a running server on your workstation. To install a package instead, see [Debian package](doc/OPERATIONS.md#debian-package) and [RPM package](doc/OPERATIONS.md#rpm-package); to run a container, see [Container](doc/OPERATIONS.md#container).
 
 - Run every command from the root of the repository.
 - `<login>` is the login you choose: 2 to 32 characters among lower-case letters, digits, dots, dashes and underscores, starting with a letter or a digit.
@@ -153,7 +154,7 @@ This section goes from the sources to a running server on your workstation. To i
 
    - The command it prints is the next step; from the repository root, prefix it with `bin/`. The database starts with the activity codes and counters of the configuration template and no account.
    - No path has a default: `--config` names the server configuration, and `--template` the configuration template of `init`.
-   - `--database` is needed from the sources: the server configuration of the repository names the database of the Debian package, `/var/lib/timesheet/timesheet-database.json` ([Server configuration](doc/OPERATIONS.md#server-configuration)).
+   - `--database` is needed from the sources: the server configuration of the repository names the database of the package, `/var/lib/timesheet/timesheet-database.json` ([Server configuration](doc/OPERATIONS.md#server-configuration)).
 
 5. Create your account, as an administrator:
 
@@ -189,12 +190,12 @@ Then follow the [User guide](doc/USER-GUIDE.md).
 
 ## BUILD
 
-`make` builds `bin/timesheet` and `make check` runs the tests. The other targets, the requirements, the Debian package and the container image are described in [doc/BUILD.md](doc/BUILD.md).
+`make` builds `bin/timesheet` and `make check` runs the tests. The other targets, the requirements, the packages and the container image are described in [doc/BUILD.md](doc/BUILD.md).
 
 ## RUN
 
 - From the repository: `bin/timesheet.sh` from any directory, or `bin/timesheet run --database=var/lib/timesheet/timesheet-database.json --config=etc/timesheet/timesheet.json` from the root (see [Getting started](#getting-started)).
-- As a service: build the Debian package, install it, then create the first administrator (see [Debian package](doc/OPERATIONS.md#debian-package)).
+- As a service: build the Debian or RPM package, install it, then create the first administrator (see [Debian package](doc/OPERATIONS.md#debian-package) or [RPM package](doc/OPERATIONS.md#rpm-package)).
 - In a container: build the image with `make docker`, then run it with a volume for the database; its first start creates the database and an administrator, `admin` or `TIMESHEET_USERNAME`, whose password, `Tms@Admin%26` or `TIMESHEET_PASSWORD`, must be changed at the first login (see [Container](doc/OPERATIONS.md#container)).
 
 Everything else about running the server is in [doc/OPERATIONS.md](doc/OPERATIONS.md): server configuration, network and reverse proxy, logs, import, backup and restore, recovery, upgrade and troubleshooting.

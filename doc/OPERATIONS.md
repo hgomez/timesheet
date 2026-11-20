@@ -1,8 +1,8 @@
 # OPERATIONS
 
-This document describes how to install, configure, expose, monitor, back up, upgrade and repair a Timesheet server, from the sources, the Debian package or the container image.
+This document describes how to install, configure, expose, monitor, back up, upgrade and repair a Timesheet server, from the sources, a Debian or RPM package or the container image.
 
-It is written for the operator, the person who runs the server and has a shell on its host. Building the program and the package is described in [BUILD.md](BUILD.md); the first start from the sources in the [README](../README.md#getting-started); the daily use in the [User guide](USER-GUIDE.md).
+It is written for the operator, the person who runs the server and has a shell on its host. Building the program and the packages is described in [BUILD.md](BUILD.md); the first start from the sources in the [README](../README.md#getting-started); the daily use in the [User guide](USER-GUIDE.md).
 
 ## CONTENTS
 
@@ -14,6 +14,7 @@ It is written for the operator, the person who runs the server and has a shell o
 - [IMPORTING](#importing)
 - [EXAMPLE DATABASE](#example-database)
 - [DEBIAN PACKAGE](#debian-package)
+- [RPM PACKAGE](#rpm-package)
 - [CONTAINER](#container)
 - [BACKUP AND RESTORE](#backup-and-restore)
 - [RECOVERY](#recovery)
@@ -25,7 +26,7 @@ It is written for the operator, the person who runs the server and has a shell o
 Every procedure below gives two forms:
 
 - the repository form: the binary `bin/timesheet`, run from the repository root by your own user;
-- the package form: the binary `timesheet` of the [Debian package](#debian-package), run as root or as the account `timesheet`.
+- the package form: the binary `timesheet` of the [Debian package](#debian-package) or of the [RPM package](#rpm-package), run as root or as the account `timesheet`.
 
 The container image is a third form, described in its own section: [Container](#container).
 
@@ -351,6 +352,51 @@ A drop-in written for a former version, with an `ExecStart=` that passes `--conf
 ### Remove
 
 Removing or purging the package keeps `/var/lib/timesheet` and the account `timesheet`.
+
+## RPM PACKAGE
+
+### What the package installs
+
+The RPM package serves Fedora, RHEL, EPEL and openSUSE from one spec, built as described in [BUILD.md](BUILD.md#build-the-rpm-package), into `_dist/`.
+
+It installs the same files as the [Debian package](#debian-package): the binary `/usr/bin/timesheet`; the configuration template, the example database and the import template in `/usr/share/timesheet/`; the server configuration `/etc/timesheet/timesheet.json`, the file of the repository installed as is, as a configuration file: an upgrade keeps your changes, your file stays and the new one is written next to it as `timesheet.json.rpmnew`; and the unit `timesheet.service`, which runs `timesheet run --config=/etc/timesheet/timesheet.json` as the account `timesheet`; the database comes from that file. It restarts 2 s after a failure.
+
+Its installation script creates, each when missing, as the installation script of the Debian package does: the system account `timesheet`; the directory `/var/lib/timesheet`, mode 0700, owned by that account; the database at the `database.path` of `/etc/timesheet/timesheet.json`, `/var/lib/timesheet/timesheet-database.json` in the shipped file. A path outside `/var/lib/timesheet`, a relative path or a path with `..` is not created: the script warns, and you create it with `timesheet init`. When `init` fails, the script warns too and the installation goes on. When the server configuration cannot be read, or names no database (`database.path` is `null`), the script warns and creates no database.
+
+The installation script leaves an existing directory as it is. The unit (`StateDirectory=`) gives `/var/lib/timesheet` to the account `timesheet` at each start of the service; an existing directory keeps its mode (systemd only warns when it differs from 0700).
+
+### Install
+
+1. Install the package, as root:
+
+   ```sh
+   dnf install ./_dist/timesheet-<version>-1.<distribution>.<arch>.rpm
+   ```
+
+   On openSUSE: `zypper install ./_dist/timesheet-<version>-1.<distribution>.<arch>.rpm`.
+
+2. The service starts on the new database, which has no account: it logs the warning `no administrator account`, and nobody can log in yet.
+3. Create the first administrator, with the service stopped:
+
+   ```sh
+   systemctl stop timesheet
+   runuser -u timesheet -- timesheet user add <login> --profile=ADMIN --config=/etc/timesheet/timesheet.json
+   systemctl start timesheet
+   ```
+
+4. Check the journal: `journalctl -u timesheet`. The service listens on `http://127.0.0.1:8080`.
+5. To change the address, the origins, the trusted proxies, the time zone, TLS, the logs, the sessions or the limits, see [Server configuration](#server-configuration).
+
+### Upgrade
+
+1. Back up the database (see [Backup and restore](#backup-and-restore)), and read the cautions on the files and the settings of the former versions: they hold for the RPM package as they hold for the Debian package ([Debian package](#debian-package), [Upgrade](#upgrade)).
+2. Install the new package, as root, with the same `dnf install` or `zypper install` as above. The package restarts the service.
+3. When you changed `/etc/timesheet/timesheet.json` and the new package changed it too, your file stays and the new one is written next to it as `timesheet.json.rpmnew`: merge the keys it adds, with `timesheet config set` or by hand, then run `systemctl restart timesheet`. A file without `database.path` names no database, and the service then refuses to start (`run: no database`): add it with `timesheet config set database.path /var/lib/timesheet/timesheet-database.json --config=/etc/timesheet/timesheet.json` ([No default path and no hidden companion file](SPECIFICATIONS.md#no-default-path-and-no-hidden-companion-file)).
+4. Check the journal: `journalctl -u timesheet`.
+
+### Remove
+
+Removing the package keeps `/var/lib/timesheet` and the account `timesheet`.
 
 ## CONTAINER
 

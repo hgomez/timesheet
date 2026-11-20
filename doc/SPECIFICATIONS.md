@@ -9,7 +9,7 @@ Every change of behaviour, screen, label, route, form field, computation rule, d
 | Document | Content |
 | --- | --- |
 | [README.md](../README.md) | Entry point, first start from the sources |
-| [BUILD.md](BUILD.md) | Requirements, `make` targets, Debian package, container image |
+| [BUILD.md](BUILD.md) | Requirements, `make` targets, Debian and RPM packages, container image |
 | [OPERATIONS.md](OPERATIONS.md) | Commands, server configuration, network, logs, import, package, container, backup, recovery and upgrade procedures, troubleshooting |
 | [USER-GUIDE.md](USER-GUIDE.md) | Concepts, daily tasks of the employee and of the administrator, labels shown on screen |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Packages and import direction, entities, HTTP chain, flows, concurrency, persistence, lifecycle |
@@ -186,7 +186,7 @@ The number of extra days comes from the employment contract: the application doe
 | revision | A number raised by each write, used to refuse a form shown before another write. |
 | rounding | The adjustment that rounds a carried balance up to the next whole day. |
 | server page | The page `/admin/` that shows the name, version and licence of the software, then the server configuration read-only ([Server page](#server-page)). |
-| server configuration | The file given by `--config`, `etc/timesheet/timesheet.json` in the repository (`/etc/timesheet/timesheet.json` in the Debian package), holding the settings of the server and of its operation: address, origins, database path, timeouts, sessions, login throttle, password hashing and capacity ([Server configuration](#server-configuration)). |
+| server configuration | The file given by `--config`, `etc/timesheet/timesheet.json` in the repository, `/etc/timesheet/timesheet.json` in a package), holding the settings of the server and of its operation: address, origins, database path, timeouts, sessions, login throttle, password hashing and capacity ([Server configuration](#server-configuration)). |
 | statement | The table of the entries of one counter for one month, with opening and closing balances. |
 | summary | The yearly table of the movements of every counter ([Yearly summary](#yearly-summary)). |
 | tile | One counter on the dashboard, an `<article>`. |
@@ -2062,7 +2062,7 @@ timesheet help | version
 - A database file name cannot be `.` or `..`, nor end with `.lock`, `.sessions` or `.tmp` in any case, the suffixes of the lock, session and temporary files written next to it ([Lock](#lock)).
 - A relative database path, given by `--database` or by `database.path`, is relative to the current directory; the commands turn it into an absolute path before opening the file.
 - From the sources, the database of the repository is given explicitly: `--database=var/lib/timesheet/timesheet-database.json`, with `--config=etc/timesheet/timesheet.json`, whose `database.path` is the database of the package.
-- The unit and the commands of the Debian package give `--config=/etc/timesheet/timesheet.json` ([OPERATIONS.md](OPERATIONS.md#two-installations)); in the container image, its entry point adds it to every command ([OPERATIONS.md, Container](OPERATIONS.md#container)).
+- The unit and the commands of the packages give `--config=/etc/timesheet/timesheet.json` ([OPERATIONS.md](OPERATIONS.md#two-installations)); in the container image, its entry point adds it to every command ([OPERATIONS.md, Container](OPERATIONS.md#container)).
 - A command that opens the database while neither `--database` nor `database.path` gives it is a usage error (exit 2): `timesheet: <command>: no database: give --database or set database.path in --config`. So are `config show` or `config set` without `--config` (`timesheet: config show: --config is required`), and `init` without `--template`.
 
 ### Exit codes
@@ -2184,7 +2184,7 @@ The password policy then applies ([SECURITY.md](SECURITY.md#passwords)). The hel
 - Linked keys are set in the same command: `server.tls_cert` with `server.tls_key`, `sessions.idle_timeout` with `sessions.max_lifetime`, `login.initial_delay` and `login.forget_after` with `login.max_delay`, `limits.accounts` with `sessions.per_account`. Set one after the other, the first may be refused.
 - `config set` prints `<keys> updated in <file>; restart the server to apply it.`, the keys separated by commas.
 - Neither reads the database nor needs the server stopped.
-- Both need `--config`, since they act on a file; on a Debian package, give `--config=/etc/timesheet/timesheet.json`.
+- Both need `--config`, since they act on a file; in a package, give `--config=/etc/timesheet/timesheet.json`.
 - The keys are those of the [server configuration](#server-configuration), written `<section>.<key>`: `server.listen`, `sessions.idle_timeout`, `limits.accounts`, and so on. An unknown key is a usage error (exit 2).
 
 | Type of the key | Value given to `config set` |
@@ -2571,7 +2571,7 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 
 ## SERVER CONFIGURATION
 
-The settings of the server live in their own file, apart from the database. Its path has no default: the option `--config` gives it, `etc/timesheet/timesheet.json` from the sources, `/etc/timesheet/timesheet.json` for the Debian package. Without `--config`, every setting takes its default; `database.path` has no default, so the database is then given by `--database`. The file shipped in the repository, installed as is by `make install` and by the package, holds the defaults, with the database of the package:
+The settings of the server live in their own file, apart from the database. Its path has no default: the option `--config` gives it, `etc/timesheet/timesheet.json` from the sources, `/etc/timesheet/timesheet.json` in a package. Without `--config`, every setting takes its default; `database.path` has no default, so the database is then given by `--database`. The file shipped in the repository, installed as is by `make install` and by the packages, holds the defaults, with the database of the package:
 
 ```json
 {
@@ -2728,7 +2728,7 @@ These limits apply only to a write that grows the database: a lowered limit neve
 - An invalid file stops the command (exit 1) with the path of the faulty setting, for instance `server.listen: an address host:port is expected` or `sessions.idle_timeout: a duration from 5m to 168h is expected`.
 - A file given by `--config` and missing is an error (exit 1), `the server configuration does not exist: <file>`, except for `config set`, which creates it.
 - In a file, `server.listen`, `server.origins` and `server.timezone` are mandatory, an absent `server.trusted_proxies` trusts no proxy, and an absent `database.path` names no database. Every other absent key takes its default.
-- The file shipped in the repository holds the defaults, with `database.path` set to `/var/lib/timesheet/timesheet-database.json`, the database of the Debian package.
+- The file shipped in the repository holds the defaults, with `database.path` set to `/var/lib/timesheet/timesheet-database.json`, the database of the packages.
 
 ### Priority
 
@@ -2862,7 +2862,7 @@ The paths lost their defaults, and the files written next to the database lost t
 | `.<name>.lock`, `.<name>.sessions`, `.<name>.<digits>.tmp` | `<name>.lock`, `<name>.sessions`, `<name>.<digits>.tmp` |
 | a database name could not start with a dot | a database name cannot end with `.lock`, `.sessions` or `.tmp` |
 
-- A script or a unit that opens the database without `--database`, with a configuration that names none or without `--config`, fails with `timesheet: <command>: no database: give --database or set database.path in --config` (exit 2): add `--database`, or `database.path` with `config set database.path <file>`. The unit of the Debian package gives `--config`, and the file shipped in the repository and in the package names the database.
+- A script or a unit that opens the database without `--database`, with a configuration that names none or without `--config`, fails with `timesheet: <command>: no database: give --database or set database.path in --config` (exit 2): add `--database`, or `database.path` with `config set database.path <file>`. The unit of a package gives `--config`, and the file shipped in the repository and in the packages names the database.
 - The former session file `.<name>.sessions` is no longer read: its users log in again. Stop the server, then delete it, with the former lock `.<name>.lock`; the session file holds the CSRF tokens of its sessions.
 - The former lock `.<name>.lock` and the new `<name>.lock` do not exclude each other: a former server still running does not stop a command of the new version, and its next write would erase what that command wrote. Stop the server before upgrading or rebuilding, and start it again only with the new version.
 
