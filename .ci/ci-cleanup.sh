@@ -29,16 +29,19 @@ set -x
 make clean                                                           || exit 1
 
 # ----------------------------------------------------------------------------
-# clean the rpm build
+# clean the debian package build
 # ----------------------------------------------------------------------------
 
-rm -rf ./_rpm                                                       || exit 1
+if command -v dh > /dev/null
+then
+    debian/rules clean                                               || exit 1
+fi
 
 # ----------------------------------------------------------------------------
-# clean the package build
+# clean the rpm package build
 # ----------------------------------------------------------------------------
 
-debian/rules clean                                                   || exit 1
+rm -rf ./_rpm                                                        || exit 1
 
 # ----------------------------------------------------------------------------
 # End-Of-File

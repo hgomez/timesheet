@@ -702,12 +702,13 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 
 - The packaging lives in `debian/` for the Debian package and in `rpm/` for the RPM package.
 - `debian/rules` only calls `dh`, and skips `dh_dwz`, which fails on a Go binary.
-- Both packages take their files from `make install`: the binary, the configuration template, the import template, the example database and the server configuration `/etc/timesheet/timesheet.json`, the file of the repository as is, which debhelper registers as a configuration file and the spec marks `%config(noreplace)`.
-- `rpm/timesheet.spec` is one spec for Fedora, RHEL, EPEL and openSUSE, with `%if` conditions on `%{?suse_version}` where the distributions differ: the time zone package (`timezone` on openSUSE, `tzdata` elsewhere) and the systemd scriptlets (`%service_add_post`, `%service_del_preun` and `%service_del_postun` on openSUSE, `%systemd_post`, `%systemd_preun` and `%systemd_postun_with_restart` elsewhere). Its version comes from the macro `ts_version`, given by the build script from the first entry of `debian/changelog`; it installs the unit of the Debian package, `debian/timesheet.service`; it builds no package of debug symbols, as `dh_dwz` is skipped.
+- The package takes its files from `make install`: the binary, the configuration template, the import template, the example database and the server configuration `/etc/timesheet/timesheet.json`, the file of the repository as is, which debhelper registers as a configuration file.
 - `debian/postinst` reads the database path with `timesheet config show database.path --config=/etc/timesheet/timesheet.json`; it never fails on an unreadable configuration, a configuration without database or a failed `init`, and creates the database only at a plain absolute path inside `/var/lib/timesheet`.
-- The scriptlet `%post` of the spec is `debian/postinst` transposed: it creates the system account, the directory `/var/lib/timesheet` and the database in the same way, and never fails; the scriptlets `%preun` and `%postun` are the systemd snippets of debhelper transposed.
 - The unit runs `timesheet run --config=/etc/timesheet/timesheet.json`: the database comes from that file.
-- How to build the packages is described in [BUILD.md](BUILD.md#build-the-debian-package) and in [BUILD.md](BUILD.md#build-the-rpm-package), how to install and run them in [OPERATIONS.md](OPERATIONS.md#debian-package) and in [OPERATIONS.md](OPERATIONS.md#rpm-package).
+- `rpm/timesheet.spec` takes its version from the macro `ts_version`, which the build script gives, and refuses to build without it; it builds with `make`, tests with `make check` and installs with `make install`, the same files as the Debian package, plus the unit `debian/timesheet.service`; it builds no package of debug symbols.
+- Its `%post` is `debian/postinst` transposed: the same account, directory and database, the same warnings, and it never fails; its `%preun` and `%postun` are the systemd macros (`%systemd_*`, `%service_*` on openSUSE), which neither enable nor start the service.
+- It marks `/etc/timesheet/timesheet.json` `%config(noreplace)`, declares the tools of `%post` as `Requires(post)`, and keeps the names of openSUSE (`go`, `timezone`, `shadow`, `glibc`, `%service_*`) under `%if 0%{?suse_version}`, a variant no build checks.
+- How to build the packages is described in [BUILD.md](BUILD.md#build-the-debian-package) and [BUILD.md](BUILD.md#build-the-rpm-package), how to install and run them in [OPERATIONS.md](OPERATIONS.md#debian-package) and [OPERATIONS.md](OPERATIONS.md#rpm-package).
 
 ### Container image
 
@@ -720,7 +721,7 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 
 ### Building the package
 
-`.ci/ci-build-debian.sh` builds the binary packages in the working tree, uncommitted changes included:
+`.ci/ci-build-deb.sh` builds the binary packages in the working tree, uncommitted changes included:
 
 1. In CI only (variable `CI` set), it first adds a changelog entry versioned `<version of debian/changelog>+<YYYYMMDDhhmmss>`.
 2. It prints the version of the Go toolchain with `go version`, and stops when `go` is missing.
@@ -730,27 +731,27 @@ The scripts that call `go` (`make-build.sh`, `make-check.sh`, `make-clean.sh`) e
 
 `.ci/ci-build-rpm.sh` builds the RPM package in the working tree, uncommitted changes included:
 
-1. It reads the version from the first entry of `debian/changelog`, prints it, and stops when it cannot read it.
-2. It checks `rpmbuild`, prints the version of the Go toolchain with `go version`, and stops when either is missing.
-3. It packs the working tree, except `.git/`, `.cache/`, `_dist/`, `_rpm/`, `bin/` and `var/`, into `_rpm/SOURCES/timesheet-<version>.tar.gz`: `var/`, which holds a real database, never leaves the tree.
-4. It runs `rpmbuild -bb --define _topdir=_rpm --define ts_version=<version> rpm/timesheet.spec`, which unpacks the tarball, runs `make`, the tests (`make check`, hence gcc) and `make install`, and stops if a test fails.
-5. The script creates `_dist/` and moves into it the RPMs of `_rpm/RPMS/`; it fails when one is missing.
+1. It stops when `rpmbuild` or `go` is missing, and prints the version of the Go toolchain with `go version`.
+2. It reads the version from the first entry of `debian/changelog`, and stops when it cannot; in CI only (variable `CI` set), it appends `+<YYYYMMDDhhmmss>`.
+3. It packs the working tree, without `.git/`, `.cache/`, `_dist/`, `_rpm/`, `bin/` and `var/`, into `_rpm/SOURCES/timesheet-<version>.tar.gz`: `var/`, which holds a real database, never leaves the tree.
+4. It runs `rpmbuild -bb` with `_topdir` set to `_rpm/` and `ts_version` to the version, which unpacks the archive, runs `make`, the tests (`make check`, hence gcc) and `make install`, and stops if a test fails.
+5. It creates `_dist/` and moves into it the packages of `_rpm/RPMS/`; it fails when there is none.
 
 ### Scripts
 
 | Script | What it does |
 | --- | --- |
 | `.ci/ci-setup-debian.sh` | Meant for a disposable CI container, run as root: `apt-get update`, `apt-get dist-upgrade -y`, installs `build-essential`, `git`, `devscripts`, `debhelper`, `fakeroot`, `dh-make`, `dh-exec`, `equivs` and `wget`, then `golang` and its dependencies from `trixie-backports`, with `apt-get install -t trixie-backports`, then runs `apt-get autoremove --purge -y` and `apt-get clean`. Do not run it on a workstation |
-| `.ci/ci-build-debian.sh` | Builds the Debian packages (above) |
+| `.ci/ci-build-deb.sh` | Builds the Debian packages (above) |
+| `.ci/ci-setup-fedora.sh` | Meant for a disposable CI container, run as root: `dnf upgrade -y`, installs `rpm-build`, `gcc`, `make`, `golang`, `systemd-rpm-macros`, `tzdata`, `tar`, `gzip` and `findutils`, then runs `dnf clean all`. Do not run it on a workstation |
 | `.ci/ci-build-rpm.sh` | Builds the RPM package (above) |
-| `.ci/ci-cleanup.sh` | Runs `make clean`, `debian/rules clean` and removes `_rpm/` |
+| `.ci/ci-cleanup.sh` | Runs `make clean`, `debian/rules clean` when `dh` is installed, and removes `_rpm/` |
 
 ### Continuous integration
 
-- The GitLab job of `.ci/gitlab-ci.yml` runs `ci-setup-debian.sh`, `ci-build-debian.sh`, then `ci-cleanup.sh`.
-- It runs in the image `debian:trixie-backports`, so that the package is built with the Go of the backports, a supported release of Go, while trixie itself ships Go 1.24.
-- It runs on the branches `master` and `release`.
-- It keeps the files of `_dist/` as artifacts.
+- `.ci/gitlab-ci.yml` has two jobs in the stage `build`, which run on the branches `master` and `release` and keep the packages of `_dist/` as artifacts.
+- `build-debian-amd64` runs `ci-setup-debian.sh`, `ci-build-deb.sh`, then `ci-cleanup.sh`, in the image `debian:trixie-backports`, so that the package is built with the Go of the backports, a supported release of Go, while trixie itself ships Go 1.24.
+- `build-fedora-amd64` runs `ci-setup-fedora.sh`, `ci-build-rpm.sh`, then `ci-cleanup.sh`, in the image `fedora:latest`, whose Go is a supported release.
 - GitLab reads that file only once the CI configuration path of the project is set to `.ci/gitlab-ci.yml`.
 
 ### Release

@@ -45,7 +45,7 @@ build-debian-amd64:
   before_script:
     - ./.ci/ci-setup-debian.sh
   script:
-    - ./.ci/ci-build-debian.sh
+    - ./.ci/ci-build-deb.sh
   after_script:
     - ./.ci/ci-cleanup.sh
   artifacts:
@@ -54,6 +54,30 @@ build-debian-amd64:
       - ./_dist/*.buildinfo
       - ./_dist/*.changes
       - ./_dist/*.deb
+
+# ----------------------------------------------------------------------------
+# build-fedora-amd64
+# ----------------------------------------------------------------------------
+
+build-fedora-amd64:
+  image: fedora:latest
+  stage: build
+  tags:
+    - docker
+    - amd64
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_BRANCH == "release"
+  before_script:
+    - ./.ci/ci-setup-fedora.sh
+  script:
+    - ./.ci/ci-build-rpm.sh
+  after_script:
+    - ./.ci/ci-cleanup.sh
+  artifacts:
+    name: "timesheet-fedora-amd64"
+    paths:
+      - ./_dist/*.rpm
 
 # ----------------------------------------------------------------------------
 # End-Of-File

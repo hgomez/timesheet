@@ -186,7 +186,7 @@ The number of extra days comes from the employment contract: the application doe
 | revision | A number raised by each write, used to refuse a form shown before another write. |
 | rounding | The adjustment that rounds a carried balance up to the next whole day. |
 | server page | The page `/admin/` that shows the name, version and licence of the software, then the server configuration read-only ([Server page](#server-page)). |
-| server configuration | The file given by `--config`, `etc/timesheet/timesheet.json` in the repository, `/etc/timesheet/timesheet.json` in a package), holding the settings of the server and of its operation: address, origins, database path, timeouts, sessions, login throttle, password hashing and capacity ([Server configuration](#server-configuration)). |
+| server configuration | The file given by `--config`, `etc/timesheet/timesheet.json` in the repository (`/etc/timesheet/timesheet.json` in the packages), holding the settings of the server and of its operation: address, origins, database path, timeouts, sessions, login throttle, password hashing and capacity ([Server configuration](#server-configuration)). |
 | statement | The table of the entries of one counter for one month, with opening and closing balances. |
 | summary | The yearly table of the movements of every counter ([Yearly summary](#yearly-summary)). |
 | tile | One counter on the dashboard, an `<article>`. |
@@ -2571,7 +2571,7 @@ The whole file is validated when it is loaded. An invalid database stops the pro
 
 ## SERVER CONFIGURATION
 
-The settings of the server live in their own file, apart from the database. Its path has no default: the option `--config` gives it, `etc/timesheet/timesheet.json` from the sources, `/etc/timesheet/timesheet.json` in a package. Without `--config`, every setting takes its default; `database.path` has no default, so the database is then given by `--database`. The file shipped in the repository, installed as is by `make install` and by the packages, holds the defaults, with the database of the package:
+The settings of the server live in their own file, apart from the database. Its path has no default: the option `--config` gives it, `etc/timesheet/timesheet.json` from the sources, `/etc/timesheet/timesheet.json` for the packages. Without `--config`, every setting takes its default; `database.path` has no default, so the database is then given by `--database`. The file shipped in the repository, installed as is by `make install` and by the packages, holds the defaults, with the database of the package:
 
 ```json
 {
@@ -2862,7 +2862,7 @@ The paths lost their defaults, and the files written next to the database lost t
 | `.<name>.lock`, `.<name>.sessions`, `.<name>.<digits>.tmp` | `<name>.lock`, `<name>.sessions`, `<name>.<digits>.tmp` |
 | a database name could not start with a dot | a database name cannot end with `.lock`, `.sessions` or `.tmp` |
 
-- A script or a unit that opens the database without `--database`, with a configuration that names none or without `--config`, fails with `timesheet: <command>: no database: give --database or set database.path in --config` (exit 2): add `--database`, or `database.path` with `config set database.path <file>`. The unit of a package gives `--config`, and the file shipped in the repository and in the packages names the database.
+- A script or a unit that opens the database without `--database`, with a configuration that names none or without `--config`, fails with `timesheet: <command>: no database: give --database or set database.path in --config` (exit 2): add `--database`, or `database.path` with `config set database.path <file>`. The unit of the packages gives `--config`, and the file shipped in the repository and in the packages names the database.
 - The former session file `.<name>.sessions` is no longer read: its users log in again. Stop the server, then delete it, with the former lock `.<name>.lock`; the session file holds the CSRF tokens of its sessions.
 - The former lock `.<name>.lock` and the new `<name>.lock` do not exclude each other: a former server still running does not stop a command of the new version, and its next write would erase what that command wrote. Stop the server before upgrading or rebuilding, and start it again only with the new version.
 

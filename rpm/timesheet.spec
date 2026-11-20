@@ -16,6 +16,12 @@
 #
 
 # ----------------------------------------------------------------------------
+# version
+# ----------------------------------------------------------------------------
+
+%{!?ts_version:%{error:the macro ts_version (the version of debian/changelog) is not defined, give it with --define}}
+
+# ----------------------------------------------------------------------------
 # package
 # ----------------------------------------------------------------------------
 
@@ -28,35 +34,39 @@ License:        GPL-2.0-or-later
 Source0:        %{name}-%{version}.tar.gz
 
 BuildRequires:  gcc
-BuildRequires:  git
-BuildRequires:  golang
 BuildRequires:  make
-BuildRequires:  systemd
-
-Requires:       /usr/sbin/runuser
-Requires:       /usr/sbin/useradd
-Requires:       systemd
-
-%define         debug_package %{nil}
+BuildRequires:  systemd-rpm-macros
 
 %if 0%{?suse_version}
+BuildRequires:  go
+BuildRequires:  timezone
 Requires:       timezone
+Requires(post): glibc
+Requires(post): shadow
 %else
+BuildRequires:  golang
+BuildRequires:  tzdata
 Requires:       tzdata
+Requires(post): glibc-common
+Requires(post): shadow-utils
 %endif
+
+Requires(post): coreutils
+Requires(post): util-linux
+%{?systemd_requires}
+
+%define         debug_package %{nil}
 
 %description
 Timesheet is a web application tracking a professional activity
 half-day by half-day, with leave counters kept like bank accounts,
 monthly closing and a yearly summary.
 
-It is designed for employees working in France: French legal holidays,
+It is designed for employees working in France: French public holidays,
 paid leave, RTT and part-time counters, and an interface in French.
 
-It is a single statically linked binary storing its configuration,
-accounts and data in one JSON database, served by a systemd unit.
-
-%{!?ts_version:%{error:the macro ts_version (the version of debian/changelog) is not defined, give it with --define}}
+It is a single statically linked binary, with a server configuration
+file and one JSON database, served by a systemd unit.
 
 # ----------------------------------------------------------------------------
 # preparation, build, check, installation
@@ -78,6 +88,11 @@ install -D -m 644 debian/timesheet.service %{buildroot}%{_unitdir}/timesheet.ser
 # ----------------------------------------------------------------------------
 # scriptlets
 # ----------------------------------------------------------------------------
+
+%pre
+%if 0%{?suse_version}
+%service_add_pre timesheet.service
+%endif
 
 %post
 if ! getent passwd timesheet > /dev/null

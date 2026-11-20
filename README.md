@@ -81,9 +81,9 @@ An existing history, kept in a spreadsheet for instance, can be converted to a J
 .ci/    scripts run by the Makefile targets and by the continuous integration
 bin/    timesheet (built), timesheet.sh (runs the server on the configuration and the database of the repository)
 debian/ Debian packaging (package, systemd unit, post-installation script)
-rpm/    RPM packaging (one spec for Fedora, RHEL, EPEL and openSUSE)
+rpm/    RPM packaging (the spec of the package, built for Fedora)
 doc/    ARCHITECTURE.md  BUILD.md  CODING.md  OPERATIONS.md  SECURITY.md  SPECIFICATIONS.md  USER-GUIDE.md  timesheet.png  timesheet-*.png (screenshots)
-etc/    timesheet/timesheet.json (the server configuration, installed as is by the package)
+etc/    timesheet/timesheet.json (the server configuration, installed as is by the packages)
 share/  timesheet/ (configuration template read by init, example database, import template)
 src/    Go sources
 var/    lib/timesheet/ (database of the repository, given with --database, its lock and its session file)
@@ -112,7 +112,7 @@ The password prompt without echo needs Linux. Elsewhere, `user add` and `user pa
 
 ## GETTING STARTED
 
-This section goes from the sources to a running server on your workstation. To install a package instead, see [Debian package](doc/OPERATIONS.md#debian-package) and [RPM package](doc/OPERATIONS.md#rpm-package); to run a container, see [Container](doc/OPERATIONS.md#container).
+This section goes from the sources to a running server on your workstation. To install a package instead, see [Debian package](doc/OPERATIONS.md#debian-package) or [RPM package](doc/OPERATIONS.md#rpm-package); to run a container, see [Container](doc/OPERATIONS.md#container).
 
 - Run every command from the root of the repository.
 - `<login>` is the login you choose: 2 to 32 characters among lower-case letters, digits, dots, dashes and underscores, starting with a letter or a digit.
@@ -154,7 +154,7 @@ This section goes from the sources to a running server on your workstation. To i
 
    - The command it prints is the next step; from the repository root, prefix it with `bin/`. The database starts with the activity codes and counters of the configuration template and no account.
    - No path has a default: `--config` names the server configuration, and `--template` the configuration template of `init`.
-   - `--database` is needed from the sources: the server configuration of the repository names the database of the package, `/var/lib/timesheet/timesheet-database.json` ([Server configuration](doc/OPERATIONS.md#server-configuration)).
+   - `--database` is needed from the sources: the server configuration of the repository names the database of the packages, `/var/lib/timesheet/timesheet-database.json` ([Server configuration](doc/OPERATIONS.md#server-configuration)).
 
 5. Create your account, as an administrator:
 
@@ -190,7 +190,7 @@ Then follow the [User guide](doc/USER-GUIDE.md).
 
 ## BUILD
 
-`make` builds `bin/timesheet` and `make check` runs the tests. The other targets, the requirements, the packages and the container image are described in [doc/BUILD.md](doc/BUILD.md).
+`make` builds `bin/timesheet` and `make check` runs the tests. The other targets, the requirements, the Debian and RPM packages and the container image are described in [doc/BUILD.md](doc/BUILD.md).
 
 ## RUN
 

@@ -23,7 +23,7 @@ It is written for whoever builds the software. How the build scripts are written
 | Build the program | Go 1.24 or later, and `make`. |
 | Run the tests | `gcc` as well: the race detector needs cgo. |
 | Build the Debian package | A Debian system with `build-essential`, `debhelper`, `devscripts`, `golang` and `git`. The CI takes `golang` from `trixie-backports`; trixie alone builds with Go 1.24 ([CODING.md, Continuous integration](CODING.md#continuous-integration)). |
-| Build the RPM package | A Fedora, RHEL/EPEL or openSUSE system with `rpmbuild`, `golang` (Go 1.24 or later), `gcc`, `make`, `git` and `systemd`. |
+| Build the RPM package | A Fedora system with `rpm-build`, `gcc`, `make`, `golang` (Go 1.24 or later), `systemd-rpm-macros` and `tzdata`, the packages that `.ci/ci-setup-fedora.sh` installs. The spec also has the variants of openSUSE (`go` and `timezone`), which no build checks. |
 | Build the container image | Docker, or another builder of `Dockerfile` images, and access to the registry of the images `golang:1.27-alpine3.23` and `alpine:3.22`. |
 
 The program has no dependency besides the Go standard library: nothing is downloaded during the build, except the base images of the container image.
@@ -89,7 +89,7 @@ Never run `make mrproper` without a backup of the database and a commit of your 
 1. On a Debian system with the [requirements](#requirements), from the root of the repository:
 
    ```sh
-   .ci/ci-build-debian.sh
+   .ci/ci-build-deb.sh
    ```
 
 2. The build runs `make check` and stops if a test fails.
@@ -107,23 +107,22 @@ Never run `make mrproper` without a backup of the database and a commit of your 
 
 ## BUILD THE RPM PACKAGE
 
-1. On a Fedora, RHEL/EPEL or openSUSE system with the [requirements](#requirements), from the root of the repository:
+1. On a Fedora system with the [requirements](#requirements), from the root of the repository:
 
    ```sh
    .ci/ci-build-rpm.sh
    ```
 
-2. The build runs `make check` and stops if a test fails.
-3. The package is written into `_dist/`, at the root of the repository: `timesheet-<version>-1.<distribution>.<arch>.rpm` (the distribution tag and the architecture are the ones of the build machine, for instance `fc45.x86_64`). The one spec of the package, `rpm/timesheet.spec`, serves the three families: it adapts to Fedora, RHEL, EPEL and openSUSE with `%if` conditions.
-4. To remove the build leftovers afterwards:
+2. The build runs `make check` and stops if a test fails: the tests need an architecture where Go has the race detector, such as `x86_64` or `aarch64`.
+3. The package is written into `_dist/`, at the root of the repository: `timesheet-<version>-1.<distribution>.<arch>.rpm`, with the distribution tag and the architecture of the build machine. No package of debug symbols is built.
+4. To remove the build leftovers afterwards, the directory `_rpm/` among them:
 
    ```sh
    .ci/ci-cleanup.sh
    ```
 
-- The package is built from the working tree, uncommitted changes included.
-- The package installs the server configuration of the repository as is: its `database.path` is the database of the package. An upgrade keeps your changes: your file stays and the new one is written next to it as `timesheet.json.rpmnew`.
-- `<version>` is the first entry of `debian/changelog`.
+- The package is built from the working tree, uncommitted changes included, without `.git/`, `.cache/`, `_dist/`, `_rpm/`, `bin/` and `var/`: the database of the repository never enters it.
+- `<version>` is the first entry of `debian/changelog`; in the CI, it is followed by `+` and the date and time of the build.
 - Installing and running the package is described in [OPERATIONS.md](OPERATIONS.md#rpm-package).
 
 ## BUILD THE CONTAINER IMAGE
